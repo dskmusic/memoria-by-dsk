@@ -159,7 +159,7 @@ HandsPanel::HandsPanel (Context& c)
     saveWav.setButtonText (L ("Guardar WAV…", "Save WAV…"));
     lockStyle.setButtonText (L ("Estilo", "Style")); lockKey.setButtonText (L ("Tono", "Key")); lockScale.setButtonText (L ("Escala", "Scale")); lockTempo.setButtonText ("Tempo");
     for (auto* b : { &lockStyle, &lockKey, &lockScale, &lockTempo }) b->setTooltip (L ("Bloquea este parámetro: «Canción al azar» no lo cambiará", "Lock this parameter: \"Random song\" will not change it"));
-    play.setTooltip (L ("Las manos tocan con el tempo de tu DAW (o el interno). Barra espaciadora en el Standalone.", "The hands play at your DAW tempo (or the internal one). Space bar in the Standalone."));
+    play.setTooltip (L ("Las manos tocan por su cuenta, con su propio tempo, solo mientras está en PLAY (nunca con el transporte del DAW). Para usarlas en tu DAW, arrastra el MIDI. Barra espaciadora en el Standalone.", "The hands play on their own, at their own tempo, only while PLAY is on (never with the DAW transport). To use them in your DAW, drag the MIDI out. Space bar in the Standalone."));
     newVar.setTooltip (L ("Misma configuración, otra canción: cambia solo la semilla", "Same settings, a different song: only the seed changes"));
     randomize.setTooltip (L ("Estilo, tono, escala, tempo y carácter nuevos (respeta los bloqueos) y otra semilla", "New style, key, scale, tempo and character (respects the locks) and a new seed"));
     midiTile.text = L ("Arrastra el MIDI", "Drag the MIDI"); midiTile.sub = L ("a tu DAW o escritorio", "into your DAW or desktop");
@@ -288,12 +288,12 @@ void HandsPanel::randomise (bool all)
     if (! lockKey.getToggleState()) set (P::handsKey, (float) r.nextInt (12));
     if (! lockScale.getToggleState())
     {
-        static const int sc[7][3] { { 1, 2, 1 }, { 1, 0, 1 }, { 1, 7, 0 }, { 0, 1, 2 }, { 0, 3, 0 }, { 0, 1, 0 }, { 0, 0, 0 } };
+        static const int sc[10][3] { { 1, 2, 1 }, { 1, 0, 1 }, { 1, 7, 0 }, { 0, 1, 2 }, { 0, 3, 0 }, { 0, 1, 0 }, { 0, 0, 0 }, { 0, 2, 0 }, { 0, 2, 1 }, { 1, 7, 1 } };
         set (P::handsScale, (float) sc[st][r.nextInt (3)]);
     }
     if (! lockTempo.getToggleState())
     {
-        static const int lo[7] { 66, 60, 56, 70, 80, 62, 60 }, hi[7] { 88, 92, 84, 104, 110, 86, 84 };
+        static const int lo[10] { 66, 60, 56, 70, 80, 62, 60, 60, 70, 52 }, hi[10] { 88, 92, 84, 104, 110, 86, 84, 92, 86, 72 };
         set (P::handsTempo, (float) (lo[st] + r.nextInt (hi[st] - lo[st] + 1)));
     }
     set (P::handsDensity, 0.45f + 0.4f * r.nextFloat());
@@ -315,7 +315,7 @@ void HandsPanel::mouseDrag (const juce::MouseEvent& e) { if (mapArea.contains (e
 void HandsPanel::tick (const Frame& f)
 {
     const bool on = ctx.proc.isPlayingInternal();
-    running = (on || ctx.proc.isHostPlaying()) && ctx.proc.getParam (P::hands) > 0.5f;
+    running = on && ctx.proc.getParam (P::hands) > 0.5f;
     songBar = f.songBar; songBars = f.songBars;
     play.setButtonText (on ? L ("PARAR", "STOP") : "PLAY");
     play.setToggleState (on, juce::dontSendNotification);

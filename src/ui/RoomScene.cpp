@@ -333,8 +333,5 @@ void RoomScene::paint (juce::Graphics& g)
     g.restoreState();
     g.setColour (col::accent.withAlpha (0.35f));
     g.drawRoundedRectangle (r.reduced (0.5f), 8.0f, 1.0f);
-    g.setColour (col::text.withAlpha (0.8f));
-    g.setFont (monoFont (11.0f));
-    g.drawText (L ("MEMORIA ", "MEMORY ") + juce::String ((int) std::round (f.memory * 100.0f)) + " %", r.reduced (10, 8), juce::Justification::bottomLeft);
 }
 }

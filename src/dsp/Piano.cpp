@@ -236,8 +236,8 @@ void Engine::exciteGhosts (int note, float vel)
                 const float dev = std::abs (std::log2 (ratio)) * 1200.0f;     // cents
                 if (dev < 14.0f) couple = juce::jmax (couple, (1.0f - dev / 14.0f) / (float) (i * j));
             }
-        if (couple <= 0.0f) continue;
-        const float amp = couple * res * 0.045f * vel;
+        if (couple < 0.3f) continue;                                  // only strong relations (octaves, fifths)
+        const float amp = couple * res * 0.010f * vel;
         if (! g.on)
         {
             g.on = true; g.f = fm;
@@ -248,7 +248,7 @@ void Engine::exciteGhosts (int note, float vel)
             }
             ++activeGhosts;
         }
-        g.re[0] += amp; g.re[1] += amp * 0.4f;
+        g.re[0] = juce::jmin (0.006f, g.re[0] + amp); g.re[1] = juce::jmin (0.0025f, g.re[1] + amp * 0.4f);
     }
 }
 
@@ -320,8 +320,10 @@ void Engine::releaseHands()
 
 void Engine::startStopHands (const HostInfo& host)
 {
-    const bool hostRun = host.hostPlaying;
-    const bool run = (hostRun || host.internalPlay) && (int) p (P::hands) != 0;
+    // The hands NEVER follow the DAW: they play only while PLAY is on inside the instrument, at their own tempo.
+    // (To use the music in a DAW, drag the MIDI out; with nothing played or drawn the plugin is silent.)
+    const bool hostRun = false;
+    const bool run = host.internalPlay && (int) p (P::hands) != 0;
     bpm = hostRun && host.bpm > 20.0 ? host.bpm : (double) p (P::handsTempo);
     auto begin = [&] (double at)
     {
@@ -433,7 +435,7 @@ void Engine::tick()
     // ghosts: sympathetic strings follow the pedal (fully damped when it is down on the strings)
     if (activeGhosts > 0)
     {
-        const float sig = 0.8f + (1.0f - pedalNow) * 40.0f;
+        const float sig = 2.2f + (1.0f - pedalNow) * 40.0f;
         const float r = rateToFactor (sig, (float) sr);
         for (auto& g : ghosts)
         {

@@ -39,6 +39,7 @@ MemoriaEditor::MemoriaEditor (MemoriaProcessor& p)
     keyboard.setColour (juce::MidiKeyboardComponent::keyDownOverlayColourId, gx::ui::col::accent.withAlpha (0.8f));
     keyboard.setColour (juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId, gx::ui::col::accent.withAlpha (0.3f));
     keyboard.setLowestVisibleKey (24);
+    keyboard.setVelocity (0.62f, true);      // computer keys and the mouse play at a comfortable mezzo-forte, not at full velocity
     keyboard.setKeyWidth (18.0f);
     toastLabel.setColour (juce::Label::backgroundColourId, gx::ui::col::bgDeep.withAlpha (0.92f));
     toastLabel.setColour (juce::Label::outlineColourId, gx::ui::col::accent);

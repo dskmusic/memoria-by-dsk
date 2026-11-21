@@ -169,7 +169,7 @@ int runVideo (const juce::File& dir, bool trailer)
         { "MEMORIA", "dskmusic.com", 17.5, 22.0, true } };
     Setter setter = [] (MemoriaProcessor& p, double t)
     {
-        if (t < 0.02) prepareSound (p, 8, 1, 84.0f, 5, 6, 2, 0);
+        if (t < 0.02) prepareSound (p, 0, 1, 76.0f, 21, 8, 0, 0);
         setP (p, "memory", 0.1f + 0.85f * ramp (t, 4.0, 18.0));
         setP (p, "world", t > 8.0 ? 4.0f : 0.0f);
         setP (p, "world_level", 0.6f);

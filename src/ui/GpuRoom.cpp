@@ -145,7 +145,7 @@ float softShadow (vec3 ro, vec3 rd, float tmax)
 #ifdef LITE
     return 1.0;
 #endif
-    float res = 1.0, t = 0.03;
+    float res = 1.0, t = 0.03 + 0.03 * hash12 (gl_FragCoord.xy);
     for (int i = 0; i < 26; i++)
     {
         float h = map (ro + rd * t).x;
@@ -154,6 +154,24 @@ float softShadow (vec3 ro, vec3 rd, float tmax)
         if (res < 0.01 || t > tmax) break;
     }
     return clamp (res, 0.0, 1.0);
+}
+
+float candleShadow (vec3 ro, vec3 rd, float tmax)
+{
+#ifdef LITE
+    return 1.0;
+#endif
+    float res = 1.0;
+    float t = 0.02 + 0.03 * hash12 (gl_FragCoord.xy + 3.7);
+    for (int i = 0; i < 40; i++)
+    {
+        float h = map (ro + rd * t).x;
+        res = min (res, 5.0 * h / t);
+        t += clamp (h * 0.8, 0.012, 0.18);
+        if (res < 0.005 || t > tmax - 0.03) break;
+    }
+    res = clamp (res, 0.0, 1.0);
+    return res * res * (3.0 - 2.0 * res);
 }
 
 float calcAO (vec3 p, vec3 n)
@@ -261,6 +279,7 @@ float keyDown (float midiIdx)
 #ifdef LITE
     return v;
 #endif
+)GLSL" R"GLSL(
     for (int i = 0; i < 88; i++) if (float (i) == midiIdx) v = uKeys[i];
     return v;
 }
@@ -280,7 +299,7 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
     }
     else if (id < 2.5)  // plaster wall with a wainscot
     {
-        alb = vec3 (0.46, 0.34, 0.26) * (0.85 + 0.3 * fbm (p.xy * 3.0 + p.zz * 2.0));
+        alb = vec3 (0.46, 0.34, 0.26) * (0.88 + 0.24 * fbm (p.xy * 4.0));
         if (n.z > 0.5 && p.y < 1.05) { alb = vec3 (0.20, 0.13, 0.09) * (0.8 + 0.4 * fbm (vec2 (p.x * 3.0, p.y * 20.0))); if (abs (p.y - 1.05) < 0.03) alb = vec3 (0.30, 0.20, 0.13); }
         rough = 0.9;
     }
@@ -346,7 +365,6 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
     }
     else { alb = vec3 (0.75, 0.55, 0.22); rough = 0.25; f0 = 0.6; }                // brass
 }
-)GLSL" R"GLSL(
 
 vec3 environment (vec3 r, float rough)
 {
@@ -384,7 +402,7 @@ vec3 shadeHit (vec3 ro, vec3 rd, float t, float id)
     // the candle
     vec3 pl = FLAMEP + vec3 (0.002 * sin (uTime * 6.0), 0.0, 0.0) - p;
     float dc = length (pl); pl /= dc;
-    float cs = dot (n, pl) > 0.0 ? softShadow (p + n * 0.02, pl, dc) : 0.0;
+    float cs = dot (n, pl) > 0.0 ? candleShadow (p + n * 0.02, pl, dc) : 0.0;
     vec3 candle = vec3 (1.0, 0.56, 0.22) * flick * (wd == 3 ? 1.6 : 1.0);
     col += alb * candle * max (dot (n, pl), 0.0) * cs * (1.6 / (1.0 + 7.0 * dc * dc)) * ao;
     // reflections: the window and the candle in glossy surfaces
@@ -519,6 +537,7 @@ void main()
     {
         float fi = float (i);
         float sx = hash12 (vec2 (floor (uTime * 9.0), fi * 3.1));
+)GLSL" R"GLSL(
         sc += ss (0.0007, 0.0, abs (uv0.x - sx)) * step (0.35, hash12 (vec2 (fi, floor (uTime * 9.0) + 2.0)));
     }
     c += vec3 (0.20, 0.18, 0.14) * sc * ss (0.25, 0.7, aging);

@@ -436,6 +436,34 @@ static void testPresetSwitch()
 #endif
 }
 
+static void testHostSilence()
+{
+    std::puts ("[silence when the DAW plays]");
+    gx::Preset p;                                   // Hands mode is Full Song by default
+    gx::Engine eng;
+    eng.prepare (48000.0, 512);
+    eng.reset (1);
+    gx::HostInfo hi;
+    hi.hostPlaying = true; hi.hasPosition = true; hi.hasPpq = true; hi.bpm = 120;       // the DAW is playing, nothing else
+    juce::MidiBuffer none;
+    juce::AudioBuffer<float> b (2, 512);
+    float peak = 0;
+    for (int blk = 0; blk < 400; ++blk)             // about 4 s of DAW playback
+    {
+        hi.ppq = (double) blk * 512.0 / 48000.0 * 2.0;
+        b.clear();
+        eng.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi);
+        peak = juce::jmax (peak, b.getMagnitude (0, 512));
+    }
+    check (peak < 1.0e-6f, "a loaded plugin is silent while the DAW plays (peak " + juce::String (peak, 6) + ")");
+    // with the instrument's own PLAY the hands do play
+    eng.reset (1);
+    hi.hostPlaying = false; hi.internalPlay = true;
+    peak = 0;
+    for (int blk = 0; blk < 400; ++blk) { b.clear(); eng.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi); peak = juce::jmax (peak, b.getMagnitude (0, 512)); }
+    check (peak > 0.01f, "the hands play with the instrument's own PLAY");
+}
+
 int runAll()
 {
     testParams();
@@ -447,6 +475,7 @@ int runAll()
     testGenerator();
     testHands();
     testPresetSwitch();
+    testHostSilence();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

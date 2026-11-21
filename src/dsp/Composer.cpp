@@ -121,9 +121,11 @@ struct Composer
         for (int b = 0; b < sec.bars; ++b)
         {
             Chord ch; ch.deg = bank[p][b % 4];
-            const float colour = c.style == ssLofi ? 0.8f : c.style == ssRomantic ? 0.45f : c.style == ssMinimal ? 0.5f : c.style == ssCinematic ? 0.3f : c.style == ssBallad ? 0.3f : 0.05f;
+            if (c.style == ssLofiLoop) { static const int L[4][4] { { 0, 5, 1, 4 }, { 1, 4, 0, 5 }, { 0, 2, 5, 4 }, { 3, 2, 1, 4 } }; ch.deg = L[c.seed % 4u][b % 4]; }
+            else if (c.style == ssJazz) { static const int J[4][4] { { 1, 4, 0, 5 }, { 2, 5, 1, 4 }, { 0, 5, 1, 4 }, { 3, 4, 2, 5 } }; ch.deg = J[(c.seed + (sec.type == 'B' ? 1u : 0u)) % 4u][b % 4]; }
+            const float colour = c.style == ssLofi ? 0.8f : c.style == ssRomantic ? 0.45f : c.style == ssMinimal ? 0.5f : c.style == ssCinematic ? 0.3f : c.style == ssBallad ? 0.3f : c.style == ssJazz ? 0.95f : c.style == ssLofiLoop ? 0.9f : c.style == ssNocturne ? 0.12f : 0.05f;
             if (chance (colour * (0.4f + 0.6f * dens)))
-                ch.ext = c.style == ssMinimal || c.style == ssCinematic ? (chance (0.5f) ? 3 : 2) : (c.style == ssLofi ? 1 + pick (2) : 1);
+                ch.ext = c.style == ssMinimal || c.style == ssCinematic ? (chance (0.5f) ? 3 : 2) : ((c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 1 + pick (2) : 1);
             else if (c.style == ssCinematic && chance (0.15f)) ch.ext = 4;
             h[(size_t) b][0] = ch; h[(size_t) b][1] = ch;
         }
@@ -248,6 +250,38 @@ struct Composer
                 if (e > 0.6f) note (0.0, 0.9, a.n[2], v - 4);
                 break;
             }
+            case ssJazz:   // walking bass, rootless comping on the "Charleston" rhythm
+            {
+                const double sw = 0.17;
+                note (0.0, 0.95, a.n[0], v + 3, 3.0f);
+                note (1.0, 0.95, bassOf (ch.deg + 2), v - 2, 3.0f);
+                note (2.0, 0.95, bassOf (ch.deg + 4), v, 3.0f);
+                note (3.0, 0.95, nextDeg >= 0 ? bassOf (nextDeg + (chance (0.5f) ? -1 : 1)) : a.n[0], v - 6, 3.0f);
+                for (int i : { 3, 4, 6, 7 }) note (0.0, 0.7, a.n[i], v - 10, 8.0f);
+                for (int i : { 3, 6, 7 }) note (1.5 + sw, 0.5, a.n[i], v - 14, 8.0f);
+                if (chance (0.5f)) for (int i : { 4, 6 }) note (3.5 + sw, 0.4, a.n[i], v - 15, 8.0f);
+                break;
+            }
+            case ssLofiLoop:   // laid-back loop: rolled chord, a bass fifth, lazy stabs
+            {
+                const double sw = 0.18;
+                note (0.0, 1.8, a.n[0], v + 2, 4.0f);
+                for (int i : { 3, 4, 6 }) note (0.0, 1.5, a.n[i], v - 6, 14.0f);
+                note (2.0, 0.9, a.n[1], v - 4, 4.0f);
+                for (int i : { 4, 6 }) note (2.5 + sw, 0.6, a.n[i], v - 12, 10.0f);
+                if (chance (0.6f)) for (int i : { 3, 6 }) note (3.5 + sw, 0.4, a.n[i], v - 13, 10.0f);
+                break;
+            }
+            case ssNocturne:   // flowing left-hand arpeggios in triplets under a singing melody
+            {
+                static const int g1[3] { 0, 3, 4 }, g2[3] { 1, 4, 6 };
+                for (int bt = 0; bt < 4; ++bt)
+                {
+                    const int* gg = (bt % 2 == 0) ? g1 : g2;
+                    for (int j = 0; j < 3; ++j) note (bt + j / 3.0, 0.9, a.n[gg[j]], v - 6 + (j == 0 ? 6 : 0) + (bt == 0 && j == 0 ? 4 : 0), 5.0f);
+                }
+                break;
+            }
             default: // ballad: block chords with an octave bass
             {
                 note (0.0, 2.0, a.n[0], v + 5, 3.0f); note (0.0, 2.0, a.n[2], v - 1, 3.0f);
@@ -258,7 +292,7 @@ struct Composer
             }
         }
         // bass movement: an approach note into the next chord, and a pushed (anticipated) chord in the choruses
-        if (nextDeg >= 0 && nextDeg != ch.deg && t1 >= bpb - 1.0e-6 && bpb == 4 && ! sparse && c.style != ssMinimal && c.style != ssLullaby && chance (0.30f + 0.45f * dens))
+        if (nextDeg >= 0 && nextDeg != ch.deg && t1 >= bpb - 1.0e-6 && bpb == 4 && ! sparse && c.style != ssMinimal && c.style != ssLullaby && c.style != ssJazz && c.style != ssNocturne && chance (0.30f + 0.45f * dens))
         {
             note (bpb - 0.5, 0.45, bassOf (nextDeg + (chance (0.5f) ? -1 : 1)), v - 8, 4.0f);
             if ((sec.type == 'B' || sec.type == 'P') && (c.style == ssBallad || c.style == ssLofi || c.style == ssCinematic) && chance (0.55f))
@@ -369,7 +403,7 @@ struct Composer
             else if (pre) { shift = u; variant = false; longEnd = false; }
             else if (sec.type == 'C') { m = &neu; shift = -(u % 4 == 0 ? 0 : u % 4); longEnd = (u % 4 == 3); }
             else if (sec.type == 'O') { shift = -(u % 2); longEnd = (u == units - 1); }
-            else { shift = (u % 4 == 2) ? 1 : 0; variant = (u % 4 == 1); longEnd = (u % 4 == 3); }
+            else { shift = (u % 4 == 2) ? 1 : 0; variant = (u % 4 == 1) && c.style != ssLofiLoop; longEnd = (u % 4 == 3); }
             if ((u % 4 == 3 && ! pre) || (sec.type == 'O' && u == units - 1))
             {
                 // cadence unit: a slower answer ending on a stable note
@@ -427,7 +461,7 @@ struct Composer
                 const float prog = (float) b / (float) std::max (1, sec.bars - 1);
                 float e = sec.type == 'I' ? 0.28f + 0.1f * prog : sec.type == 'A' ? 0.50f + 0.05f * prog : sec.type == 'P' ? 0.55f + 0.30f * prog : sec.type == 'B' ? 0.82f + 0.08f * prog
                         : sec.type == 'C' ? 0.52f + 0.35f * prog : 0.36f - 0.2f * prog;
-                if (c.style == ssLofi) e *= 0.85f; if (c.style == ssLullaby) e *= 0.8f;
+                if (c.style == ssLofi || c.style == ssLofiLoop) e *= 0.85f; if (c.style == ssLullaby) e *= 0.8f;
                 const bool secEnd = b == sec.bars - 1;
                 if (c.mode != 3)
                 {
@@ -446,7 +480,7 @@ struct Composer
             if (c.mode != 2)
             {
                 float en = sec.type == 'I' ? 0.3f : sec.type == 'A' ? 0.52f : sec.type == 'P' ? 0.66f : sec.type == 'B' ? 0.86f : sec.type == 'C' ? 0.68f : 0.34f;
-                if (c.style == ssLofi) en *= 0.9f;
+                if (c.style == ssLofi || c.style == ssLofiLoop) en *= 0.9f;
                 melody (sec, sec.start, h, en, motifKind, motA, hook);
             }
         }

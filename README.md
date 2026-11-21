@@ -24,8 +24,8 @@ window. One slider, **Memory**, takes you from a crisp, present studio piano to 
   vinyl (crackle, rumble, needle pop) and a distant world: rain, wind, fireplace, dawn birds. Five rooms: living room, church, studio, wooden cabin, empty concert hall.
 - **Hands: a generative composer for people who do not play.** It writes whole songs - intro, verses, choruses, bridge, outro - with functional
   harmony (7ths, 9ths, sus chords, dominants, cadences), motifs that develop, hook-driven choruses, accompaniment patterns and an expressive performance
-  (dynamics, rolled chords, rubato, pedalling). Seven styles (Lo-Fi Chill, Cinematic, Romantic, Minimal, Lullaby waltz, Power Ballad and Classical: Pachelbel's Canon in D, public domain, with growing variations), 8 scales, any key,
-  16 to 128 bars, locked to your DAW tempo and transport. **New variation** and **Random song** (with locks) make a new one in a click. Click anywhere on the song map to jump there while it plays.
+  (dynamics, rolled chords, rubato, pedalling). Ten styles (Lo-Fi Chill, Cinematic, Romantic, Minimal, Lullaby waltz, Power Ballad, Classical: Pachelbel's Canon in D with growing variations, Jazz Ballad, Lo-Fi Loop and a Chopin-style Nocturne), 8 scales, any key,
+  16 to 128 bars, playing on their own clock (PLAY inside the instrument, never with the DAW transport); drag the MIDI into your DAW to use it there. **New variation** and **Random song** (with locks) make a new one in a click. Click anywhere on the song map to jump there while it plays.
   **Export the song:** drag it as a MIDI file (or as a rendered WAV) straight into your DAW, or save it as .mid / .wav.
 - **210 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy.
   **Random sound** generates a new piano + room + layers + macros in any category, with locks for each section, validated and level-matched.

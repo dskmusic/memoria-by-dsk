@@ -134,9 +134,9 @@ int main (int argc, char** argv)
         const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "hands-demo");
         dir.createDirectory();
         const double secs = argc > 3 ? juce::String (argv[3]).getDoubleValue() : 90.0;
-        const char* cats[] { "Lo-Fi", "Cinematic", "Concert", "Study", "Lullaby", "Felt", "Concert" };
-        const double tempos[] { 78, 84, 70, 92, 96, 66, 84 };
-        const int keys[] { 9, 2, 3, 0, 7, 4, 2 }, scales[] { 1, 1, 0, 2, 0, 1, 0 };
+        const char* cats[] { "Lo-Fi", "Cinematic", "Concert", "Study", "Lullaby", "Felt", "Concert", "Vintage", "Lo-Fi", "Church" };
+        const double tempos[] { 78, 84, 70, 92, 96, 66, 84, 78, 76, 62 };
+        const int keys[] { 9, 2, 3, 0, 7, 4, 2, 5, 0, 3 }, scales[] { 1, 1, 0, 2, 0, 1, 0, 0, 0, 1 };
         for (int style = 0; style < gx::numSongStyles; ++style)
         {
             gx::GenRequest rq; rq.category = cats[style]; rq.seed = 77 + (uint32_t) style;
