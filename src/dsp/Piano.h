@@ -42,6 +42,9 @@ struct PianoModel
     const float* ratios;            // null = string; otherwise bar partial ratios
     const float* ratioAmp;          // linear amplitude per bar partial
     int numRatios;
+    int minNote = 0, shift = 0;     // register of the instrument: notes below minNote are folded up by octaves, then shifted
+    float tremDepth = 0, tremHz = 0; int tremKind = 0;   // 1 stereo pan tremolo (electric piano), 2 motor tremolo (vibraphone)
+    float chorus = 0;               // short modulated delay mixed into the dry sound
 };
 const PianoModel& pianoModel (int type);
 int numPianoTypes();
@@ -53,6 +56,10 @@ public:
     void reset (uint32_t seed);
     void reseed (uint32_t s) { seed = s; }
     void process (float* L, float* R, int n, const juce::MidiBuffer& midi, const float* params, const HostInfo& host);
+    // dry-bus modulation (tremolo, chorus) of the electric piano and vibraphone
+    float tremD = 0, tremPh = 0, chorusMix = 0, chPh = 0;
+    std::array<float, 4096> chBuf[2] {};
+    int chIdx = 0;
     Telemetry tele;
     struct Probe { float voices = 0, body = 0, room = 0, tape = 0; int64_t n = 0, limN = 0, clipN = 0; };   // peaks at each stage (before Master) and limiter / clip activity
     Probe probe;

@@ -11,6 +11,11 @@ const float kRhR[] { 1.0f, 2.01f, 5.95f, 9.2f };
 const float kRhA[] { 1.0f, 0.22f, 0.12f, 0.04f };
 const float kVibR[] { 1.0f, 3.98f, 9.9f, 17.4f };
 const float kVibA[] { 1.0f, 0.30f, 0.08f, 0.02f };
+const float kGlockA[] { 1.0f, 0.55f, 0.28f, 0.12f, 0.05f, 0.02f, 0.01f };
+const float kBoxR[] { 1.0f, 6.27f, 17.55f, 34.4f };
+const float kBoxA[] { 1.0f, 0.42f, 0.14f, 0.05f };
+const float kMarR[] { 1.0f, 3.99f, 9.9f };
+const float kMarA[] { 1.0f, 0.40f, 0.05f };
 const float kCelA[] { 1.0f, 0.16f, 0.05f, 0.016f, 0.007f, 0.003f, 0.0015f };
 
 //                         name       B    T     fc    pFast det   x0     slope thump body  lp     nStr  ratios amps  n
@@ -21,8 +26,11 @@ const PianoModel kModels[] {
     { "Honky",   1.8f, 0.80f, 1.15f, 0.55f, 9.0f, 0.110f, 0.85f, 1.3f, 1.3f, 12000.0f, 3, nullptr, nullptr, 0 },
     { "Toy",     1.0f, 0.10f, 1.60f, 0.50f, 0.0f, 0.100f, 0.00f, 1.6f, 0.6f, 16000.0f, 1, kBarR, kToyA, 7 },
     { "Celesta", 1.0f, 0.30f, 0.90f, 0.50f, 0.0f, 0.100f, 0.00f, 0.2f, 0.5f, 16000.0f, 1, kBarR, kCelA, 7 },
-    { "Rhodes",  1.0f, 0.60f, 1.10f, 0.50f, 0.0f, 0.100f, 0.00f, 0.8f, 0.4f, 12000.0f, 1, kRhR, kRhA, 4 },
-    { "Vibraphone", 1.0f, 1.80f, 0.70f, 0.50f, 0.0f, 0.100f, 0.00f, 0.2f, 0.3f, 14000.0f, 1, kVibR, kVibA, 4 },
+    { "Rhodes",  1.0f, 0.60f, 1.10f, 0.50f, 0.0f, 0.100f, 0.00f, 0.8f, 0.4f, 12000.0f, 1, kRhR, kRhA, 4, 0, 0, 0.16f, 4.6f, 1, 0.30f },
+    { "Vibraphone", 1.0f, 1.80f, 0.70f, 0.50f, 0.0f, 0.100f, 0.00f, 0.2f, 0.3f, 14000.0f, 1, kVibR, kVibA, 4, 48, 0, 0.30f, 5.3f, 2, 0.0f },
+    { "Glockenspiel", 1.0f, 1.10f, 1.50f, 0.50f, 0.0f, 0.100f, 0.00f, 0.4f, 0.2f, 16000.0f, 1, kBarR, kGlockA, 7, 60, 12 },
+    { "Music Box", 1.0f, 0.70f, 1.30f, 0.50f, 0.0f, 0.100f, 0.00f, 0.9f, 0.2f, 16000.0f, 1, kBoxR, kBoxA, 4, 67, 12 },
+    { "Marimba", 1.0f, 0.40f, 0.60f, 0.50f, 0.0f, 0.100f, 0.00f, 1.2f, 0.8f, 9000.0f, 1, kMarR, kMarA, 3, 45, 0 },
 };
 
 inline uint32_t hash32 (uint32_t a, uint32_t b = 0, uint32_t c = 0)
@@ -90,6 +98,7 @@ void Engine::reset (uint32_t s)
     for (auto& b : toneF) b.reset();
     cacheLp = cacheTone = cacheRoom = -1;
     dcX[0] = dcX[1] = dcY[0] = dcY[1] = 0;
+    tremD = 0; tremPh = 0; chorusMix = 0; chPh = 0; chIdx = 0; chBuf[0].fill (0.0f); chBuf[1].fill (0.0f);
     idleTicks = 0; limG = 1.0f; limSum = (float) kLimW; limIdx = 0;
     for (int i = 0; i < kLimW; ++i) { limTg[i] = 1.0f; limMn[i] = 1.0f; limDly[0][i] = limDly[1][i] = 0.0f; }
     for (auto& k : tele.keyLevel) k.store (0.0f);
@@ -278,7 +287,11 @@ void Engine::noteOn (int note, float vel)
     const float pan = juce::jlimit (0.0f, 1.0f, (float) (note - kLowKey) / (float) (kHighKey - kLowKey));
     const float th = (0.5f + (pan - 0.5f) * 0.9f * widthS.v) * juce::MathConstants<float>::halfPi;
     v.panL = std::cos (th); v.panR = std::sin (th);
-    excite (v, note, vel, false);
+    {   // the register of the instrument (a glockenspiel has no bass): fold and shift the sounding pitch
+        const auto& pm = pianoModel ((int) p (P::piano));
+        int sn = note; while (sn < pm.minNote && sn + 12 <= 127) sn += 12;
+        excite (v, juce::jlimit (0, 127, sn + pm.shift), vel, false);
+    }
     setRates (v);
     exciteGhosts (note, vel);
 }
@@ -534,7 +547,28 @@ void Engine::renderChunk (float* L, float* R, int n)
     for (int t = 0; t < n; ++t)
     {
         const float bAmt = bodyS.step (bodyAmt), rMix = roomS.step (roomAmt), mg = masterS.step (master);
-        const float dryL = mixL[(size_t) t], dryR = mixR[(size_t) t];
+        float dL = mixL[(size_t) t], dR = mixR[(size_t) t];
+        if (tremD > 0.0005f || m.tremKind != 0 || chorusMix > 0.0005f)
+        {
+            tremD += ((m.tremKind != 0 ? m.tremDepth : 0.0f) - tremD) * 0.0004f;
+            chorusMix += (m.chorus - chorusMix) * 0.0004f;
+            tremPh += m.tremHz / (float) sr; if (tremPh >= 1.0f) tremPh -= 1.0f;
+            const float sn = std::sin (juce::MathConstants<float>::twoPi * tremPh);
+            if (m.tremKind == 1) { dL *= 1.0f - tremD * (0.5f + 0.5f * sn); dR *= 1.0f - tremD * (0.5f - 0.5f * sn); }
+            else { const float g = 1.0f - tremD * (0.5f + 0.5f * sn); dL *= g; dR *= 1.0f - tremD * (0.5f + 0.5f * std::sin (juce::MathConstants<float>::twoPi * tremPh + 0.4f)); }
+            if (chorusMix > 0.0005f)
+            {
+                chBuf[0][(size_t) chIdx] = dL; chBuf[1][(size_t) chIdx] = dR;
+                chPh += 0.35f / (float) sr; if (chPh >= 1.0f) chPh -= 1.0f;
+                const float dl = (0.012f + 0.003f * std::sin (juce::MathConstants<float>::twoPi * chPh)) * (float) sr;
+                const float dr = (0.012f + 0.003f * std::sin (juce::MathConstants<float>::twoPi * chPh + 1.7f)) * (float) sr;
+                auto tap = [this] (int ch, float d) { const float fi = (float) chIdx - d; const int i0 = (int) std::floor (fi), i1 = i0 + 1; const float fr = fi - (float) i0; return chBuf[ch][(size_t) (i0 & 4095)] * (1.0f - fr) + chBuf[ch][(size_t) (i1 & 4095)] * fr; };
+                dL = dL * (1.0f - 0.45f * chorusMix) + tap (0, dl) * chorusMix * 0.9f;
+                dR = dR * (1.0f - 0.45f * chorusMix) + tap (1, dr) * chorusMix * 0.9f;
+                chIdx = (chIdx + 1) & 4095;
+            }
+        }
+        const float dryL = dL, dryR = dR;
         float wl = dryL, wr = dryR;
         life.wood (wl, wr);
         const float in = 0.5f * (wl + wr);

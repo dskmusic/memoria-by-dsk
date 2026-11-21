@@ -158,17 +158,23 @@ int main (int argc, char** argv)
         const auto f = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "resources/factory.memoriabank");
         const juce::var bank = juce::JSON::parse (f.loadFileAsString());
         juce::Array<juce::var> arr = *bank.getProperty ("presets", {}).getArray();
-        for (int i = arr.size() - 1; i >= 0; --i) { const auto pp = gx::Preset::fromVar (arr[i]); if ((int) pp.get (gx::P::piano) >= 6) arr.remove (i); }
+        for (int i = arr.size() - 1; i >= 0; --i) { const auto pp = gx::Preset::fromVar (arr[i]); if ((int) pp.get (gx::P::piano) >= 8) arr.remove (i); }
+        std::set<juce::String> have; for (auto& v : arr) have.insert (gx::Preset::fromVar (v).meta.name);
         struct Want { int piano; const char* cat; const char* name; };
         const Want wants[] { { 6, "Lo-Fi", "Rhodes Late Night" }, { 6, "Lo-Fi", "Rhodes Dusty Tape" }, { 6, "Study", "Rhodes Quiet Desk" }, { 6, "Cinematic", "Rhodes Slow Film" }, { 6, "Rainy", "Rhodes Window Rain" }, { 6, "Vintage", "Rhodes Old Club" },
-                             { 7, "Lullaby", "Vibraphone Moon" }, { 7, "Study", "Vibraphone Calm" }, { 7, "Cinematic", "Vibraphone Glass Hall" }, { 7, "Lo-Fi", "Vibraphone Smoky Room" }, { 7, "Rainy", "Vibraphone After Rain" }, { 7, "Concert", "Vibraphone Stage" } };
+                             { 7, "Lullaby", "Vibraphone Moon" }, { 7, "Study", "Vibraphone Calm" }, { 7, "Cinematic", "Vibraphone Glass Hall" }, { 7, "Lo-Fi", "Vibraphone Smoky Room" }, { 7, "Rainy", "Vibraphone After Rain" }, { 7, "Concert", "Vibraphone Stage" },
+                             { 8, "Lullaby", "Glockenspiel Snow" }, { 8, "Toy", "Glockenspiel Parade" }, { 8, "Concert", "Glockenspiel Frost" },
+                             { 9, "Lullaby", "Music Box Cradle" }, { 9, "Toy", "Music Box Attic" }, { 9, "Study", "Music Box Memory" }, { 9, "Rainy", "Music Box Rainy Window" },
+                             { 10, "Study", "Marimba Warm Desk" }, { 10, "Lo-Fi", "Marimba Slow Afternoon" }, { 10, "Cinematic", "Marimba Wide Field" } };
         int added = 0;
-        for (auto& w : wants)
+        for (size_t wi = 0; wi < sizeof (wants) / sizeof (wants[0]); ++wi)
         {
+            const auto& w = wants[wi];
+            if (have.count (w.name)) continue;
             bool ok = false; gx::Preset p; float rms = 0;
             for (int attempt = 0; attempt < 30 && ! ok; ++attempt)
             {
-                gx::GenRequest rq; rq.category = w.cat; rq.sub = attempt % 3; rq.seed = (uint32_t) (5000 + 31 * added + 977 * attempt);
+                gx::GenRequest rq; rq.category = w.cat; rq.sub = attempt % 3; rq.seed = (uint32_t) (5000 + 31 * (int) wi + 977 * attempt);
                 p = gx::Generator::candidate (rq);
                 p.params[(size_t) gx::P::piano] = (float) w.piano;
                 p.params[(size_t) gx::P::hammer] = juce::jlimit (0.2f, 0.6f, p.params[(size_t) gx::P::hammer]);
