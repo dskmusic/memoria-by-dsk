@@ -544,8 +544,8 @@ void Engine::renderChunk (float* L, float* R, int n)
         life.world (l, r);
         l *= mg; r *= mg;
         // DC blocker + gentle protection against overs
-        const float yl = l - dcX[0] + 0.9995f * dcY[0]; dcX[0] = l; dcY[0] = yl;
-        const float yr = r - dcX[1] + 0.9995f * dcY[1]; dcX[1] = r; dcY[1] = yr;
+        float yl = l - dcX[0] + 0.9995f * dcY[0]; dcX[0] = l; dcY[0] = yl;
+        float yr = r - dcX[1] + 0.9995f * dcY[1]; dcX[1] = r; dcY[1] = yr;
         // limiter: ceiling -1 dB, 0.4 ms attack, 120 ms release; the soft clip below is only a last safety net
         const float pk = std::max (std::abs (yl), std::abs (yr)), tg = pk > 0.8913f ? 0.8913f / pk : 1.0f;
         limG += (tg - limG) * (tg < limG ? limAtk : limRel);
