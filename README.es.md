@@ -18,20 +18,21 @@ la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano d
 - **Piano modelado físicamente (sin librería de muestras):** cada parcial es un resonador con decaimiento e inharmonicidad real de cuerda,
   2-3 cuerdas desafinadas por nota (batidos), el doble decaimiento del piano, fieltro del martillo que brilla más con la velocidad,
   posición de golpe, apagadores, modos de la caja y resonancia simpática. El pedal de sustain (CC64) es continuo: el medio pedal funciona.
-- **Ocho instrumentos:** cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete, celesta, piano eléctrico (estilo Rhodes) y vibráfono.
+- **Once instrumentos:** cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete, celesta, piano eléctrico (estilo Rhodes, con trémolo y chorus), vibráfono (con su motor), glockenspiel, caja de música y marimba.
 - **Macro Memoria** más Calidez, Intimidad (micro cerca o lejos), Tiempo (cuánto ha envejecido el piano) y Espacio.
 - **Capas de vida:** sonidos de madera (banco, mecanismo, pedal, apagadores), cinta (wow y flutter, saturación, pérdida de agudos, ruido, dropouts),
   vinilo (crackle, rumble, pop de la aguja) y un mundo lejano: lluvia, viento, chimenea, pájaros al amanecer. Cinco salas: salón, iglesia, estudio, cabaña de madera y sala de conciertos vacía.
 - **Manos: un compositor generativo para quien no toca.** Escribe canciones enteras - intro, estrofas, estribillos, puente y final - con armonía funcional
   (séptimas, novenas, acordes sus, dominantes, cadencias), motivos que se desarrollan, estribillos con gancho, patrones de acompañamiento y una interpretación expresiva
-  (dinámica, acordes arpegiados, rubato, pedal). Diez estilos (Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna, Power Ballad, Classical: el Canon en Re de Pachelbel con variaciones crecientes, Jazz Ballad, Lo-Fi Loop y un Nocturno al estilo de Chopin), 8 escalas, cualquier tono,
+  (dinámica, acordes arpegiados, rubato, pedal). Catorce estilos (Bossa Nova, Cantautor, Tango lento, tema de Pueblo, Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna, Power Ballad, Classical: el Canon en Re de Pachelbel con variaciones crecientes, Jazz Ballad, Lo-Fi Loop y un Nocturno al estilo de Chopin), 8 escalas, cualquier tono,
   de 16 a 128 compases, con su propio reloj y botón PLAY (nunca siguen el transporte del DAW); arrastra el MIDI a tu DAW para usarlo allí. **Nueva variación** y **Canción al azar** (con bloqueos) crean otra con un clic. Pulsa en cualquier punto del mapa de la canción para saltar ahí mientras suena.
   **Exporta la canción:** arrástrala como archivo MIDI (o como WAV renderizado) directamente a tu DAW, o guárdala como .mid / .wav.
-- **222 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.
+- **232 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.
   **Sonido al azar** genera un piano + sala + capas + macros nuevos en cualquier categoría, con bloqueos por sección, validado y con el nivel igualado.
 - **Una habitación 3D cinematográfica, renderizada en directo en tu tarjeta gráfica:** una escena 3D real (raymarching, sombras suaves, oclusión ambiental, reflejos en el lacado y el suelo,
   rayos de luz volumétricos con polvo, lluvia en el cristal, una vela que parpadea, envejecimiento de película). Las teclas del piano se hunden con las notas que suenan.
   Sigue el ambiente que elijas (lluvia, viento, chimenea, amanecer) y envejece con Memoria (sepia, grano, rayas, destellos).
+  Elige la **hora del día** (del amanecer a la noche) y la **estación** tras la ventana (flores, hojas, nieve); un **reloj de pared** sigue la luz, una **fotografía** desenfocada cambia con cada preset y las cortinas y la vela reaccionan a la música, más en los estribillos.
   Tres niveles de calidad en Ajustes; si tu tarjeta no puede, usa una escena por CPU.
 - **El interior del piano, en vivo:** 88 cuerdas que brillan y vibran, martillos que golpean con la velocidad real, apagadores y pedal.
 - **Exportación de audio largo:** las manos tocan de 1 minuto a 3 horas en WAV, FLAC u OGG.

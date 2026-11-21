@@ -15,10 +15,10 @@ const Item items[] {
       "so the piano breathes with the way you play: soft and it is round, hard and it opens up and shines. "
       "Play with a MIDI keyboard or the on-screen keys. The sustain pedal (CC64) really works, half-pedaling included." },
     { "El piano", "The piano",
-      "PIANO elige el instrumento: cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete, celesta, piano eléctrico o vibráfono. "
+      "PIANO elige el instrumento: cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete, celesta, piano eléctrico (con trémolo y chorus), vibráfono, glockenspiel, caja de música o marimba. "
       "TONE es el brillo; HAMMER la dureza del fieltro del martillo; SUSTAIN cuánto dura la nota; DAMPERS lo rápido que cae el apagador al soltar la tecla. "
       "DETUNE desafina un poco las cuerdas de cada nota (más recuerdo, más piano viejo); STRETCH es el estiramiento natural de la afinación; DYNAMICS, cuánto cambia el sonido entre tocar suave y fuerte.",
-      "PIANO picks the instrument: concert grand, upright, felt piano, honky-tonk, toy piano, celesta, electric piano or vibraphone. "
+      "PIANO picks the instrument: concert grand, upright, felt piano, honky-tonk, toy piano, celesta, electric piano (with tremolo and chorus), vibraphone, glockenspiel, music box or marimba. "
       "TONE is brightness; HAMMER the hardness of the felt; SUSTAIN how long notes ring; DAMPERS how fast the damper falls when you release a key. "
       "DETUNE slightly detunes the strings of each note (more memory, older piano); STRETCH is the natural stretch of the tuning; DYNAMICS how much the sound changes between soft and hard playing." },
     { "Caja y sala", "Body & room",
@@ -26,6 +26,13 @@ const Item items[] {
       "WIDTH abre o cierra el estéreo (graves a la izquierda, agudos a la derecha, como oyes al piano). ROOM y ROOM SIZE añaden la sala.",
       "BODY is the wood of the soundboard. RESONANCE is the strings that ring on their own by sympathy while the pedal is down. "
       "WIDTH opens or closes the stereo image (low notes left, high notes right, as the pianist hears it). ROOM and ROOM SIZE add the room." },
+    { "La habitación y las manos", "The room & the hands",
+      "Bajo la escena eliges la HORA del día y la ESTACIÓN del año tras la ventana; el reloj de la pared sigue la luz. La vela y las cortinas reaccionan a la música. "
+      "En MANOS eliges estilo (14), tono, escala y FORMA: canción completa, bucle de 8 compases, solo estribillo o pieza corta. "
+      "«Guardar favorita» recuerda la canción que te gusta y «Favoritas» la recupera.",
+      "Under the scene you pick the HOUR of the day and the SEASON behind the window; the wall clock follows the light. The candle and the curtains react to the music. "
+      "In HANDS you pick the style (14), key, scale and FORM: full song, 8-bar loop, chorus only or a short piece. "
+      "\"Save favourite\" remembers a song you like and \"Favourites\" recalls it." },
     { "Presets y ajustes", "Presets & settings",
       "En PRESETS guardas y recuperas tus sonidos. A/B compara dos versiones y Deshacer / Rehacer siempre están a mano. "
       "Clic derecho en un mando: MIDI Learn. Doble clic: valor por defecto. En Ajustes cambias el idioma y el tamaño de la ventana.",

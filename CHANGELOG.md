@@ -43,3 +43,7 @@
 - Hands: songbook grown to 20 themes (8 per style, so the same style gives many different songs); repeats are never copies (second verse with anticipations and passing notes), choruses add a counter-melody and a low bass octave, the last chorus is doubled and lifts a tone (now from 32 bars).
 - New instruments: Electric Piano (Rhodes-style) and Vibraphone, with 12 new presets (222 in total).
 - Hands: songbook expanded to 200 themes (20 hand-written + 180 composed offline from motifs, sequences and cadences, scored and filtered; picked per style by mood), 8 progressions for waltzes and 28 for 4/4. Music lint now checks 30 seeds per style.
+- New instruments: Glockenspiel, Music Box and Marimba (each folds the low notes up into its own register), Rhodes tremolo and chorus, vibraphone motor. 10 more presets (232 in total).
+- Hands: song form (full song, 8-bar loop, chorus only, short piece) and favourite songs (saved with the songbook version); four new styles (Bossa Nova, Singer-Songwriter, Slow Tango, Village) with their own accompaniment and rhythms; 124 more themes (about 300).
+- Scene: hour of the day and season (eased, never a hard cut), a wall clock that follows the light, a soft-focus photograph per preset, curtains / candle / light react to the music (choruses more). Auto keeps the previous look.
+- Tools: `scenegrid` renders every hour x season; the shader source lives in `tools/room3d.glsl` (assembled into the C++ literal by `tools/r5.py`), the songbook generator in `tools/gen_book.py`.

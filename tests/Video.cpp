@@ -140,25 +140,44 @@ int runVideo (const juce::File& dir, bool trailer)
 {
     if (! trailer)
     {
-        // 70 s: one sound, one scene; MEMORY goes from a present studio piano to an attic tape, the world outside changes slowly
-        const double len = 70.0;
+        // 110 s: what is new: the hour of the day and the seasons behind the window, the wall clock, new instruments, new song styles
+        const double len = 110.0;
         std::vector<Caption> caps {
-            { "MEMORIA", "A piano with a soul  ·  Un piano con alma", 1.0, 7.0, true },
-            { "A physically modelled piano. No samples.", "Un piano modelado físicamente. Sin muestras.", 8.0, 15.0 },
-            { "Turn up MEMORY...", "Sube MEMORIA...", 17.0, 24.0 },
-            { "Tape, vinyl, wood and a room that remembers", "Cinta, vinilo, madera y una habitación con recuerdos", 28.0, 36.0 },
-            { "Rain on the window", "Lluvia en la ventana", 38.0, 45.0 },
-            { "The hands compose and play, in time with your DAW", "Las manos componen y tocan, al ritmo de tu DAW", 48.0, 56.0 },
-            { "MEMORIA by DSK", "Free · VST3 / AU / Standalone · dskmusic.com  ·  Gratis", 62.0, 69.0, true } };
+            { "MEMORIA", "A piano with a soul  ·  Un piano con alma", 1.0, 6.5, true },
+            { "A physically modelled piano. No samples.", "Un piano modelado físicamente. Sin muestras.", 7.5, 14.5 },
+            { "Hour of the day and season, behind your window", "Hora del día y estación del año, tras tu ventana", 16.0, 25.0 },
+            { "A wall clock that follows the light", "Un reloj de pared que sigue la luz", 27.0, 35.0 },
+            { "From dawn to a snowy night", "Del amanecer a una noche de nieve", 37.0, 45.0 },
+            { "New instruments: electric piano, vibraphone...", "Instrumentos nuevos: piano eléctrico, vibráfono...", 46.0, 55.0 },
+            { "...music box, marimba and glockenspiel", "...caja de música, marimba y glockenspiel", 56.0, 66.0 },
+            { "Four new song styles: Bossa Nova...", "Cuatro estilos nuevos: Bossa Nova...", 68.0, 76.0 },
+            { "...Singer-Songwriter and Slow Tango...", "...Cantautor y Tango lento...", 77.0, 86.0 },
+            { "...and a cheerful Village theme", "...y un alegre tema de Pueblo", 87.0, 95.0 },
+            { "Loops, choruses and short pieces: drag the MIDI into your DAW", "Bucles, estribillos y piezas cortas: arrastra el MIDI a tu DAW", 96.0, 104.0 },
+            { "MEMORIA by DSK", "Free · VST3 / AU / Standalone · dskmusic.com  ·  Gratis", 104.5, 109.5, true } };
         Setter setter = [] (MemoriaProcessor& p, double t)
         {
-            if (t < 0.02) prepareSound (p, 0, 1, 76.0f, 31);
-            if (t < 0.02) { setP (p, "hands", 1.0f); setP (p, "piano", 0.0f); }
-            const float m = ramp (t, 17.0, 40.0) * (1.0f - 0.7f * ramp (t, 56.0, 68.0));
-            setP (p, "memory", m);
-            setP (p, "world", t > 36.0 && t < 52.0 ? 1.0f : t >= 52.0 ? 3.0f : 0.0f);
-            setP (p, "world_level", 0.7f);
-            setP (p, "time", 0.7f);
+            if (t < 0.02) { prepareSound (p, 0, 1, 76.0f, 31); setP (p, "hands", 1.0f); setP (p, "piano", 0.0f); setP (p, "resonance", 0.3f); }
+            setP (p, "memory", 0.12f + 0.10f * ramp (t, 0.0, 100.0));
+            setP (p, "world_level", 0.5f); setP (p, "time", 0.6f);
+            // scene: auto at first, then hour and season sweep (the scene eases between looks)
+            const float tod = t < 16.0 ? 0.0f : t < 24.0 ? 2.0f : t < 30.0 ? 3.0f : t < 37.0 ? 4.0f : 5.0f;
+            const float season = t < 16.0 ? 0.0f : t < 24.0 ? 1.0f : t < 30.0 ? 2.0f : t < 37.0 ? 3.0f : t < 66.0 ? 4.0f : 0.0f;
+            setP (p, "scene_time", t < 94.0 ? tod : 3.0f); setP (p, "scene_season", t < 94.0 ? season : 2.0f);
+            // instruments
+            const float inst = t < 46.0 ? 0.0f : t < 51.0 ? 6.0f : t < 56.0 ? 7.0f : t < 61.0 ? 9.0f : t < 66.0 ? 10.0f : 0.0f;
+            setP (p, "piano", inst);
+            if (t >= 46.0 && t < 66.0) { setP (p, "tone", 0.55f); setP (p, "resonance", 0.1f); } else { setP (p, "tone", 0.45f); setP (p, "resonance", 0.3f); }
+            // song styles
+            int style = 0, key = 9, scale = 1; float tempo = 76;
+            if (t >= 46.0 && t < 68.0) { style = 8; key = 0; scale = 0; tempo = 74; }
+            else if (t >= 68.0 && t < 77.0) { style = 10; key = 2; scale = 0; tempo = 96; }
+            else if (t >= 77.0 && t < 87.0) { style = 11; key = 7; scale = 0; tempo = 76; }
+            else if (t >= 87.0 && t < 96.0) { style = 12; key = 9; scale = 7; tempo = 66; }
+            else if (t >= 96.0) { style = 13; key = 0; scale = 0; tempo = 100; }
+            setP (p, "hands_style", (float) style); setP (p, "hands_key", (float) key); setP (p, "hands_scale", (float) scale); setP (p, "hands_tempo", tempo);
+            setP (p, "hands_form", t >= 96.0 && t < 104.0 ? 1.0f : 0.0f);
+            setP (p, "hands_seed", 31.0f);
         };
         return makeVideo (dir, "Memoria-demo", len, setter, caps);
     }
