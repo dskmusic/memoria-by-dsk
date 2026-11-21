@@ -110,7 +110,7 @@ def validate(prog, bpb, V, vaL, Cc, caL):
     strong = (0.0,) if bpb == 3 else (0.0, 2.0)
     for bars in (V, V[:3] + [vaL], Cc, Cc[:3] + [caL]):
         for i, bar in enumerate(bars):
-            tot = sum(d for _, d, _ in bar)
+            tot = max(b + d for b, d, _ in bar)
             if abs(tot - bpb) > 0.01 and abs(tot - bpb) > 0.01: return False
             for b, d, p in bar:
                 if b in strong and d >= 0.9 and p % 7 not in tones(prog[i]): return False
@@ -137,8 +137,70 @@ def run(progs, bpb, per, tagfn, seedbase):
         for cd in picked: res.append((prog, tag, bpb == 3, cd))
     return res
 
+
+# ---- styles added later (bossa nova, singer-songwriter, tango, village): own rhythm cells, own mood bits, a few hand-written themes
+BO, FO, TA, VI = 64, 128, 256, 512
+STYLES = {
+    BO: dict(progs=[(1,4,0,5),(0,5,1,4),(2,5,1,4),(0,3,1,4),(1,4,0,3),(3,4,0,0)],
+             v=[[(0,1.5),(1.5,1),(2.5,1.5)], [(0.5,1),(1.5,.5),(2,1),(3,1)], [(0,.5),(.5,1),(1.5,.5),(2,2)], [(0,1),(1.5,1),(2.5,1.5)], [(0,2),(2.5,1.5)]],
+             c=[[(0,1.5),(1.5,1),(2.5,1.5)], [(0,1),(1,.5),(1.5,1),(2.5,1.5)], [(0,.5),(.5,1),(1.5,.5),(2,2)], [(0,1.5),(1.5,.5),(2,2)]]),
+    FO: dict(progs=[(0,4,5,3),(0,3,0,4),(5,3,0,4),(0,5,3,4),(0,2,3,4),(3,0,4,0)],
+             v=[[(0,1),(1,1),(2,2)], [(0,1.5),(1.5,.5),(2,2)], [(0,1),(1,1),(2,1),(3,1)], [(0,2),(2,1),(3,1)]],
+             c=[[(0,1),(1,1),(2,1),(3,1)], [(0,1.5),(1.5,.5),(2,1.5),(3.5,.5)], [(0,1),(1,1),(2,2)], [(0,.5),(.5,.5),(1,1),(2,2)]]),
+    TA: dict(progs=[(0,3,4,0),(0,5,3,4),(0,3,4,5),(0,2,3,4),(5,3,4,0),(0,6,3,4)],
+             v=[[(0,.75),(.75,.25),(1,1),(2,2)], [(0,1.5),(1.5,.5),(2,2)], [(0,2),(2,1),(3,1)], [(0,.75),(.75,.25),(1,1),(2,.75),(2.75,.25),(3,1)]],
+             c=[[(0,.75),(.75,.25),(1,1),(2,.75),(2.75,.25),(3,1)], [(0,1),(1,1),(2,2)], [(0,.5),(.5,.5),(1,1),(2,2)], [(0,1.5),(1.5,.5),(2,1.5),(3.5,.5)]]),
+    VI: dict(progs=[(0,3,4,0),(0,4,3,0),(0,5,3,4),(3,0,4,0),(0,3,0,4),(0,2,3,4)],
+             v=[[(0,1),(1,.5),(1.5,.5),(2,1),(3,1)], [(0,1),(1,1),(2,1),(3,1)], [(0,.5),(.5,.5),(1,1),(2,2)], [(0,1.5),(1.5,.5),(2,2)]],
+             c=[[(0,.5),(.5,.5),(1,1),(2,1),(3,1)], [(0,1),(1,.5),(1.5,.5),(2,2)], [(0,1),(1,1),(2,1.5),(3.5,.5)], [(0,.5),(.5,.5),(1,1),(2,2)]]),
+}
+HAND = [
+    (BO, (1,4,0,5), ["0.5:1:5 1.5:.5:3 2:1:1 3:1:3", "0:1:4 1:.5:6 1.5:1:8 2.5:1.5:6", "0.5:1:7 1.5:.5:4 2:1:2 3:1:4", "0:1.5:5 1.5:1:7 2.5:1.5:9"], "0:1.5:5 1.5:1:4 2.5:1.5:2",
+        ["0:1:12 1:.5:10 1.5:1:8 2.5:1.5:10", "0:1.5:11 1.5:.5:13 2:2:11", "0:1:9 1:1:11 2:1:9 3:1:7", "0:2:14 2:2:9"], "0:2:12 2:2:9"),
+    (FO, (0,4,5,3), ["0:1:2 1:1:4 2:2:7", "0:1:6 1:1:4 2:2:1", "0:1.5:7 1.5:.5:5 2:2:2", "0:1:5 1:1:3 2:2:5"], "0:1:5 1:1:3 2:2:7",
+        ["0:1:4 1:1:7 2:2:9", "0:1:8 1:1:11 2:2:13", "0:1:9 1:1:12 2:2:14", "0:1.5:10 1.5:.5:12 2:2:14"], "0:1.5:12 1.5:.5:10 2:2:7"),
+    (TA, (0,3,4,0), ["0:.75:4 .75:.25:2 1:1:0 2:2:2", "0:.75:5 .75:.25:3 1:1:5 2:2:7", "0:1:6 1:1:4 2:1:6 3:1:8", "0:2:4 2:2:4"], "0:2:2 2:2:0",
+        ["0:.5:7 .5:.5:7 1:1:9 2:2:11", "0:.75:12 .75:.25:10 1:1:12 2:2:14", "0:1:13 1:1:11 2:1:13 3:1:8", "0:2:11 2:2:9"], "0:2:9 2:2:7"),
+    (VI, (0,3,4,0), ["0:1:2 1:1:4 2:1:2 3:1:4", "0:1:5 1:1:3 2:1:5 3:1:7", "0:1:6 1:1:4 2:1:6 3:1:4", "0:2:4 2:1:2 3:1:4"], "0:2:2 2:2:0",
+        ["0:.5:7 .5:.5:9 1:1:11 2:2:9", "0:.5:10 .5:.5:12 1:1:14 2:2:12", "0:.5:11 .5:.5:13 1:1:11 2:2:13", "0:2:11 2:2:9"], "0:1:11 1:1:9 2:2:7"),
+]
+def parsebar(t):
+    out = []
+    for tok in t.split():
+        b, d, p = tok.split(':'); out.append((float('0' + b if b.startswith('.') else b), float('0' + d if d.startswith('.') else d), int(p)))
+    return out
+def extra_items():
+    res = []
+    global VCELL, CCELL
+    saveV, saveC = VCELL[4], CCELL[4]
+    for tag, d in STYLES.items():
+        VCELL[4], CCELL[4] = d['v'], d['c']
+        for pi, prog in enumerate(d['progs']):
+            cands = []
+            for k in range(160):
+                V, vaL, Cc, caL = build(prog, 4, 500000 + tag * 100 + pi * 1000 + k)
+                if not validate(prog, 4, V, vaL, Cc, caL): continue
+                sc = score(V, Cc, vaL, caL)
+                sig = (tuple(p for _, _, p in V[0]), tuple(p for _, _, p in Cc[0]))
+                cands.append((sc, k, V, vaL, Cc, caL, sig))
+            cands.sort(key=lambda x: -x[0])
+            picked = []
+            for cd in cands:
+                if len(picked) >= 5: break
+                if any(cd[6][0][:3] == q[6][0][:3] or cd[6][1][:3] == q[6][1][:3] for q in picked): continue
+                picked.append(cd)
+            for cd in picked: res.append((prog, tag, False, cd))
+    VCELL[4], CCELL[4] = saveV, saveC
+    for tag, prog, v, va, c, ca in HAND:
+        V = [parsebar(x) for x in v]; vaL = parsebar(va); Cc = [parsebar(x) for x in c]; caL = parsebar(ca)
+        ok = validate(prog, 4, V, vaL, Cc, caL)
+        print("hand", tag, "valid" if ok else "INVALID")
+        if not ok: sys.exit(1)
+        res.append((prog, tag, False, (99, 0, V, vaL, Cc, caL, None)))
+    return res
+
 if __name__ == "__main__":
-    items = run(PROG44, 4, 5, None, 100) + run(PROGW, 3, 5, None, 90000)
+    items = run(PROG44, 4, 5, None, 100) + run(PROGW, 3, 5, None, 90000) + extra_items()
     print(len(items), "loops")
     lines = ["// generated by gen_book.py: do not edit by hand\n", "struct GenLoop { int ch[4]; int moods; bool waltz; const char* s[10]; };\n", "static const GenLoop kGen[] {\n"]
     for prog, tag, w, (sc, k, V, vaL, Cc, caL, sig) in items:

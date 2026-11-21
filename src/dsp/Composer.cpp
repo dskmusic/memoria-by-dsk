@@ -180,11 +180,11 @@ struct Composer
         msBeat = c.bpm / 60000.0;
         // the loops that suit each style (indices into the songbook); the seed picks one, the next one is the bridge
         // the loops that suit each style are chosen by mood; the seed picks the theme and (differently) the bridge theme
-        static const int styleMask[10] { 4 | 16 | 8, 32 | 2, 2 | 4 | 1, 32 | 4, 0, 1 | 2, 63, 8, 16 | 8, 2 | 32 };
+        static const int styleMask[14] { 4 | 16 | 8, 32 | 2, 2 | 4 | 1, 32 | 4, 0, 1 | 2, 63, 8, 16 | 8, 2 | 32, 64, 128, 256, 512 };
         const auto& bk = book();
         std::vector<int> pool;
         for (size_t i = 0; i < bk.size(); ++i)
-            if (c.style == ssLullaby ? bk[i].waltz : (! bk[i].waltz && (bk[i].moods & styleMask[juce::jlimit (0, 9, c.style)]) != 0)) pool.push_back ((int) i);
+            if (c.style == ssLullaby ? bk[i].waltz : (! bk[i].waltz && (bk[i].moods & styleMask[juce::jlimit (0, 13, c.style)]) != 0)) pool.push_back ((int) i);
         if (pool.empty()) pool.push_back (0);
         const size_t n = pool.size();
         loop = &bk[(size_t) pool[(size_t) (c.seed % (uint32_t) n)]];
@@ -261,7 +261,7 @@ struct Composer
                 const double rb = rubato (gb, n.b, secEnd, sec.type == 'O');
                 add (start, dur * 0.97, note, vel, 8.0f, rb, true);
                 if (dbl != 0) add (start, dur * 0.97, midi (n.deg + 7 + dbl), vel - 12, 8.0f, rb, true);
-                if (expr > 0.45f && n.d >= 2.0f && chance (0.3f) && (c.style == ssRomantic || c.style == ssNocturne || c.style == ssCinematic))
+                if (expr > 0.45f && n.d >= 2.0f && chance (0.3f) && (c.style == ssRomantic || c.style == ssNocturne || c.style == ssCinematic || c.style == ssTango))
                     add (start - 0.14, 0.12, midi (n.deg + 8), vel - 14, 2.0f, 0.0, true);          // grace note before a long note
                 if (counter && n.d >= 2.0f && n.b + 2.0f <= (float) bpb + 0.01f)
                 {   // counter-melody: a chord tone a third or more below, entering one beat after the melody note
@@ -361,9 +361,9 @@ struct Composer
             if (c.style == ssLofiLoop) { static const int L[4][4] { { 0, 5, 1, 4 }, { 1, 4, 0, 5 }, { 0, 2, 5, 4 }, { 3, 2, 1, 4 } }; ch.deg = L[c.seed % 4u][b % 4]; }
             else if (c.style == ssJazz) { static const int J[4][4] { { 1, 4, 0, 5 }, { 2, 5, 1, 4 }, { 0, 5, 1, 4 }, { 3, 4, 2, 5 } }; ch.deg = J[(c.seed + (sec.type == 'B' ? 1u : 0u)) % 4u][b % 4]; }
             if (useBook) ch.deg = bookChord (sec, b);
-            const float colour = c.style == ssLofi ? 0.8f : c.style == ssRomantic ? 0.45f : c.style == ssMinimal ? 0.5f : c.style == ssCinematic ? 0.3f : c.style == ssBallad ? 0.3f : c.style == ssJazz ? 0.95f : c.style == ssLofiLoop ? 0.9f : c.style == ssNocturne ? 0.12f : 0.05f;
+            const float colour = c.style == ssBossa ? 0.9f : c.style == ssFolk ? 0.15f : c.style == ssTango ? 0.2f : c.style == ssVillage ? 0.05f : c.style == ssLofi ? 0.8f : c.style == ssRomantic ? 0.45f : c.style == ssMinimal ? 0.5f : c.style == ssCinematic ? 0.3f : c.style == ssBallad ? 0.3f : c.style == ssJazz ? 0.95f : c.style == ssLofiLoop ? 0.9f : c.style == ssNocturne ? 0.12f : 0.05f;
             if (chance (colour * (0.4f + 0.6f * dens)))
-                ch.ext = c.style == ssMinimal || c.style == ssCinematic ? (chance (0.5f) ? 3 : 2) : ((c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 1 + pick (2) : 1);
+                ch.ext = c.style == ssMinimal || c.style == ssCinematic ? (chance (0.5f) ? 3 : 2) : ((c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop || c.style == ssBossa) ? 1 + pick (2) : 1);
             else if (c.style == ssCinematic && chance (0.15f)) ch.ext = 4;
             if (useBook && ch.ext >= 3) ch.ext = 2;
             h[(size_t) b][0] = ch; h[(size_t) b][1] = ch;
@@ -520,6 +520,34 @@ struct Composer
                     const int* gg = (bt % 2 == 0) ? g1 : g2;
                     for (int j = 0; j < 3; ++j) note (bt + j / 3.0, 0.9, a.n[gg[j]], v - 6 + (j == 0 ? 6 : 0) + (bt == 0 && j == 0 ? 4 : 0), 5.0f);
                 }
+                break;
+            }
+            case ssBossa:   // bossa nova: bass on 1 and the "and" of 2, syncopated comping
+            {
+                note (0.0, 0.9, a.n[0], v + 3, 4.0f); note (1.5, 0.9, a.n[1], v - 2, 4.0f); note (2.0, 0.9, a.n[0], v, 4.0f); note (3.5, 0.45, a.n[1], v - 4, 4.0f);
+                for (double bt : { 0.0, 1.5, 2.5 }) for (int i : { 3, 4, 6, 7 }) note (bt, 0.55, a.n[i], v - 12 - (bt == 0.0 ? 2 : 0), 8.0f);
+                if (chance (0.5f)) for (int i : { 4, 6 }) note (3.5, 0.4, a.n[i], v - 16, 8.0f);
+                break;
+            }
+            case ssFolk:    // fingerpicked: a bass note, then a rolling pattern on the higher strings
+            {
+                static const int pat[8] { 0, 3, 4, 5, 1, 3, 4, 5 };
+                for (int i = 0; i < 8; ++i) note (i * 0.5, (i == 0 || i == 4) ? 1.8 : 0.9, a.n[pat[i]], v + (i == 0 ? 6 : i == 4 ? 2 : -4 - (i % 2) * 2), 7.0f);
+                break;
+            }
+            case ssTango:   // habanera: marked bass and chords, with the syncopated "dotted" push
+            {
+                note (0.0, 0.7, a.n[0], v + 8, 3.0f); note (0.75, 0.25, a.n[1], v - 2, 3.0f);
+                for (int i : { 3, 4, 6 }) note (1.0, 0.45, a.n[i], v - 4, 5.0f);
+                note (2.0, 0.7, a.n[1], v + 5, 3.0f); note (2.75, 0.25, a.n[0], v - 2, 3.0f);
+                for (int i : { 3, 4, 6 }) note (3.0, 0.45, a.n[i], v - 4, 5.0f);
+                break;
+            }
+            case ssVillage: // oom-pah: light, bouncy, a little sparkle
+            {
+                note (0.0, 0.9, a.n[0], v + 4, 3.0f); for (int i : { 3, 4 }) note (1.0, 0.5, a.n[i], v - 6, 5.0f);
+                note (2.0, 0.9, a.n[1], v, 3.0f); for (int i : { 3, 5 }) note (3.0, 0.5, a.n[i], v - 6, 5.0f);
+                if (chance (0.4f)) note (3.5, 0.4, a.n[2], v - 9, 5.0f);
                 break;
             }
             default: // ballad: block chords with an octave bass

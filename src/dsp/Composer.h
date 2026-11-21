@@ -25,7 +25,7 @@ struct Score
 };
 
 enum HandsMode { hmOff, hmSong, hmAccomp, hmMelody };
-enum SongStyle { ssLofi, ssCinematic, ssRomantic, ssMinimal, ssLullaby, ssBallad, ssClassic, ssJazz, ssLofiLoop, ssNocturne, numSongStyles };
+enum SongStyle { ssLofi, ssCinematic, ssRomantic, ssMinimal, ssLullaby, ssBallad, ssClassic, ssJazz, ssLofiLoop, ssNocturne, ssBossa, ssFolk, ssTango, ssVillage, numSongStyles };
 
 struct ComposeCfg
 {
@@ -37,7 +37,7 @@ struct ComposeCfg
     double bpm = 80;
     int form = 0;                     // 0 full song, 1 loop (8 bars), 2 chorus (8 bars), 3 short piece
 };
-constexpr int songbookVersion = 3;    // favourites remember it: a later songbook changes what a seed plays
+constexpr int songbookVersion = 4;    // favourites remember it: a later songbook changes what a seed plays
 
 void compose (const ComposeCfg& cfg, Score& out);
 }

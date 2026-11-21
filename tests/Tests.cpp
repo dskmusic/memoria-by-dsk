@@ -470,7 +470,7 @@ static void testMusicLint()
 {
     std::puts ("[music lint: the songs follow the rules of the songbook]");
     double chordTone = 0, topViol = 0, clash = 0, velGap = 0; int runs = 0, worstPoly = 0;
-    for (int style : { 0, 1, 2, 3, 4, 5, 7, 8, 9 })
+    for (int style : { 0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13 })
         for (uint32_t seed = 1; seed <= 30; ++seed)
             for (int scale : { 0, 1 })
             {
@@ -529,7 +529,7 @@ static void testSongForms()
     std::puts ("[song forms]");
     int bad = 0;
     for (int form : { 1, 2, 3 })
-        for (int style : { 0, 1, 2, 3, 5, 7, 8, 9 })
+        for (int style : { 0, 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13 })
             for (uint32_t seed = 1; seed <= 4; ++seed)
             {
                 gx::ComposeCfg c; c.form = form; c.style = style; c.seed = seed * 13u; c.key = 3; c.scale = 1;
