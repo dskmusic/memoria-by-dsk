@@ -15,7 +15,7 @@ namespace P
         body, resonance, width, room, roomSize,                     // soundboard, sympathetic strings, stereo, room
         memory, warmth, intimacy, time, spaceMacro,                 // macros
         roomType, tape, vinyl, wood, world, worldLevel,             // layers of life
-        hands, handsKey, handsScale, handsRate, handsDensity, handsTempo, handsSoft, handsPedal,   // generative hands
+        hands, handsKey, handsScale, handsStyle, handsBars, handsTempo, handsDensity, handsExpress, handsSeed, handsPedal, handsEndless,   // generative hands
         numParams
     };
 }
@@ -41,5 +41,8 @@ const juce::StringArray& roomNames();
 const juce::StringArray& worldNames();
 const juce::StringArray& handsNames();
 const juce::StringArray& handsScaleNames();
+const juce::StringArray& handsStyleNames();
+const juce::StringArray& handsBarsNames();
+int handsBarsFromIndex (int index);
 const juce::StringArray& keyNames();
 }

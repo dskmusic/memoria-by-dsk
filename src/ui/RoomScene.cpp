@@ -129,6 +129,55 @@ void RoomScene::rebuild (int world)
         }
 }
 
+RoomScene::~RoomScene() { setGpu (false); }
+
+void RoomScene::parentHierarchyChanged() { if (gpuWanted && gl == nullptr && getPeer() != nullptr) setGpu (true); }
+
+void RoomScene::setGpu (bool on)
+{
+    if (on && gl == nullptr && gpuStatus().load() >= 0 && getPeer() != nullptr)
+    {
+        gl = std::make_unique<juce::OpenGLContext>();
+        gl->setRenderer (this);
+        gl->setComponentPaintingEnabled (true);
+        gl->setContinuousRepainting (false);
+        gl->attachTo (*this);
+    }
+    else if (! on && gl != nullptr)
+    {
+        gl->detach();
+        gl.reset();
+        glOk = false;
+        repaint();
+    }
+}
+
+void RoomScene::newOpenGLContextCreated()
+{
+    const bool ok = gpuRoom.init (*gl);
+    glOk = ok;
+    if (! ok) gpuStatus() = -1; else if (gpuStatus().load() == 0) gpuStatus() = 1;
+}
+
+void RoomScene::openGLContextClosing() { gpuRoom.release(); glOk = false; }
+
+void RoomScene::renderOpenGL()
+{
+    if (! glOk.load()) return;
+    RoomUniforms u;
+    { const juce::SpinLock::ScopedLockType sl (ulock); u = uni; }
+    const double sc = gl->getRenderingScale();
+    gpuRoom.render (u, juce::roundToInt (sc * getWidth()), juce::roundToInt (sc * getHeight()));
+}
+
+RoomUniforms RoomScene::uniforms() const
+{
+    RoomUniforms u;
+    u.time = (float) f.time; u.memory = f.memory; u.age = f.timeAge; u.world = (float) f.worldType; u.energy = f.energy;
+    u.hit = hitEnv; u.pedal = f.pedal; u.flame = flame; u.intimacy = f.intimacy; u.warmth = f.warmth; u.space = f.space;
+    return u;
+}
+
 void RoomScene::tick (const Frame& fr)
 {
     f = fr;
@@ -138,6 +187,7 @@ void RoomScene::tick (const Frame& fr)
     // motes drift in the light and are pushed by the notes
     const bool hit = fr.hitCounter != lastHits;
     lastHits = fr.hitCounter;
+    hitEnv = hit ? 1.0f : hitEnv * (float) std::exp (-dt * 3.0);
     for (auto& m : motes)
     {
         if (hit) { m.vx += (rng.nextFloat() - 0.5f) * 0.05f; m.vy -= 0.02f * rng.nextFloat(); }
@@ -158,7 +208,13 @@ void RoomScene::tick (const Frame& fr)
     scratchT -= dt;
     if (scratchT <= 0) { scratchT = 0.08f + rng.nextFloat() * 0.2f; for (auto& s : scratchX) s = rng.nextFloat(); }
     const double interval = fr.reduced ? 1.0 / 12.0 : 1.0 / 24.0;
-    if (now - lastRender >= interval) { renderNow (fr); lastRender = now; repaint(); }
+    if (glOk.load())
+    {
+        { const juce::SpinLock::ScopedLockType sl (ulock); uni = uniforms(); }
+        if (now - lastRender >= (fr.reduced ? 1.0 / 20.0 : 1.0 / 60.0)) { lastRender = now; if (gl != nullptr) gl->triggerRepaint(); }
+    }
+    else if (external.isNull() && now - lastRender >= interval) { renderNow (fr); lastRender = now; repaint(); }
+    else if (! external.isNull()) repaint();
 }
 
 void RoomScene::renderNow (const Frame& fr)
@@ -268,9 +324,10 @@ void RoomScene::paint (juce::Graphics& g)
     auto r = getLocalBounds().toFloat();
     juce::Path clip; clip.addRoundedRectangle (r, 8.0f);
     g.saveState();
-    g.reduceClipRegion (clip);
+    if (! glOk.load()) g.reduceClipRegion (clip);
     g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
-    g.drawImage (img, r, juce::RectanglePlacement::fillDestination);
+    if (glOk.load()) { /* the shader draws underneath */ }
+    else g.drawImage (external.isNull() ? img : external, r, juce::RectanglePlacement::fillDestination);
     g.restoreState();
     g.setColour (col::accent.withAlpha (0.35f));
     g.drawRoundedRectangle (r.reduced (0.5f), 8.0f, 1.0f);

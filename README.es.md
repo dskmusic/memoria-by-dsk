@@ -22,12 +22,16 @@ la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano d
 - **Macro Memoria** más Calidez, Intimidad (micro cerca o lejos), Tiempo (cuánto ha envejecido el piano) y Espacio.
 - **Capas de vida:** sonidos de madera (banco, mecanismo, pedal, apagadores), cinta (wow y flutter, saturación, pérdida de agudos, ruido, dropouts),
   vinilo (crackle, rumble, pop de la aguja) y un mundo lejano: lluvia, cafetería, chimenea, pájaros al amanecer, público. Cinco salas: salón, iglesia, estudio, cabaña de madera y sala de conciertos vacía.
-- **Manos:** un pianista generativo para quien no toca: arpegios, acordes con voice-leading, frases emocionales o todo a la vez,
-  en 8 escalas y cualquier tonalidad, sincronizado con el tempo y el transporte de tu DAW (o un reloj interno).
-- **300 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy. Un generador por reglas
-  valida e iguala el nivel de cada preset; pulsa *Sorpréndeme* para uno nuevo.
-- **Una habitación que envejece con el sonido:** una escena cinematográfica (luz de ventana, polvo flotando, lluvia en el cristal, una vela) que se vuelve
-  sepia, con grano y rayas de película al subir Memoria.
+- **Manos: un compositor generativo para quien no toca.** Escribe canciones enteras - intro, estrofas, estribillos, puente y final - con armonía funcional
+  (séptimas, novenas, acordes sus, dominantes, cadencias), motivos que se desarrollan, estribillos con gancho, patrones de acompañamiento y una interpretación expresiva
+  (dinámica, acordes arpegiados, rubato, pedal). Seis estilos (Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna y Power Ballad), 8 escalas, cualquier tono,
+  de 16 a 128 compases, sincronizado con el tempo y el transporte de tu DAW. **Nueva variación** y **Canción al azar** (con bloqueos) crean otra con un clic.
+  **Exporta la canción:** arrástrala como archivo MIDI (o como WAV renderizado) directamente a tu DAW, o guárdala como .mid / .wav.
+- **300 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.
+  **Sonido al azar** genera un piano + sala + capas + macros nuevos en cualquier categoría, con bloqueos por sección, validado y con el nivel igualado.
+- **Una habitación que envejece con el sonido:** una escena cinematográfica con shaders en la tarjeta gráfica - luz de ventana con polvo volumétrico, lluvia en el cristal,
+  un piano vertical lacado, una vela - que se vuelve sepia, con grano y rayas de película al subir Memoria. Sigue el ambiente que elijas (lluvia, cafetería, chimenea, amanecer, público).
+  Si tu tarjeta gráfica no puede, usa una escena por CPU.
 - **Exportación de audio largo:** las manos tocan de 1 minuto a 3 horas en WAV, FLAC u OGG.
 - Cambios de preset sin clics, A/B, deshacer/rehacer, MIDI learn, navegador de presets con etiquetas y favoritos, interfaz redimensionable, **English / Español**
   (automático o manual) y página de Ayuda integrada.
@@ -56,8 +60,8 @@ Los binarios no están firmados. **Windows:** puede aparecer SmartScreen, pulsa 
 
 ### Primeros pasos
 
-1. Carga **Memoria** como instrumento y tócalo con un teclado MIDI (pedal incluido), o pulsa **Play** en la pestaña VIDA para que toquen las **Manos**.
-2. Elige un preset (pestaña PRESETS) y desliza **Memoria** de *presente* a *recuerdo*.
+1. Carga **Memoria** como instrumento y tócalo con un teclado MIDI (pedal incluido), o pulsa **PLAY** en el panel de Manos para que toque el pianista generativo.
+2. Elige un preset (pestaña PRESETS) o pulsa **Sorpréndeme**, y desliza **Memoria** de *presente* a *recuerdo*.
 3. Moldea el piano (Tone, Hammer, Sustain, Dampers, Detune...) y la sala, o pulsa **Sorpréndeme**.
 
 Los presets y ajustes se guardan en `Documents/DSK Music/Memoria/`.

@@ -21,13 +21,13 @@ const juce::StringArray& roomNames()
 }
 const juce::StringArray& worldNames()
 {
-    static const juce::StringArray n { "Off", "Rain", "Cafe", "Fireplace", "Dawn Birds", "Distant Audience" };
+    static const juce::StringArray n { "No ambience", "Rain", "Cafe", "Fireplace", "Dawn Birds", "Distant Audience" };
     return n;
 }
 
 const juce::StringArray& handsNames()
 {
-    static const juce::StringArray n { "Off", "Arpeggios", "Chords", "Phrases", "Full" };
+    static const juce::StringArray n { "Off", "Full Song", "Accompaniment", "Melody" };
     return n;
 }
 const juce::StringArray& handsScaleNames()
@@ -35,6 +35,17 @@ const juce::StringArray& handsScaleNames()
     static const juce::StringArray n { "Major", "Minor", "Dorian", "Lydian", "Minor Pentatonic", "Major Pentatonic", "Mixolydian", "Harmonic Minor" };
     return n;
 }
+const juce::StringArray& handsStyleNames()
+{
+    static const juce::StringArray n { "Lo-Fi Chill", "Cinematic", "Romantic", "Minimal", "Lullaby (Waltz)", "Power Ballad" };
+    return n;
+}
+const juce::StringArray& handsBarsNames()
+{
+    static const juce::StringArray n { "16 bars", "32 bars", "48 bars", "64 bars", "96 bars", "128 bars" };
+    return n;
+}
+int handsBarsFromIndex (int i) { static const int b[] { 16, 32, 48, 64, 96, 128 }; return b[juce::jlimit (0, 5, i)]; }
 const juce::StringArray& keyNames()
 {
     static const juce::StringArray n { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
@@ -106,16 +117,19 @@ std::vector<ParamDef> build()
     b.add (vinyl, "vinyl", "Vinyl", lin (0, 1), 0.0f);
     b.add (wood, "wood", "Wood", lin (0, 1), 0.0f);
     b.addChoice (world, "world", "World", worldNames(), 0);
-    b.add (worldLevel, "world_level", "World Level", lin (0, 1), 0.5f);
+    b.add (worldLevel, "world_level", "World Level", lin (0, 1), 0.4f);
     b.group = "hands";
-    b.addChoice (hands, "hands", "Hands", handsNames(), 0);
+    b.addChoice (hands, "hands", "Hands", handsNames(), 1);
+    b.addChoice (handsStyle, "hands_style", "Style", handsStyleNames(), 0);
     b.addChoice (handsKey, "hands_key", "Key", keyNames(), 9);
     b.addChoice (handsScale, "hands_scale", "Scale", handsScaleNames(), 1);
-    b.addChoice (handsRate, "hands_rate", "Rate", { "1/4", "1/8", "1/16" }, 1);
+    b.addChoice (handsBars, "hands_bars", "Length", handsBarsNames(), 1);
+    b.add (handsTempo, "hands_tempo", "Tempo", lin (40, 160, 1), 76, "bpm");
     b.add (handsDensity, "hands_density", "Density", lin (0, 1), 0.6f);
-    b.add (handsTempo, "hands_tempo", "Tempo", lin (40, 140, 1), 72, "bpm");
-    b.add (handsSoft, "hands_soft", "Softness", lin (0, 1), 0.5f);
+    b.add (handsExpress, "hands_express", "Expression", lin (0, 1), 0.65f);
+    b.addInt (handsSeed, "hands_seed", "Song Seed", 1, 99999, 1);
     b.addBool (handsPedal, "hands_pedal", "Pedal", true);
+    b.addBool (handsEndless, "hands_endless", "Endless", true);
     return b.defs;
 }
 } // namespace

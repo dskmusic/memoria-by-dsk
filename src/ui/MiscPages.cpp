@@ -76,8 +76,8 @@ void Logo::paint (juce::Graphics& g)
 Header::Header (Context& c, std::function<void (int)> onTab) : ctx (c), tabCb (std::move (onTab))
 {
     addAndMakeVisible (logo);
-    const juce::String names[] { "PIANO", L ("VIDA", "LIFE"), "PRESETS", L ("EXPORTAR", "EXPORT"), L ("AJUSTES", "SETTINGS"), L ("AYUDA", "HELP") };
-    for (int i = 0; i < 6; ++i)
+    const juce::String names[] { "MEMORIA", "PRESETS", L ("EXPORTAR", "EXPORT"), L ("AJUSTES", "SETTINGS"), L ("AYUDA", "HELP") };
+    for (int i = 0; i < 5; ++i)
     {
         auto* b = tabs.add (new juce::TextButton (names[i]));
         b->setClickingTogglesState (false);
@@ -225,8 +225,8 @@ ExportPage::ExportPage (Context& c) : Page (c)
             if (ctx.toast) ctx.toast (juce::String (n) + L (" preset(s) importados a la biblioteca", " preset(s) imported into the library"));
         });
     };
-    status = L ("Las manos tocan solas con el sonido actual y lo guardan en un archivo largo: ideal para vídeos, estudio o dormir. Activa unas manos en la pestaña VIDA.",
-                "The hands play by themselves with the current sound and save it to a long file: ideal for videos, studying or sleeping. Turn the hands on in the LIFE tab.");
+    status = L ("Las manos tocan solas con el sonido actual y lo guardan en un archivo largo: ideal para vídeos, estudio o dormir. Activa las manos en la pestaña MEMORIA.",
+                "The hands play by themselves with the current sound and save it to a long file: ideal for videos, studying or sleeping. Turn the hands on in the MEMORIA tab.");
 }
 
 ExportPage::~ExportPage()
@@ -238,7 +238,7 @@ ExportPage::~ExportPage()
 void ExportPage::start()
 {
     if (busy.load()) return;
-    if (ctx.proc.getParam (P::hands) < 0.5f) { if (ctx.toast) ctx.toast (L ("Activa las manos (pestaña VIDA) para exportar", "Turn the hands on (LIFE tab) to export")); return; }
+    if (ctx.proc.getParam (P::hands) < 0.5f) { if (ctx.toast) ctx.toast (L ("Activa las manos (pestaña MEMORIA) para exportar", "Turn the hands on (MEMORIA tab) to export")); return; }
     const auto ext = exportFormatExtension (format.getSelectedItemIndex());
     const auto name = ctx.proc.currentMeta.name.isNotEmpty() ? ctx.proc.currentMeta.name : juce::String ("Memoria");
     const auto def = juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile (juce::File::createLegalFileName (name + " - " + juce::String (duration.getSelectedId()) + " min" + ext));
@@ -347,12 +347,16 @@ SettingsPage::SettingsPage (Context& c, std::function<void (float)> setScale, st
         ctx.settings.setLanguageSetting (i == 1 ? "en" : i == 2 ? "es" : "auto");
         if (ctx.languageChanged) ctx.languageChanged();
     };
+    gpuToggle.setToggleState (ctx.settings.gpu() && gpuStatus().load() >= 0, juce::dontSendNotification);
+    gpuToggle.setEnabled (gpuStatus().load() >= 0);
+    gpuToggle.setTooltip (L ("La habitación con shaders en la tarjeta gráfica. Desactívalo si tu equipo va justo.", "The room rendered with shaders on the graphics card. Turn it off on a slow computer."));
+    gpuToggle.onClick = [this] { ctx.settings.setGpu (gpuToggle.getToggleState()); if (ctx.languageChanged) ctx.languageChanged(); };
     preview.setToggleState (ctx.settings.previewOnSelect(), juce::dontSendNotification);
     preview.onClick = [this] { ctx.settings.setPreviewOnSelect (preview.getToggleState()); };
     openFolder.onClick = [] { Library::defaultRoot().startAsProcess(); };
     clearLearn.onClick = [this] { ctx.proc.clearMidiLearn(); if (ctx.toast) ctx.toast (L ("Asignaciones MIDI Learn borradas", "MIDI Learn assignments cleared")); };
     aboutBtn.onClick = std::move (showAbout);
-    for (auto* comp : std::initializer_list<juce::Component*> { &scaleBox, &animBox, &langBox, &preview, &openFolder, &clearLearn, &aboutBtn })
+    for (auto* comp : std::initializer_list<juce::Component*> { &scaleBox, &animBox, &langBox, &gpuToggle, &preview, &openFolder, &clearLearn, &aboutBtn })
         addAndMakeVisible (comp);
 }
 
@@ -380,6 +384,7 @@ void SettingsPage::resized()
     scaleBox.setBounds (row().withWidth (160));
     animBox.setBounds (row().withWidth (220));
     langBox.setBounds (row().withWidth (260));
+    gpuToggle.setBounds (rows.removeFromTop (40).reduced (0, 8));
     preview.setBounds (rows.removeFromTop (40).reduced (0, 8));
     rows.removeFromTop (60);
     auto b = rows.removeFromTop (34);

@@ -9,6 +9,9 @@
 // time slot, so the result never depends on the host block size.
 namespace gx
 {
+// 0 drizzle, 1 steady, 2 heavy (only used to compare versions while tuning)
+inline int& rainVariant() { static int v = 1; return v; }
+
 struct LifeLevels
 {
     float tape = 0, vinyl = 0, wood = 0, world = 0, intimacy = 0.5f;
@@ -33,7 +36,7 @@ private:
     struct Ev { bool on = false; float env = 0, coef = 0.99f, amp = 0, pan = 0.5f, f0 = 500, f1 = 500, t = 0; Svf f; };
     struct Bird { bool on = false; float ph = 0, f = 3000, df = 0, env = 0, t = 0, len = 4000, pan = 0.5f, delay = 0; int left = 0; };
     void spawn (float freq0, float freq1, float q, float seconds, float amp, float pan, float freqTo = -1.0f);
-    void murmur (float& l, float& r, float level, float dark);
+    void murmur (float& l, float& r, float level, float dark, int talkers);
     float hashSlot (uint32_t salt) const;
 
     double sr = 48000.0;
@@ -60,6 +63,14 @@ private:
     std::array<Bird, 6> birds;
     int birdQueue = 0; float birdGap = 0;
     float rainBed[2] {};
+    struct Patter { bool on = false; float re = 0, im = 0, c = 1, s = 0, env = 0, coef = 0.99f, amp = 0, pl = 0.7f, pr = 0.7f; };
+    std::array<Patter, 32> patter;
+    float rk[2][3] {}, rbp[2] {}, rrum[2] {}, rrum2[2] {}, gust = 1, gustTarget = 1, roof = 0;
+    int gustCount = 0;
+    // cafe / audience: a handful of voices (sawtooth through two moving formants, gated at syllable rate)
+    struct Talker { float ph = 0, f0 = 150, env = 0, envT = 0, pl = 0.7f, pr = 0.7f; int left = 0; Svf s1, s2; };
+    std::array<Talker, 10> talk;
+    float babLp[2] {}, espresso = 0;
     Smooth tapeS, vinylS, worldS;
 };
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Visuals.h"
 #include "RoomScene.h"
+#include "Panels.h"
 #include <thread>
 
 namespace gx::ui
@@ -62,7 +63,7 @@ private:
     juce::HyperlinkButton link { "dskmusic.com", juce::URL ("https://dskmusic.com") };
 };
 
-// Main page: the room scene, the Memory slider, scope / spectrum / meter and the piano controls.
+// The one main page: room scene + Memory slider, the Hands (generative pianist), the sound generator and every piano control.
 class PianoPage : public Page
 {
 public:
@@ -70,26 +71,13 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
     RoomScene scene;
+    std::function<void (const Preset&)> onLoaded;
 private:
-    Scope scope;
-    Spectrum spectrum;
-    VuMeter vu;
     juce::Slider memory;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> memoryAtt;
-    AutoPanel global, piano, space;
-};
-
-// Life page: the Memory macro and the layers of life (tape, vinyl, wood, world).
-class LifePage : public Page
-{
-public:
-    explicit LifePage (Context& c);
-    void resized() override;
-    void paint (juce::Graphics&) override;
-    void tick (const Frame&) override;
-private:
-    AutoPanel macros, life, hands;
-    juce::TextButton play { "PLAY" };
+    HandsPanel hands;
+    SoundGenPanel gen;
+    AutoPanel global, piano, macros, life, space;
 };
 
 // Help: a short, friendly guide (both languages).
@@ -186,6 +174,7 @@ public:
     void paint (juce::Graphics&) override;
 private:
     juce::ComboBox scaleBox, animBox, langBox;
+    juce::ToggleButton gpuToggle { L ("Escena en alta calidad (tarjeta gráfica)", "High-quality scene (graphics card)") };
     juce::ToggleButton preview { L ("Al elegir un preset, tocar una nota de prueba", "Play a test chord when a preset is selected") };
     juce::TextButton openFolder { L ("Abrir carpeta de presets", "Open presets folder") }, clearLearn { L ("Borrar asignaciones MIDI Learn", "Clear MIDI Learn assignments") }, aboutBtn { L ("Acerca de Memoria", "About Memoria") };
 };

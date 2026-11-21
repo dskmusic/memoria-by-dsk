@@ -22,12 +22,15 @@ window. One slider, **Memory**, takes you from a crisp, present studio piano to 
 - **Memory macro** plus Warmth, Intimacy (close mic to far), Time (how aged the piano is) and Space.
 - **Layers of life:** wooden sounds (bench, key action, pedal, dampers), tape (wow and flutter, saturation, dull highs, hiss, dropouts),
   vinyl (crackle, rumble, needle pop) and a distant world: rain, cafe, fireplace, dawn birds, audience. Five rooms: living room, church, studio, wooden cabin, empty concert hall.
-- **Hands:** a generative pianist for people who do not play - arpeggios, chords with voice-leading, emotional phrases or everything at once,
-  in 8 scales and any key, locked to your DAW tempo and transport (or an internal clock).
-- **300 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy. A rule-based generator
-  validates and level-matches every preset; press *Surprise me* for a new one.
-- **A room that ages with the sound:** a cinematic scene - window light, floating dust, rain on the glass, a candle - that turns sepia, grainy
-  and scratched as you turn Memory up.
+- **Hands: a generative composer for people who do not play.** It writes whole songs - intro, verses, choruses, bridge, outro - with functional
+  harmony (7ths, 9ths, sus chords, dominants, cadences), motifs that develop, hook-driven choruses, accompaniment patterns and an expressive performance
+  (dynamics, rolled chords, rubato, pedalling). Six styles (Lo-Fi Chill, Cinematic, Romantic, Minimal, Lullaby waltz, Power Ballad), 8 scales, any key,
+  16 to 128 bars, locked to your DAW tempo and transport. **New variation** and **Random song** (with locks) make a new one in a click.
+  **Export the song:** drag it as a MIDI file (or as a rendered WAV) straight into your DAW, or save it as .mid / .wav.
+- **300 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy.
+  **Random sound** generates a new piano + room + layers + macros in any category, with locks for each section, validated and level-matched.
+- **A room that ages with the sound:** a cinematic GPU-shader scene - window light with volumetric dust, rain on the glass, a glossy upright piano, a candle -
+  that turns sepia, grainy and scratched as you turn Memory up. It follows the weather you choose (rain, cafe, fireplace, dawn, audience). Falls back to a CPU scene if your graphics card cannot run it.
 - **Long audio export:** the hands play for 1 minute to 3 hours to WAV, FLAC or OGG.
 - Click-free preset changes, A/B, undo/redo, MIDI learn, preset browser with tags and favourites, resizable interface, **English / Español**
   (automatic or manual) and a built-in Help page.
@@ -56,8 +59,8 @@ The binaries are not code-signed. **Windows:** SmartScreen may appear, click *Mo
 
 ### Quick start
 
-1. Load **Memoria** as an instrument and play it with a MIDI keyboard (pedal included), or press **Play** on the LIFE tab to let the **Hands** play.
-2. Pick a preset (PRESETS tab) and slide **Memory** from *present* to *memory*.
+1. Load **Memoria** as an instrument and play it with a MIDI keyboard (pedal included), or press **PLAY** in the Hands panel to let the generative pianist play.
+2. Pick a preset (PRESETS tab) or press **Surprise me**, and slide **Memory** from *present* to *memory*.
 3. Shape the piano (Tone, Hammer, Sustain, Dampers, Detune...) and the room, or press **Surprise me**.
 
 Presets and settings are stored in `Documents/DSK Music/Memoria/`.

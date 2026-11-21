@@ -29,6 +29,11 @@ void Life::reset (uint32_t s)
     for (auto& e : ev) e = Ev();
     for (auto& b : birds) b = Bird();
     dl[0].clear(); dl[1].clear();
+    for (auto& d : patter) d = Patter();
+    for (int c = 0; c < 2; ++c) { rbp[c] = rrum[c] = rrum2[c] = 0; for (auto& x : rk[c]) x = 0; }
+    gust = gustTarget = 1; gustCount = 0;
+    for (auto& k : talk) k = Talker();
+    babLp[0] = babLp[1] = 0;
     wowPh = 0; flPh = 0.3f; drift = driftTarget = 0; dropG = dropTarget = 1; dropLeft = 0;
     for (auto& b : tapeLp) b.reset();
     for (auto& b : tapeHp) b.reset();
@@ -106,7 +111,6 @@ void Life::tick()
 
 void Life::wood (float& l, float& r)
 {
-    if (lv.wood <= 0.001f) return;
     for (auto& e : ev)
     {
         if (! e.on) continue;
@@ -154,27 +158,36 @@ void Life::tape (float& l, float& r)
     l += (rng.bi() - hissLp[0] * 0.6f) * h; r += (rng.bi() - hissLp[1] * 0.6f) * h;
 }
 
-void Life::murmur (float& l, float& r, float level, float dark)
+void Life::murmur (float& l, float& r, float level, float dark, int talkers)
 {
-    // distant voices: noise through speech-like formants, with slow random syllable-rate swells
-    static const float fr[3] { 420.0f, 1100.0f, 2300.0f };
-    const float kq = dark < 1.0f ? 0.2001f : 0.2f;
-    if ((rng.next() & 4095) == 0) murTarget = rng.uni();
-    murEnv[0] += (murTarget - murEnv[0]) * 4.0e-5f;
-    murEnv[1] += (murEnv[0] - murEnv[1]) * 4.0e-4f;
-    const float env = 0.3f + 0.9f * murEnv[1];
-    for (int c = 0; c < 2; ++c)
+    float sl = 0, sr_ = 0;
+    for (int t = 0; t < talkers; ++t)
     {
-        float s = 0;
-        for (int k = 0; k < 3; ++k)
+        auto& k = talk[(size_t) t];
+        if (--k.left <= 0)
         {
-            if (fm[k][c].k != kq) fm[k][c].set (std::tan (kPi * fr[k] * dark / (float) sr), kq);
-            float bp, hp;
-            fm[k][c].tick (rng.bi(), bp, hp);
-            s += bp * (k == 0 ? 1.0f : k == 1 ? 0.7f : 0.35f);
+            // a new syllable: loudness, vowel (two formants) and a little pitch drift
+            k.left = (int) ((0.11f + 0.26f * rng.uni()) * (float) sr);
+            k.envT = rng.uni() < 0.38f ? 0.0f : 0.25f + 0.75f * rng.uni();
+            if (k.f0 < 90.0f || k.f0 > 260.0f || k.pl == 0.7f) { k.f0 = 95.0f + 150.0f * rng.uni(); const float u = rng.uni(); k.pl = std::cos (u * 1.5708f); k.pr = std::sin (u * 1.5708f); }
+            k.f0 += (rng.uni() - 0.5f) * 14.0f;
+            const float f1 = 320.0f + 480.0f * rng.uni(), f2 = 900.0f + 1400.0f * rng.uni();
+            k.s1.set (std::tan (kPi * f1 * dark / (float) sr), 1.0f / 6.0f);
+            k.s2.set (std::tan (kPi * f2 * dark / (float) sr), 1.0f / 7.0f);
         }
-        (c == 0 ? l : r) += s * level * env * 0.22f;
+        k.env += (k.envT - k.env) * 0.0016f;
+        k.ph += k.f0 / (float) sr; if (k.ph > 1.0f) k.ph -= 1.0f;
+        if (k.env < 1.0e-3f) continue;
+        const float x = (2.0f * k.ph - 1.0f) + 0.35f * rng.bi();
+        float bp1, hp1, bp2, hp2;
+        k.s1.tick (x, bp1, hp1); k.s2.tick (x, bp2, hp2);
+        const float v = (bp1 + 0.6f * bp2) * k.env;
+        sl += v * k.pl; sr_ += v * k.pr;
     }
+    const float g = level * 0.05f / std::sqrt ((float) talkers);
+    babLp[0] += (0.20f * dark) * (sl * g - babLp[0]);
+    babLp[1] += (0.20f * dark) * (sr_ * g - babLp[1]);
+    l += babLp[0]; r += babLp[1];
 }
 
 void Life::world (float& l, float& r)
@@ -198,24 +211,57 @@ void Life::world (float& l, float& r)
         if (popLeft > 0) { const float pop = (popLeft % 5 < 2 ? 0.09f : -0.06f) * (float) popLeft / (0.02f * (float) sr) * v; l += pop; r += pop * 0.8f; --popLeft; }
     }
     // ---- world
-    const float w = worldS.step (lv.worldType > 0 ? lv.world : 0.0f);
+    const float w = worldS.step (lv.worldType > 0 ? lv.world * 0.6f : 0.0f);   // ambiences are capped: they are a background
     if (w <= 0.0005f) return;
     switch (lv.worldType)
     {
-        case 1: // rain on the window
+        case 1: // rain on a window: a soft pink bed, a patter of tiny drops, bigger resonant drops, a distant roof rumble
+        {
+            static const float bedA[3] { 0.0054f, 0.0090f, 0.0135f }, rate[3] { 160.0f, 380.0f, 700.0f }, big[3] { 2.0f, 4.0f, 7.0f }, rum[3] { 0.0f, 0.0038f, 0.0082f };
+            const int vr = juce::jlimit (0, 2, rainVariant());
+            if (++gustCount >= 8192) { gustCount = 0; gustTarget = 0.65f + 0.7f * rng.uni(); }
+            gust += (gustTarget - gust) * 3.0e-5f;
             for (int c = 0; c < 2; ++c)
             {
-                bed[c] += 0.35f * (rng.bi() - bed[c]); bed2[c] += 0.02f * (bed[c] - bed2[c]);
-                float s = (bed[c] - bed2[c] * 1.0f) * 0.045f;
-                if (rng.uni() < 0.0016f) rainBed[c] = (0.3f + rng.uni()) * 0.12f;
-                rainBed[c] *= 0.985f;
-                s += rainBed[c] * rng.bi();
+                const float wn = rng.bi();
+                rk[c][0] = 0.99765f * rk[c][0] + wn * 0.0990460f;
+                rk[c][1] = 0.96300f * rk[c][1] + wn * 0.2965164f;
+                rk[c][2] = 0.57000f * rk[c][2] + wn * 1.0526913f;
+                const float pink = (rk[c][0] + rk[c][1] + rk[c][2] + wn * 0.1848f) * 0.11f;
+                rbp[c] += 0.05f * (pink - rbp[c]);                      // remove the low end: it is the sound of the window, not of a storm
+                float s = (pink - rbp[c]) * bedA[vr] * gust;
+                rrum[c] += 0.0025f * (rng.bi() - rrum[c]); rrum2[c] += 0.01f * (rrum[c] - rrum2[c]);
+                s += rrum2[c] * rum[vr] * 12.0f * (0.7f + 0.3f * gust);
                 (c == 0 ? l : r) += s * w;
             }
-            if (rng.uni() < 0.00006f) spawn (320.0f + 200.0f * rng.uni(), 0, 3.0f, 0.03f, 0.05f * w, rng.uni());   // heavy drop on the sill
+            if (rng.uni() < rate[vr] * gust / (float) sr)
+                for (auto& d : patter)
+                    if (! d.on)
+                    {
+                        const float f = 1800.0f + 5200.0f * rng.uni() * rng.uni(), om = kTwoPi * f / (float) sr, u = rng.uni();
+                        d.on = true; d.c = std::cos (om); d.s = std::sin (om); d.re = 1; d.im = 0; d.env = 1;
+                        d.coef = std::exp (-6.9f / ((0.0015f + 0.004f * rng.uni()) * (float) sr));
+                        d.amp = std::exp (-3.0f * rng.uni()) * 0.020f; d.pl = std::cos (u * 1.5708f); d.pr = std::sin (u * 1.5708f);
+                        break;
+                    }
+            for (auto& d : patter)
+            {
+                if (! d.on) continue;
+                const float nre = d.re * d.c - d.im * d.s; d.im = d.re * d.s + d.im * d.c; d.re = nre;
+                const float v = d.im * d.env * d.amp * w;
+                d.env *= d.coef;
+                if (d.env < 1.0e-3f) d.on = false;
+                l += v * d.pl; r += v * d.pr;
+            }
+            if (rng.uni() < big[vr] * gust / (float) sr)
+                spawn (700.0f + 1900.0f * rng.uni(), 0, 14.0f, 0.045f, 0.020f * w, rng.uni());       // a bigger drop on the glass
             break;
-        case 2: murmur (l, r, 0.9f * w, 1.0f);
-            if (rng.uni() < 0.000012f) spawn (3200.0f + 1800.0f * rng.uni(), 0, 25.0f, 0.16f, 0.07f * w, rng.uni());   // cup clink
+        }
+        case 2: // cafe: voices, cups, an espresso machine now and then
+            murmur (l, r, 1.0f * w, 1.0f, 7);
+            if (rng.uni() < 0.000010f) spawn (3200.0f + 1800.0f * rng.uni(), 0, 25.0f, 0.16f, 0.018f * w, rng.uni());     // cup clink
+            if (rng.uni() < 0.0000035f) spawn (4200.0f, 0, 1.2f, 1.1f, 0.012f * w, 0.2f + 0.6f * rng.uni());             // steam hiss
+            if (rng.uni() < 0.000004f) spawn (210.0f, 0, 3.0f, 0.12f, 0.02f * w, rng.uni());                              // a chair
             break;
         case 3: // fireplace
             for (int c = 0; c < 2; ++c)
@@ -242,7 +288,7 @@ void Life::world (float& l, float& r)
                 l += s * std::cos (b.pan * 1.5708f); r += s * std::sin (b.pan * 1.5708f);
             }
             break;
-        case 5: murmur (l, r, 0.55f * w, 0.7f); break;   // distant audience
+        case 5: murmur (l, r, 0.8f * w, 0.55f, 10); break;   // distant audience
         default: break;
     }
 }

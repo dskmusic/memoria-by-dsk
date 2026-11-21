@@ -1,4 +1,5 @@
 #include "Tests.h"
+#include "preset/Song.h"
 #include "PluginEditor.h"
 #include "gen/Generator.h"
 #include <set>
@@ -80,20 +81,25 @@ int main (int argc, char** argv)
     }
     if (cmd == "hands")
     {
-        // MemoriaTool hands <dir> [seconds]: every hands mode with a few factory-like sounds, for listening
+        // MemoriaTool hands <dir> [seconds]: every song style, for listening (WAV + MIDI)
         const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "hands-demo");
         dir.createDirectory();
-        const double secs = argc > 3 ? juce::String (argv[3]).getDoubleValue() : 45.0;
-        const char* cats[] { "Lo-Fi", "Rainy", "Cinematic", "Lullaby" };
-        int k = 0;
-        for (int mode = 1; mode <= 4; ++mode)
+        const double secs = argc > 3 ? juce::String (argv[3]).getDoubleValue() : 90.0;
+        const char* cats[] { "Lo-Fi", "Cinematic", "Concert", "Study", "Lullaby", "Felt" };
+        const double tempos[] { 78, 84, 70, 92, 96, 66 };
+        const int keys[] { 9, 2, 3, 0, 7, 4 }, scales[] { 1, 1, 0, 2, 0, 1 };
+        for (int style = 0; style < gx::numSongStyles; ++style)
         {
-            gx::GenRequest rq; rq.category = cats[k++ % 4]; rq.seed = 77 + (uint32_t) mode;
+            gx::GenRequest rq; rq.category = cats[style]; rq.seed = 77 + (uint32_t) style;
             auto p = gx::Generator::generate (rq);
-            p.params[(size_t) gx::P::hands] = (float) mode; p.params[(size_t) gx::P::handsTempo] = 78.0f;
-            const auto f = dir.getChildFile (gx::handsNames()[mode] + " - " + p.meta.name + ".wav");
-            const auto err = gx::exportAudio (p, f, gx::efWav, secs, 48000.0);
-            std::puts ((err.isEmpty() ? f.getFullPathName() : err).toRawUTF8());
+            auto& q = p.params;
+            q[(size_t) gx::P::hands] = 1; q[(size_t) gx::P::handsStyle] = (float) style; q[(size_t) gx::P::handsTempo] = (float) tempos[style];
+            q[(size_t) gx::P::handsKey] = (float) keys[style]; q[(size_t) gx::P::handsScale] = (float) scales[style]; q[(size_t) gx::P::handsBars] = 3; q[(size_t) gx::P::handsSeed] = (float) (10 + style);
+            const auto base = gx::handsStyleNames()[style].retainCharacters ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-") + " - " + p.meta.name;
+            const auto err = gx::exportAudio (p, dir.getChildFile (base + ".wav"), gx::efWav, secs, 48000.0);
+            gx::Score sc; gx::compose (gx::composeCfgFromPreset (p), sc);
+            gx::writeMidi (sc, tempos[style], dir.getChildFile (base + ".mid"));
+            std::puts ((err.isEmpty() ? base : err).toRawUTF8());
         }
         return 0;
     }
@@ -137,6 +143,51 @@ int main (int argc, char** argv)
         std::puts (("icons written to " + dir.getFullPathName()).toRawUTF8());
         return 0;
     }
+    if (cmd == "rain")
+    {
+        // MemoriaTool rain <dir>: three rain versions, alone and over a piano, for listening
+        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "rain");
+        dir.createDirectory();
+        const char* names[] { "A_drizzle", "B_steady", "C_heavy" };
+        for (int v = 0; v < 3; ++v)
+        {
+            gx::rainVariant() = v;
+            gx::Preset p; gxtest::setParam (p, "world", 1.0f); gxtest::setParam (p, "world_level", 0.7f); gxtest::setParam (p, "wood", 0.3f);
+            juce::MidiBuffer none;
+            juce::AudioBuffer<float> a (2, 48000 * 20);
+            a.clear(); gx::renderMidi (p, none, a, 48000.0, 512);
+            gxtest::writeWav (a, dir.getChildFile (juce::String (names[v]) + "_rain_alone.wav"));
+            gxtest::Song s; s.pedal (0.0, 127);
+            const int ch[4][3] { { 45, 57, 64 }, { 41, 53, 60 }, { 36, 55, 64 }, { 43, 55, 62 } };
+            for (int c = 0; c < 4; ++c) for (int n : ch[c]) s.note (0.5 + c * 6.0, 5.5, n + 12 * (c % 2), 62);
+            for (int i = 0; i < 12; ++i) s.note (1.0 + i * 1.9, 1.6, 72 + (i * 5) % 9, 70);
+            juce::AudioBuffer<float> b (2, 48000 * 26);
+            b.clear(); gx::renderMidi (p, s.buf, b, 48000.0, 512);
+            gxtest::writeWav (b, dir.getChildFile (juce::String (names[v]) + "_rain_with_piano.wav"));
+            std::printf ("%s: rain alone %.1f dB RMS%c", names[v], gxtest::rmsDb (a, 2.0, 20.0), 10);
+        }
+        return 0;
+    }
+    if (cmd == "scene")
+    {
+        // MemoriaTool scene <dir>: the GPU room for review (several worlds and memory levels)
+        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "scene");
+        dir.createDirectory();
+        struct C { const char* n; float mem, age; int world; } cs[] { { "golden_clean", 0.0f, 0.5f, 0 }, { "rain", 0.3f, 0.5f, 1 }, { "cafe", 0.2f, 0.5f, 2 }, { "fire_night", 0.5f, 0.6f, 3 }, { "dawn_old", 1.0f, 0.9f, 4 }, { "audience", 0.0f, 0.5f, 5 } };
+        for (auto& c : cs)
+        {
+            gx::ui::RoomUniforms u; u.time = 12.3f; u.memory = c.mem; u.age = c.age; u.world = (float) c.world; u.energy = 0.3f; u.pedal = 1.0f;
+            auto img = gx::ui::OffscreenRoom::get().render (u, 1056, 660);
+            if (img.isNull()) { std::puts ("GPU render failed"); return 1; }
+            juce::PNGImageFormat png;
+            const auto f = dir.getChildFile (juce::String (c.n) + ".png");
+            f.deleteFile();
+            std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
+            if (os != nullptr) png.writeImageToStream (img, *os);
+        }
+        std::puts (("scenes in " + dir.getFullPathName()).toRawUTF8());
+        return 0;
+    }
     if (cmd == "screenshot")
     {
         // every page of the real editor, rendered offscreen with a chord ringing (so scope / spectrum / keys are alive)
@@ -150,8 +201,8 @@ int main (int argc, char** argv)
         ed->setSize (1280, 800);
         juce::AudioBuffer<float> buf (2, 512);
         juce::MidiBuffer midi;
-        const char* names[] { "piano", "life", "presets", "export", "settings", "help" };
-        for (int page = 0; page < 6; ++page)
+        const char* names[] { "piano", "presets", "export", "settings", "help" };
+        for (int page = 0; page < 5; ++page)
         {
             ed->showPage (page);
             for (int f = 0; f < 90; ++f)
@@ -162,6 +213,7 @@ int main (int argc, char** argv)
                 ed->advanceFrames (1.0 / 60.0);
                 if (f == 5) std::printf ("page %d frame 5: block peak %.4f proc.rms %.5f voices %d\n", page, buf.getMagnitude (0, 512), proc.rms.load(), proc.telemetry().voices.load());
             }
+            if (page == 0) { auto& rs = ed->roomScene(); rs.setExternalBackground (gx::ui::OffscreenRoom::get().render (rs.uniforms(), rs.getWidth(), rs.getHeight())); }
             auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
             juce::PNGImageFormat png;
             const auto f = dir.getChildFile (juce::String (names[page]) + ".png");
@@ -177,6 +229,7 @@ int main (int argc, char** argv)
             gxtest::setParam (proc, "world", (float) c.world);
             ed->showPage (0);
             for (int f = 0; f < 60; ++f) { midi.clear(); buf.clear(); proc.processBlock (buf, midi); ed->advanceFrames (1.0 / 24.0); }
+            { auto& rs = ed->roomScene(); rs.setExternalBackground (gx::ui::OffscreenRoom::get().render (rs.uniforms(), rs.getWidth(), rs.getHeight())); }
             auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
             juce::PNGImageFormat png;
             const auto f = dir.getChildFile (juce::String (c.name) + ".png");

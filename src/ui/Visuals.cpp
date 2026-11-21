@@ -30,7 +30,8 @@ void FrameSource::update (Frame& f, double dt)
     }
     auto& t = proc.telemetry();
     for (int k = 0; k < 128; ++k) { f.keyLevel[(size_t) k] = t.keyLevel[(size_t) k].load(); f.keyHit[(size_t) k] = t.keyHit[(size_t) k].load(); }
-    f.memory = proc.getParam (P::memory); f.timeAge = proc.getParam (P::time); f.worldType = (int) proc.getParam (P::world);
+    f.memory = proc.getParam (P::memory); f.timeAge = proc.getParam (P::time); f.intimacy = proc.getParam (P::intimacy); f.warmth = proc.getParam (P::warmth); f.space = proc.getParam (P::spaceMacro); f.worldType = (int) proc.getParam (P::world);
+    f.songBar = t.songBar.load(); f.songBars = t.songBars.load(); f.handsOn = t.handsOn.load();
     f.pedal = t.pedal.load(); f.voices = t.voices.load(); f.hitCounter = t.hitCounter.load();
 }
 

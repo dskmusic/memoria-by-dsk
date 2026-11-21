@@ -8,7 +8,12 @@
 - Memory macro plus Warmth, Intimacy, Time and Space.
 - Layers of life: wood (bench, key action, pedal, dampers), tape (wow / flutter, saturation, dull highs, hiss, dropouts), vinyl (crackle, rumble, needle pop),
   world (rain, cafe, fireplace, dawn birds, distant audience) and five rooms.
-- Hands: generative pianist (arpeggios, chords with voice-leading, phrases, full) in 8 scales and any key, locked to the DAW tempo and transport or an internal clock.
+- Hands v2: a song composer (intro / verse / chorus / bridge / outro) with functional harmony, developing motifs, hooks, expressive performance and pedalling; 6 styles, 8 scales, any key, 16-128 bars,
+  locked to the DAW tempo and transport or an internal clock; New variation, Random song with locks; export as MIDI or WAV (drag into the DAW or save).
+- Random sound generator with section locks.
+- One-page interface: room scene, Memory slider, Hands, sound generator and every control.
+- GPU shader room scene (volumetric light and dust, rain on glass, glossy piano, candle, film ageing) with a CPU fallback.
+- Rain, cafe (voices, cups, steam), fireplace, birds and audience ambiences rebuilt and level-capped.
 - Room scene (window light, dust, rain, candle) that ages with Memory.
 - Rule-based preset generator with offline validation and level matching; 300 factory presets in 10 categories; Surprise me button.
 - Long audio export (WAV, FLAC, OGG) with the hands playing; preset import / export.

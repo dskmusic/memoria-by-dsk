@@ -87,6 +87,7 @@ int makeVideo (const juce::File& outDir, const juce::String& name, double secs, 
             for (int c = 0; c < 2; ++c) audio.copyFrom (c, f * spf + pos, b, c, 0, n);
         }
         ed->advanceFrames (1.0 / fps);
+        { auto& rs = ed->roomScene(); rs.setExternalBackground (gx::ui::OffscreenRoom::get().render (rs.uniforms(), rs.getWidth(), rs.getHeight())); }
         auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f).convertedToFormat (juce::Image::ARGB);
         drawCaptions (img, caps, t);
         const auto file = tmp.getChildFile (juce::String::formatted ("%05d.png", f));
@@ -124,7 +125,7 @@ void prepareSound (MemoriaProcessor& proc, int category, int hands, float tempo,
     pr.params[(size_t) gx::P::hands] = (float) hands;
     pr.params[(size_t) gx::P::handsTempo] = tempo;
     pr.params[(size_t) gx::P::memory] = 0.0f; pr.params[(size_t) gx::P::world] = 0; pr.params[(size_t) gx::P::tape] = 0; pr.params[(size_t) gx::P::vinyl] = 0;
-    pr.params[(size_t) gx::P::piano] = 0; pr.params[(size_t) gx::P::handsKey] = 9; pr.params[(size_t) gx::P::handsScale] = 1;
+    pr.params[(size_t) gx::P::piano] = 0; pr.params[(size_t) gx::P::handsKey] = 9; pr.params[(size_t) gx::P::handsScale] = 1; pr.params[(size_t) gx::P::handsBars] = 3;
     pr.params[(size_t) gx::P::room] = 0.3f; pr.params[(size_t) gx::P::roomType] = 0;
     pr.applyTo (proc);
     proc.setPlaying (true);
@@ -147,9 +148,8 @@ int runVideo (const juce::File& dir, bool trailer)
             { "MEMORIA by DSK", "Gratis · VST3 / AU / Standalone  ·  dskmusic.com", 62.0, 69.0, true } };
         Setter setter = [] (MemoriaProcessor& p, double t)
         {
-            if (t < 0.02) prepareSound (p, 0, 2, 66.0f, 31);
-            if (t < 0.02) { setP (p, "hands", 2.0f); setP (p, "piano", 0.0f); }
-            if (t > 4.0 && t < 4.05) setP (p, "hands", 4.0f);
+            if (t < 0.02) prepareSound (p, 0, 1, 76.0f, 31);
+            if (t < 0.02) { setP (p, "hands", 1.0f); setP (p, "piano", 0.0f); }
             const float m = ramp (t, 17.0, 40.0) * (1.0f - 0.7f * ramp (t, 56.0, 68.0));
             setP (p, "memory", m);
             setP (p, "world", t > 36.0 && t < 52.0 ? 1.0f : t >= 52.0 ? 3.0f : 0.0f);
@@ -165,7 +165,7 @@ int runVideo (const juce::File& dir, bool trailer)
         { "MEMORIA", "dskmusic.com", 17.5, 22.0, true } };
     Setter setter = [] (MemoriaProcessor& p, double t)
     {
-        if (t < 0.02) prepareSound (p, 2, 3, 70.0f, 5);
+        if (t < 0.02) prepareSound (p, 2, 1, 70.0f, 5);
         setP (p, "memory", 0.1f + 0.85f * ramp (t, 4.0, 18.0));
         setP (p, "world", t > 8.0 ? 4.0f : 0.0f);
         setP (p, "world_level", 0.6f);

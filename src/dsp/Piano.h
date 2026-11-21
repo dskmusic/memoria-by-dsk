@@ -3,7 +3,7 @@
 #include "Filters.h"
 #include "Space.h"
 #include "Life.h"
-#include "Hands.h"
+#include "Composer.h"
 
 // Memoria piano engine: modal synthesis, no samples.
 // Every string partial is a decaying complex resonator (inharmonic frequency, two decay rates = the piano's
@@ -29,7 +29,7 @@ struct Telemetry
     std::array<std::atomic<float>, 128> keyLevel {};   // 0..1 per key: how loud each key rings (drives key lights / strings view)
     std::array<std::atomic<float>, 128> keyHit {};     // last hammer strength of the key (0..1), decays in the UI
     std::atomic<float> pedal { 0 };                    // sustain pedal 0..1
-    std::atomic<int> voices { 0 }, hitCounter { 0 }, chordRoot { 0 };
+    std::atomic<int> voices { 0 }, hitCounter { 0 }, chordRoot { 0 }, songBar { 0 }, songBars { 0 };
     std::atomic<bool> handsOn { false };
 };
 
@@ -87,8 +87,16 @@ private:
     int maxBlock = 512;
     std::array<float, 64> eff {};          // parameters after the macros (Memory, Warmth, Intimacy, Time, Space)
     Life life;
-    Hands hands;
-    std::vector<Hands::Ev> handEvs;
+    Score score;
+    size_t noteIdx = 0, pedIdx = 0;
+    struct PendOff { double beat; int note; };
+    std::vector<PendOff> pendOffs;
+    double songStart = 0;
+    int songIndex = 0;
+    uint32_t cfgHash = 0;
+    ComposeCfg cfgNow;
+    void composeSong();
+    void releaseHands();
     double beatClock = 0, bpm = 72;
     bool wasRunning = false, handsRunning = false;
     void startStopHands (const HostInfo& host);

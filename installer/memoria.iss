@@ -33,5 +33,9 @@ Name: "standalone"; Description: "Standalone application"; Types: full
 Source: "{#ArtDir}\VST3\Memoria by DSK.vst3\*"; DestDir: "{commoncf64}\VST3\Memoria by DSK.vst3"; Components: vst3; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#ArtDir}\Standalone\Memoria by DSK.exe"; DestDir: "{app}"; Components: standalone; Flags: ignoreversion
 
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop shortcut"; Components: standalone; Flags: unchecked
+
 [Icons]
+Name: "{autodesktop}\Memoria by DSK"; Filename: "{app}\Memoria by DSK.exe"; Components: standalone; Tasks: desktopicon; IconFilename: "{app}\Memoria by DSK.exe"
 Name: "{group}\Memoria by DSK"; Filename: "{app}\Memoria by DSK.exe"; Components: standalone

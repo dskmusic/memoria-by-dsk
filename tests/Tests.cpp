@@ -1,5 +1,6 @@
 // Memoria unit tests (run with: MemoriaTool test)
 #include "Tests.h"
+#include "preset/Song.h"
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_dsp/juce_dsp.h>
 #include <set>
@@ -258,32 +259,52 @@ static juce::AudioBuffer<float> renderHands (const gx::Preset& p, double secs, i
 
 static void testHands()
 {
-    std::puts ("[hands]");
-    gx::Preset base;
-    for (int m = 1; m < gx::handsNames().size(); ++m)
+    std::puts ("[hands / composer]");
+    int bad = 0;
+    for (int style = 0; style < gx::numSongStyles; ++style)
+        for (int scale = 0; scale < 8; ++scale)
+            for (int key = 0; key < 12; key += 3)
+                for (int bars : { 16, 32, 64 })
+                {
+                    gx::ComposeCfg c; c.style = style; c.scale = scale; c.key = key; c.bars = bars; c.seed = (uint32_t) (style * 131 + scale * 17 + key + bars);
+                    gx::Score s, s2; gx::compose (c, s); gx::compose (c, s2);
+                    bool ok = s.notes.size() > (size_t) bars * 2 && s.notes.size() == s2.notes.size() && s.bars == bars;
+                    for (size_t i = 0; i < s.notes.size(); ++i)
+                    {
+                        const auto& n = s.notes[i];
+                        ok &= n.note >= 21 && n.note <= 108 && n.vel >= 1 && n.vel <= 127 && n.len > 0 && n.start >= 0 && n.start < s.totalBeats;
+                        if (i > 0) ok &= s.notes[i - 1].start <= n.start;
+                        if (i < s2.notes.size()) ok &= n.note == s2.notes[i].note && n.start == s2.notes[i].start;
+                    }
+                    if (! ok) ++bad;
+                }
+    check (bad == 0, "composer: every style / scale / key / length gives a valid, deterministic score (" + juce::String (bad) + " bad)");
+    for (int style = 0; style < gx::numSongStyles; ++style)
     {
-        auto p = base; setParam (p, "hands", (float) m); setParam (p, "hands_tempo", 96.0f);
+        gx::ComposeCfg c; c.style = style; c.bars = 32; c.seed = 11 + (uint32_t) style;
+        gx::Score s; gx::compose (c, s);
+        int lo = 127, hi = 0; double vsum = 0;
+        for (auto& n : s.notes) { lo = std::min (lo, n.note); hi = std::max (hi, n.note); vsum += n.vel; }
+        std::puts (("    " + gx::handsStyleNames()[style] + ": " + juce::String ((int) s.notes.size()) + " notes, range " + juce::String (lo) + "-" + juce::String (hi) + ", mean velocity " + juce::String (vsum / (double) s.notes.size(), 0) + ", sections " + juce::String ((int) s.sections.size())).toRawUTF8());
+        check (s.sections.size() >= 4 && s.sections.front().type == 'I' && s.sections.back().type == 'O', gx::handsStyleNames()[style] + ": song form (intro ... outro)");
+        gx::ComposeCfg c2 = c; c2.seed += 1; gx::Score s3; gx::compose (c2, s3);
+        bool differs = s3.notes.size() != s.notes.size();
+        for (size_t i = 0; i < std::min (s.notes.size(), s3.notes.size()) && ! differs; ++i) differs = s.notes[i].note != s3.notes[i].note;
+        check (differs, gx::handsStyleNames()[style] + ": a new seed is a different song");
+    }
+    // audio: every style plays, deterministic at any block size, bounded
+    for (int style = 0; style < gx::numSongStyles; ++style)
+    {
+        gx::Preset p; setParam (p, "hands", 1.0f); setParam (p, "hands_style", (float) style); setParam (p, "hands_tempo", 110.0f); setParam (p, "hands_bars", 0.0f);
         const auto a = renderHands (p, 20.0, 512);
         const float d = rmsDb (a, 2.0, 20.0);
-        std::puts (("    " + gx::handsNames()[m] + ": " + juce::String (d, 1) + " dB, peak " + juce::String (analyse (a).peak, 2)).toRawUTF8());
-        check (analyse (a).finite && analyse (a).peak < 1.0f, gx::handsNames()[m] + ": bounded");
-        check (d > -45.0f, gx::handsNames()[m] + ": plays");
+        std::puts (("    audio " + gx::handsStyleNames()[style] + ": " + juce::String (d, 1) + " dB, peak " + juce::String (analyse (a).peak, 2)).toRawUTF8());
+        check (analyse (a).finite && analyse (a).peak < 1.0f && d > -45.0f, gx::handsStyleNames()[style] + ": plays, bounded");
         const auto b = renderHands (p, 20.0, 77);
         bool same = true;
         for (int i = 0; i < a.getNumSamples() && same; ++i) same = a.getSample (0, i) == b.getSample (0, i);
-        check (same, gx::handsNames()[m] + ": identical at any block size");
+        check (same, gx::handsStyleNames()[style] + ": identical at any block size");
     }
-    // all keys / scales / rates stay valid
-    int bad = 0;
-    for (int key = 0; key < 12; key += 5)
-        for (int sc = 0; sc < gx::handsScaleNames().size(); ++sc)
-            for (int rt = 0; rt < 3; ++rt)
-            {
-                auto p = base; setParam (p, "hands", 4.0f); setParam (p, "hands_key", (float) key); setParam (p, "hands_scale", (float) sc); setParam (p, "hands_rate", (float) rt);
-                const auto a = renderHands (p, 8.0, 512);
-                if (! analyse (a).finite || analyse (a).peak >= 1.0f || rmsDb (a, 1.0, 8.0) < -50.0f) ++bad;
-            }
-    check (bad == 0, "every key / scale / rate combination plays and stays bounded (" + juce::String (bad) + " bad)");
 }
 
 static void testGenerator()

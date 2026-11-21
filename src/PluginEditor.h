@@ -25,6 +25,7 @@ public:
     void showPage (int index);
     void setUiScale (float s);
     void toast (const juce::String& msg);
+    gx::ui::RoomScene& roomScene() { return pianoPage->scene; }
     void advanceFrames (double dt);   // used by the screenshot tool
     void rebuildUi();                 // language switch (also exercised by MemoriaTool screenshot)
     void videoFrame() { stopTimer(); timerCallback(); } // MemoriaTool video: one UI frame on the virtual clock
@@ -49,7 +50,6 @@ private:
     Root root;
     std::unique_ptr<gx::ui::Header> header;
     std::unique_ptr<gx::ui::PianoPage> pianoPage;
-    std::unique_ptr<gx::ui::LifePage> lifePage;
     std::unique_ptr<gx::ui::PresetsPage> presets;
     std::unique_ptr<gx::ui::ExportPage> exportPage;
     std::unique_ptr<gx::ui::HelpPage> helpPage;

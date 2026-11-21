@@ -1,4 +1,5 @@
 #include "Widgets.h"
+#include <map>
 
 namespace gx::ui
 {
@@ -87,15 +88,31 @@ bool pasteSection (MemoriaProcessor& p, const juce::String& group)
 }
 
 // ---------------------------------------------------------------- ParamKnob
+namespace
+{
+// UI names of the parameters in the interface language
+juce::String localName (const ParamDef& d)
+{
+    static const std::map<juce::String, const char*> es {
+        { "Tone", "Tono" }, { "Hammer", "Martillo" }, { "Dampers", "APAGAD." }, { "Detune", "DESAFIN." }, { "Stretch", "ESTIRAM." },
+        { "Dynamics", "DINÁMICA" }, { "Body", "Caja" }, { "Resonance", "Resonancia" }, { "Width", "Anchura" }, { "Room", "Sala" }, { "Room Size", "TAM. SALA" },
+        { "Memory", "Memoria" }, { "Warmth", "Calidez" }, { "Intimacy", "Intimidad" }, { "Time", "Tiempo" }, { "Space", "Espacio" }, { "Tape", "Cinta" },
+        { "Vinyl", "Vinilo" }, { "Wood", "Madera" }, { "World Level", "AMBIENTE" }, { "Density", "Densidad" }, { "Expression", "EXPRESIÓN" },
+        { "Endless", "Sin fin" }, { "Sustain", "Sustain" }, { "Tuning", "Afinación" } };
+    if (! uiEnglish()) { auto it = es.find (d.name); if (it != es.end()) return juce::String::fromUTF8 (it->second); }
+    return d.name;
+}
+}
+
 ParamKnob::ParamKnob (Context& c, int i, const juce::String& label, const juce::String& tip) : ctx (c), index (i)
 {
     const auto& d = paramDefs()[(size_t) i];
-    name = label.isNotEmpty() ? label : d.name;
+    name = label.isNotEmpty() ? label : localName (d);
     slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     slider.setPopupDisplayEnabled (true, true, nullptr, 2000);
     slider.setDoubleClickReturnValue (true, (double) d.def);
-    slider.setTooltip (tip.isNotEmpty() ? tip : d.name);
+    slider.setTooltip (tip.isNotEmpty() ? tip : localName (d));
     slider.getProperties().set ("bipolar", d.range.start < 0 && d.range.end > 0);
     addAndMakeVisible (slider);
     att = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (ctx.proc.apvts, d.id, slider);
@@ -150,8 +167,8 @@ void ParamKnob::showMenu()
 ParamToggle::ParamToggle (Context& c, int i, const juce::String& label)
 {
     const auto& d = paramDefs()[(size_t) i];
-    setButtonText (label.isNotEmpty() ? label : d.name.fromLastOccurrenceOf (" ", false, false).toUpperCase());
-    setTooltip (d.name);
+    setButtonText (label.isNotEmpty() ? label : localName (d).fromLastOccurrenceOf (" ", false, false).toUpperCase());
+    setTooltip (localName (d));
     att = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (c.proc.apvts, d.id, *this);
 }
 

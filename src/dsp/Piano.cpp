@@ -1,4 +1,5 @@
 #include "Piano.h"
+#include <algorithm>
 
 namespace gx
 {
@@ -74,7 +75,7 @@ void Engine::reset (uint32_t s)
     tickLeft = kTick; counter = 0;
     room.clear();
     life.reset (seed);
-    hands.reset (0.0); wasRunning = handsRunning = false; beatClock = 0;
+    wasRunning = handsRunning = false; beatClock = 0; pendOffs.clear(); noteIdx = pedIdx = 0; cfgHash = 0;
     pedalWasDown = false;
     for (auto& m : modeL) m.reset();
     for (auto& m : modeR) m.reset();
@@ -298,29 +299,38 @@ void Engine::handle (const juce::MidiMessage& m)
 }
 
 // once per absolute tick: pedal and dampers, culling of dead components, telemetry
+void Engine::composeSong()
+{
+    cfgNow.mode = (int) p (P::hands);
+    cfgNow.key = (int) p (P::handsKey); cfgNow.scale = (int) p (P::handsScale); cfgNow.style = (int) p (P::handsStyle);
+    cfgNow.bars = handsBarsFromIndex ((int) p (P::handsBars));
+    cfgNow.density = p (P::handsDensity); cfgNow.expression = p (P::handsExpress); cfgNow.pedal = p (P::handsPedal) > 0.5f;
+    cfgNow.bpm = bpm;
+    cfgNow.seed = (uint32_t) ((((int) p (P::handsSeed) - 1) + songIndex * 7919) % 99999) + 1u;
+    compose (cfgNow, score);
+}
+
+void Engine::releaseHands()
+{
+    for (auto& o : pendOffs) noteOff (o.note);
+    pendOffs.clear();
+    setPedal (0.0f);
+}
+
 void Engine::startStopHands (const HostInfo& host)
 {
     const bool hostRun = host.hostPlaying;
-    const bool run = (hostRun || host.internalPlay) && (int) p (P::hands) != hmOff;
+    const bool run = (hostRun || host.internalPlay) && (int) p (P::hands) != 0;
     bpm = hostRun && host.bpm > 20.0 ? host.bpm : (double) p (P::handsTempo);
-    if (run && ! wasRunning)
+    auto begin = [&] (double at)
     {
-        beatClock = hostRun && host.hasPpq ? host.ppq : 0.0;
-        hands.reset (beatClock);
-    }
-    else if (! run && wasRunning)
-    {
-        handEvs.clear(); hands.allOff (handEvs);
-        for (auto& e : handEvs) noteOff (e.note);
-        setPedal (0.0f);
-    }
-    else if (run && hostRun && host.hasPpq && std::abs (host.ppq - beatClock) > 0.08)
-    {
-        handEvs.clear(); hands.allOff (handEvs);
-        for (auto& e : handEvs) noteOff (e.note);
-        beatClock = host.ppq;
-        hands.reset (beatClock);
-    }
+        beatClock = at; songStart = at; songIndex = 0; noteIdx = pedIdx = 0;
+        pendOffs.clear(); composeSong();
+        cfgHash = 0;
+    };
+    if (run && ! wasRunning) begin (hostRun && host.hasPpq ? host.ppq : 0.0);
+    else if (! run && wasRunning) releaseHands();
+    else if (run && hostRun && host.hasPpq && std::abs (host.ppq - beatClock) > 0.08) { releaseHands(); begin (host.ppq); }
     wasRunning = handsRunning = run;
     tele.handsOn.store (run);
 }
@@ -329,16 +339,42 @@ void Engine::tickHands()
 {
     if (! handsRunning) return;
     beatClock += (double) kTick * bpm / (60.0 * sr);
-    HandsCfg c;
-    c.mode = (int) p (P::hands); c.key = (int) p (P::handsKey); c.scale = (int) p (P::handsScale); c.rate = (int) p (P::handsRate);
-    c.density = p (P::handsDensity); c.softness = p (P::handsSoft); c.pedal = p (P::handsPedal) > 0.5f; c.seed = seed;
-    hands.configure (c);
-    handEvs.clear();
-    bool pd = false, pc = false;
-    hands.advance (beatClock, handEvs, pd, pc);
-    for (auto& e : handEvs) { if (e.on) noteOn (e.note, (float) e.vel / 127.0f); else noteOff (e.note); }
-    if (pc) setPedal (pd ? 1.0f : 0.0f);
-    tele.chordRoot.store (hands.currentChordRoot());
+    // any change of the song parameters rewrites the song from the current position (a new seed starts a new song)
+    uint32_t h = 17;
+    for (int i : { (int) P::hands, (int) P::handsKey, (int) P::handsScale, (int) P::handsStyle, (int) P::handsBars, (int) P::handsSeed, (int) P::handsPedal })
+        h = h * 31u + (uint32_t) (int) p (i);
+    h = h * 31u + (uint32_t) (p (P::handsDensity) * 1000.0f) + 7u * (uint32_t) (p (P::handsExpress) * 1000.0f) + 13u * (uint32_t) (int) bpm;
+    if (h != cfgHash)
+    {
+        const bool first = cfgHash == 0;
+        cfgHash = h;
+        if (! first) composeSong();
+        const double sb = beatClock - songStart;
+        noteIdx = (size_t) (std::lower_bound (score.notes.begin(), score.notes.end(), sb, [] (const NoteEv& n, double v) { return n.start < v; }) - score.notes.begin());
+        pedIdx = (size_t) (std::lower_bound (score.pedal.begin(), score.pedal.end(), sb, [] (const PedEv& n, double v) { return n.beat < v; }) - score.pedal.begin());
+    }
+    double sb = beatClock - songStart;
+    if (sb >= score.totalBeats + 1.0)
+    {
+        if (p (P::handsEndless) > 0.5f)
+        {
+            songStart += score.totalBeats; ++songIndex; composeSong();
+            noteIdx = pedIdx = 0; sb = beatClock - songStart;
+        }
+        else sb = 1.0e9;
+    }
+    while (noteIdx < score.notes.size() && score.notes[noteIdx].start <= sb && sb < 1.0e8)
+    {
+        const auto& n = score.notes[noteIdx++];
+        noteOn (n.note, (float) n.vel / 127.0f);
+        pendOffs.push_back ({ songStart + n.start + n.len, n.note });
+    }
+    while (pedIdx < score.pedal.size() && score.pedal[pedIdx].beat <= sb && sb < 1.0e8) setPedal ((float) score.pedal[pedIdx++].val / 127.0f);
+    for (size_t i = 0; i < pendOffs.size();)
+        if (pendOffs[i].beat <= beatClock) { noteOff (pendOffs[i].note); pendOffs[i] = pendOffs.back(); pendOffs.pop_back(); }
+        else ++i;
+    tele.songBar.store (juce::jlimit (0, 100000, (int) std::floor (sb / std::max (1, score.beatsPerBar))));
+    tele.songBars.store (score.bars);
 }
 
 void Engine::tick()
