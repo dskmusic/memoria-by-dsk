@@ -12,6 +12,7 @@ ComposeCfg composeCfgFromPreset (const Preset& pr)
     c.bars = handsBarsFromIndex ((int) g (P::handsBars));
     c.density = g (P::handsDensity); c.expression = g (P::handsExpress); c.pedal = g (P::handsPedal) > 0.5f;
     c.bpm = g (P::handsTempo);
+    c.form = (int) g (P::handsForm);
     c.seed = (uint32_t) (((int) g (P::handsSeed) - 1) % 99999) + 1u;
     return c;
 }

@@ -330,6 +330,7 @@ void Engine::composeSong()
     cfgNow.bars = handsBarsFromIndex ((int) p (P::handsBars));
     cfgNow.density = p (P::handsDensity); cfgNow.expression = p (P::handsExpress); cfgNow.pedal = p (P::handsPedal) > 0.5f;
     cfgNow.bpm = bpm;
+    cfgNow.form = (int) p (P::handsForm);
     cfgNow.seed = (uint32_t) ((((int) p (P::handsSeed) - 1) + songIndex * 7919) % 99999) + 1u;
     compose (cfgNow, score);
 }
@@ -382,7 +383,7 @@ void Engine::tickHands()
     }
     // any change of the song parameters rewrites the song from the current position (a new seed starts a new song)
     uint32_t h = 17;
-    for (int i : { (int) P::hands, (int) P::handsKey, (int) P::handsScale, (int) P::handsStyle, (int) P::handsBars, (int) P::handsSeed, (int) P::handsPedal })
+    for (int i : { (int) P::hands, (int) P::handsKey, (int) P::handsScale, (int) P::handsStyle, (int) P::handsBars, (int) P::handsSeed, (int) P::handsPedal, (int) P::handsForm })
         h = h * 31u + (uint32_t) (int) p (i);
     h = h * 31u + (uint32_t) (p (P::handsDensity) * 1000.0f) + 7u * (uint32_t) (p (P::handsExpress) * 1000.0f) + 13u * (uint32_t) (int) bpm;
     if (h != cfgHash)
@@ -395,11 +396,11 @@ void Engine::tickHands()
         pedIdx = (size_t) (std::lower_bound (score.pedal.begin(), score.pedal.end(), sb, [] (const PedEv& n, double v) { return n.beat < v; }) - score.pedal.begin());
     }
     double sb = beatClock - songStart;
-    if (sb >= score.totalBeats + 1.0)
+    if (sb >= score.totalBeats + (cfgNow.form == 1 || cfgNow.form == 2 ? 0.0 : 1.0))
     {
         if (p (P::handsEndless) > 0.5f)
         {
-            songStart += score.totalBeats; ++songIndex; composeSong();
+            songStart += score.totalBeats; if (cfgNow.form == 0 || cfgNow.form == 3) ++songIndex; composeSong();
             noteIdx = pedIdx = 0; sb = beatClock - songStart;
         }
         else sb = 1.0e9;

@@ -16,6 +16,7 @@ namespace P
         memory, warmth, intimacy, time, spaceMacro,                 // macros
         roomType, tape, vinyl, wood, world, worldLevel,             // layers of life
         hands, handsKey, handsScale, handsStyle, handsBars, handsTempo, handsDensity, handsExpress, handsSeed, handsPedal, handsEndless,   // generative hands
+        handsForm,                                                  // song form (appended later: older presets get the default)
         numParams
     };
 }
@@ -43,6 +44,7 @@ const juce::StringArray& handsNames();
 const juce::StringArray& handsScaleNames();
 const juce::StringArray& handsStyleNames();
 const juce::StringArray& handsBarsNames();
+const juce::StringArray& handsFormNames();
 int handsBarsFromIndex (int index);
 const juce::StringArray& keyNames();
 }

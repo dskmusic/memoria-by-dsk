@@ -524,6 +524,27 @@ static void testMusicLint()
     check (worstPoly <= 18, "polyphony stays playable (" + juce::String (worstPoly) + " notes at once)");
 }
 
+static void testSongForms()
+{
+    std::puts ("[song forms]");
+    int bad = 0;
+    for (int form : { 1, 2, 3 })
+        for (int style : { 0, 1, 2, 3, 5, 7, 8, 9 })
+            for (uint32_t seed = 1; seed <= 4; ++seed)
+            {
+                gx::ComposeCfg c; c.form = form; c.style = style; c.seed = seed * 13u; c.key = 3; c.scale = 1;
+                gx::Score s; gx::compose (c, s);
+                if (s.notes.empty()) { ++bad; continue; }
+                double lastEnd = 0, first = 1e9;
+                for (auto& n : s.notes) { lastEnd = std::max (lastEnd, n.start + n.len); first = std::min (first, n.start); }
+                const double expect = form == 3 ? 22.0 * s.beatsPerBar : 8.0 * s.beatsPerBar;
+                if (form != 3) { if (std::abs (s.totalBeats - expect) > 1e-6 || lastEnd > s.totalBeats + 1e-6) ++bad; if (c.pedal && ! s.pedal.empty() && s.pedal.back().val != 0) ++bad; }
+                else if (s.bars != 22) ++bad;
+                if (first > 1.5) ++bad;
+            }
+    check (bad == 0, "loop / chorus / short forms end on the grid with everything released (" + juce::String (bad) + " problems)");
+}
+
 static void testGainStaging()
 {
     std::puts ("[gain staging]");
@@ -565,6 +586,7 @@ int runAll()
     testHostSilence();
     testMusicLint();
     testGainStaging();
+    testSongForms();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

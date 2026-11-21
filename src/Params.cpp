@@ -46,6 +46,11 @@ const juce::StringArray& handsBarsNames()
     return n;
 }
 int handsBarsFromIndex (int i) { static const int b[] { 16, 32, 48, 64, 96, 128 }; return b[juce::jlimit (0, 5, i)]; }
+const juce::StringArray& handsFormNames()
+{
+    static const juce::StringArray n { "Full song", "Loop (8 bars)", "Chorus (8 bars)", "Short piece" };
+    return n;
+}
 const juce::StringArray& keyNames()
 {
     static const juce::StringArray n { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
@@ -130,6 +135,7 @@ std::vector<ParamDef> build()
     b.addInt (handsSeed, "hands_seed", "Song Seed", 1, 99999, 1);
     b.addBool (handsPedal, "hands_pedal", "Pedal", true);
     b.addBool (handsEndless, "hands_endless", "Endless", true);
+    b.addChoice (handsForm, "hands_form", "Form", handsFormNames(), 0);
     return b.defs;
 }
 } // namespace

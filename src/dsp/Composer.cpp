@@ -300,6 +300,7 @@ struct Composer
     double humanBeats (float amountMs) { return (double) ((uni() - 0.5f) * 2.0f * amountMs * expr) * msBeat; }
     double rubato (int globalBar, double beatInBar, bool sectionEnd, bool outro) const
     {
+        if (c.form == 1 || c.form == 2) return 0.0;      // loops stay exactly on the grid
         const double pos = beatInBar / bpb;
         double d = 0;
         if (globalBar % 4 == 3) d += 0.05 * expr * pos;
@@ -324,7 +325,10 @@ struct Composer
         std::vector<Sec> s;
         const int total = std::max (8, c.bars);
         auto push = [&] (char t, int b) { s.push_back ({ t, b, 0 }); };
-        if (total <= 16) { push ('I', 2); push ('A', 4); push ('B', 4); push ('A', 4); push ('O', 2); }
+        if (c.form == 1) push ('A', 8);
+        else if (c.form == 2) push ('B', 8);
+        else if (c.form == 3) { push ('I', 2); push ('A', 8); push ('B', 8); push ('O', 4); }
+        else if (total <= 16) { push ('I', 2); push ('A', 4); push ('B', 4); push ('A', 4); push ('O', 2); }
         else
         {
             push ('I', 4);
@@ -727,8 +731,17 @@ struct Composer
             }
         }
         // the very end: let everything ring
-        out.totalBeats = (double) totalBars * bpb + 2.0;
-        if (c.pedal) out.pedal.push_back ({ out.totalBeats - 0.5, 0 });
+        const bool loopForm = c.form == 1 || c.form == 2;
+        out.totalBeats = (double) totalBars * bpb + (loopForm ? 0.0 : 2.0);
+        if (loopForm)
+        {   // a loop must end clean: nothing sounds past the last beat, the pedal is up
+            const double end = out.totalBeats;
+            for (auto& n : out.notes) n.len = std::min (n.len, end - 0.03 - n.start);
+            out.notes.erase (std::remove_if (out.notes.begin(), out.notes.end(), [end] (const NoteEv& n) { return n.len < 0.05 || n.start >= end - 0.05; }), out.notes.end());
+            out.pedal.erase (std::remove_if (out.pedal.begin(), out.pedal.end(), [end] (const PedEv& p) { return p.beat >= end - 0.06; }), out.pedal.end());
+            if (c.pedal) out.pedal.push_back ({ end - 0.06, 0 });
+        }
+        else if (c.pedal) out.pedal.push_back ({ out.totalBeats - 0.5, 0 });
         std::stable_sort (out.notes.begin(), out.notes.end(), [] (const NoteEv& a, const NoteEv& b) { return a.start < b.start; });
         std::stable_sort (out.pedal.begin(), out.pedal.end(), [] (const PedEv& a, const PedEv& b) { return a.beat < b.beat; });
     }

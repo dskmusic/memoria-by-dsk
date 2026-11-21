@@ -68,12 +68,16 @@ private:
     float markerBar = -1;
     void refreshScore();
     void randomise (bool all);
+    void loadFavs(); void saveFavs(); void refreshFavs(); int findFav() const; juce::var currentFav() const;
+    juce::Array<juce::var> favs;
     juce::File midiFile();
     void prepareWav();
     Preset exportPreset() const;
     uint32_t songHash() const;
 
-    ParamCombo mode, style, key, scale, bars;
+    ParamCombo mode, style, key, scale, bars, form;
+    juce::TextButton favSave;
+    juce::ComboBox favList;
     ParamKnob tempo, density, express;
     ParamToggle pedal, endless;
     juce::TextButton play { "PLAY" }, newVar, randomize, saveMidi, saveWav;

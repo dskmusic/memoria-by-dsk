@@ -35,7 +35,9 @@ struct ComposeCfg
     float density = 0.6f, expression = 0.6f;
     bool pedal = true;
     double bpm = 80;
+    int form = 0;                     // 0 full song, 1 loop (8 bars), 2 chorus (8 bars), 3 short piece
 };
+constexpr int songbookVersion = 3;    // favourites remember it: a later songbook changes what a seed plays
 
 void compose (const ComposeCfg& cfg, Score& out);
 }

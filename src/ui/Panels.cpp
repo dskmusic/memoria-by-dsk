@@ -149,7 +149,7 @@ void PianoPanel::resized()
 // ================================================================ HandsPanel
 HandsPanel::HandsPanel (Context& c)
     : Section (c, L ("MANOS: tocan solas", "HANDS: they play by themselves"), "hands"),
-      mode (c, P::hands), style (c, P::handsStyle), key (c, P::handsKey), scale (c, P::handsScale), bars (c, P::handsBars),
+      mode (c, P::hands), style (c, P::handsStyle), key (c, P::handsKey), scale (c, P::handsScale), bars (c, P::handsBars), form (c, P::handsForm),
       tempo (c, P::handsTempo), density (c, P::handsDensity), express (c, P::handsExpress), pedal (c, P::handsPedal, "PEDAL"), endless (c, P::handsEndless, L ("SIN FIN", "ENDLESS"))
 {
     accent = col::accent3;
@@ -170,9 +170,32 @@ HandsPanel::HandsPanel (Context& c)
     wavTile.getFile = [this] { return wavFile; };
     wavTile.onClick = [this] { if (wavState.load() == 0) prepareWav(); };
     status.setFont (font (12.0f)); status.setColour (juce::Label::textColourId, col::textDim); status.setJustificationType (juce::Justification::centredLeft);
-    for (auto* comp : std::initializer_list<juce::Component*> { &mode, &style, &key, &scale, &bars, &tempo, &density, &express, &pedal, &endless, &play, &newVar, &randomize, &saveMidi, &saveWav,
+    for (auto* comp : std::initializer_list<juce::Component*> { &mode, &style, &key, &scale, &bars, &form, &favSave, &favList, &tempo, &density, &express, &pedal, &endless, &play, &newVar, &randomize, &saveMidi, &saveWav,
                                                                  &lockStyle, &lockKey, &lockScale, &lockTempo, &midiTile, &wavTile, &status })
         addAndMakeVisible (comp);
+    form.setTooltip (L ("Forma: canción completa, bucle de 8 compases para tu DAW, solo estribillo o pieza corta", "Form: full song, an 8-bar loop for your DAW, chorus only or a short piece"));
+    favSave.setTooltip (L ("Guarda esta canción (estilo, tono, escala, tempo, semilla…) en tus favoritas", "Saves this song (style, key, scale, tempo, seed…) in your favourites"));
+    favList.setTextWhenNothingSelected (L ("Favoritas", "Favourites"));
+    favList.setTooltip (L ("Recupera una canción favorita", "Recall a favourite song"));
+    favSave.onClick = [this]
+    {
+        const int i = findFav();
+        if (i >= 0) favs.remove (i); else favs.add (currentFav());
+        saveFavs(); refreshFavs();
+    };
+    favList.onChange = [this]
+    {
+        const int id = favList.getSelectedId();
+        if (id < 1 || id > favs.size()) return;
+        const auto f = favs[id - 1];
+        auto set = [&] (const char* k, int idx) { if (f.hasProperty (k)) ctx.proc.setParamPlain (idx, (float) (double) f[k]); };
+        set ("style", P::handsStyle); set ("key", P::handsKey); set ("scale", P::handsScale); set ("tempo", P::handsTempo); set ("bars", P::handsBars); set ("form", P::handsForm);
+        set ("density", P::handsDensity); set ("express", P::handsExpress); set ("pedal", P::handsPedal); set ("seed", P::handsSeed);
+        ctx.proc.setParamPlain (P::hands, 1.0f);
+        if ((int) f.getProperty ("ver", 0) != songbookVersion && ctx.toast) ctx.toast (L ("Esta favorita se guardó con otro cancionero: puede sonar distinta", "This favourite was saved with another songbook: it may sound different"));
+        favList.setSelectedId (0, juce::dontSendNotification);
+    };
+    loadFavs(); refreshFavs();
     play.onClick = [this]
     {
         if (ctx.proc.getParam (P::hands) < 0.5f) ctx.proc.setParamPlain (P::hands, 1.0f);
@@ -227,15 +250,58 @@ HandsPanel::~HandsPanel()
 uint32_t HandsPanel::songHash() const
 {
     uint32_t h = 7;
-    for (int i : { (int) P::hands, (int) P::handsStyle, (int) P::handsKey, (int) P::handsScale, (int) P::handsBars, (int) P::handsSeed, (int) P::handsPedal })
+    for (int i : { (int) P::hands, (int) P::handsStyle, (int) P::handsKey, (int) P::handsScale, (int) P::handsBars, (int) P::handsSeed, (int) P::handsPedal, (int) P::handsForm })
         h = h * 31u + (uint32_t) (int) ctx.proc.getParam (i);
     return h * 31u + (uint32_t) (ctx.proc.getParam (P::handsDensity) * 1000.0f) + 7u * (uint32_t) (ctx.proc.getParam (P::handsExpress) * 1000.0f) + 13u * (uint32_t) (int) ctx.proc.getParam (P::handsTempo);
+}
+
+static juce::File favFile()
+{
+    auto d = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("DSK Music").getChildFile ("Memoria");
+    d.createDirectory();
+    return d.getChildFile ("favourites.json");     // shared by the plugin and the standalone
+}
+void HandsPanel::loadFavs()
+{
+    favs.clear();
+    const auto v = juce::JSON::parse (favFile());
+    if (auto* a = v.getArray()) for (auto& e : *a) favs.add (e);
+}
+void HandsPanel::saveFavs() { favFile().replaceWithText (juce::JSON::toString (juce::var (favs), true)); }
+juce::var HandsPanel::currentFav() const
+{
+    auto* o = new juce::DynamicObject();
+    auto g = [this] (int i) { return (double) ctx.proc.getParam (i); };
+    o->setProperty ("style", g (P::handsStyle)); o->setProperty ("key", g (P::handsKey)); o->setProperty ("scale", g (P::handsScale)); o->setProperty ("tempo", g (P::handsTempo));
+    o->setProperty ("bars", g (P::handsBars)); o->setProperty ("form", g (P::handsForm)); o->setProperty ("density", g (P::handsDensity)); o->setProperty ("express", g (P::handsExpress));
+    o->setProperty ("pedal", g (P::handsPedal)); o->setProperty ("seed", g (P::handsSeed)); o->setProperty ("ver", songbookVersion);
+    o->setProperty ("name", handsStyleNames()[(int) g (P::handsStyle)] + " · " + keyNames()[(int) g (P::handsKey)] + " · #" + juce::String ((int) g (P::handsSeed)));
+    return juce::var (o);
+}
+int HandsPanel::findFav() const
+{
+    for (int i = 0; i < favs.size(); ++i)
+    {
+        const auto& f = favs[i];
+        bool same = true;
+        static const std::pair<const char*, int> keys[] { { "style", P::handsStyle }, { "key", P::handsKey }, { "scale", P::handsScale }, { "seed", P::handsSeed }, { "form", P::handsForm }, { "bars", P::handsBars } };
+        for (auto& kv : keys) same &= (int) (double) f.getProperty (kv.first, -1) == (int) ctx.proc.getParam (kv.second);
+        if (same) return i;
+    }
+    return -1;
+}
+void HandsPanel::refreshFavs()
+{
+    favList.clear (juce::dontSendNotification);
+    for (int i = 0; i < favs.size(); ++i) favList.addItem (favs[i].getProperty ("name", "?").toString(), i + 1);
+    favSave.setButtonText (findFav() >= 0 ? L ("Quitar favorita", "Remove favourite") : L ("Guardar favorita", "Save favourite"));
 }
 
 void HandsPanel::refreshScore()
 {
     compose (composeCfgFromPreset (Preset::capture (ctx.proc)), score);
     scoreHash = songHash();
+    refreshFavs();
 }
 
 Preset HandsPanel::exportPreset() const
@@ -397,8 +463,8 @@ void HandsPanel::resized()
     auto k = r.removeFromTop (80);
     tempo.setBounds (k.removeFromLeft (66)); density.setBounds (k.removeFromLeft (66)); express.setBounds (k.removeFromLeft (66));
     k.removeFromLeft (10);
-    auto tg = k.removeFromLeft (110);
-    pedal.setBounds (tg.removeFromTop (28).reduced (0, 4)); endless.setBounds (tg.removeFromTop (28).reduced (0, 4));
+    auto tg = k.removeFromLeft (118);
+    pedal.setBounds (tg.removeFromTop (26).reduced (0, 3)); endless.setBounds (tg.removeFromTop (26).reduced (0, 3)); form.setBounds (tg.removeFromTop (26).reduced (0, 1));
     auto btn = k.reduced (0, 6);
     auto b1 = btn.removeFromTop (30);
     newVar.setBounds (b1.removeFromLeft (btn.getWidth() / 2 - 3)); b1.removeFromLeft (6); randomize.setBounds (b1);
@@ -408,7 +474,11 @@ void HandsPanel::resized()
     lockStyle.setBounds (lk.removeFromLeft (lw)); lockKey.setBounds (lk.removeFromLeft (lw)); lockScale.setBounds (lk.removeFromLeft (lw)); lockTempo.setBounds (lk);
     r.removeFromTop (8);
     auto ex = r.removeFromBottom (44);
-    status.setBounds (r.removeFromTop (20));
+    {
+        auto sr = r.removeFromTop (22);
+        favSave.setBounds (sr.removeFromRight (122).reduced (0, 1)); sr.removeFromRight (4); favList.setBounds (sr.removeFromRight (140).reduced (0, 1)); sr.removeFromRight (6);
+        status.setBounds (sr);
+    }
     r.removeFromTop (2);
     mapArea = r.withTrimmedBottom (8);
     mapArea.setHeight (juce::jmax (30, mapArea.getHeight()));
