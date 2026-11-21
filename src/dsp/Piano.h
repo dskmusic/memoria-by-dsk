@@ -31,6 +31,7 @@ struct Telemetry
     std::atomic<float> pedal { 0 };                    // sustain pedal 0..1
     std::atomic<int> voices { 0 }, hitCounter { 0 }, chordRoot { 0 }, songBar { 0 }, songBars { 0 };
     std::atomic<bool> handsOn { false };
+    std::atomic<int> sectionType { 0 };               // 0 verse / none, 1 pre-chorus or bridge, 2 chorus (drives the scene)
     std::array<std::atomic<int>, 128> keyStamp {};     // hitCounter value of the last hammer strike of each key
 };
 

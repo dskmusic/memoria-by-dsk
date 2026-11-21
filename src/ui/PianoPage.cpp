@@ -3,7 +3,7 @@
 namespace gx::ui
 {
 PianoPage::PianoPage (Context& c)
-    : Page (c), hands (c), gen (c), global (c),
+    : Page (c), sceneTime (c, P::sceneTime), sceneSeason (c, P::sceneSeason), hands (c), gen (c), global (c),
       piano (c, L ("Mecánica y cuerdas", "Action & strings"), "piano"),
       macros (c, L ("Macros: el recuerdo", "Macros: the memory"), "macro"),
       life (c, L ("Capas de vida", "Layers of life"), "life"),
@@ -22,7 +22,9 @@ PianoPage::PianoPage (Context& c)
                           "MEMORY: from a crisp, present studio piano to the worn memory of a tape found in an attic"));
     memoryAtt = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (c.proc.apvts, "memory", memory);
     gen.onGenerated = [this] (const Preset& p) { if (onLoaded) onLoaded (p); };
-    for (auto* comp : std::initializer_list<juce::Component*> { &scene, &memory, &hands, &gen, &global, &piano, &macros, &life, &space })
+    sceneTime.setTooltip (L ("Hora del día de la escena (el reloj de la pared la sigue)", "Hour of the day in the scene (the wall clock follows it)"));
+    sceneSeason.setTooltip (L ("Estación del año tras la ventana", "Season outside the window"));
+    for (auto* comp : std::initializer_list<juce::Component*> { &scene, &memory, &sceneTime, &sceneSeason, &hands, &gen, &global, &piano, &macros, &life, &space })
         addAndMakeVisible (comp);
 }
 
@@ -40,8 +42,11 @@ void PianoPage::resized()
 {
     auto r = getLocalBounds().reduced (10, 8);
     auto top = r.removeFromTop (juce::jmin (372, (r.getHeight() * 13) / 20));
-    auto left = top.removeFromLeft ((int) (top.getHeight() - 30) * 16 / 10 + 8);
+    auto left = top.removeFromLeft ((int) (top.getHeight() - 58) * 16 / 10 + 8);
     auto memRow = left.removeFromBottom (28);
+    auto sceneRow = left.removeFromBottom (26);
+    sceneTime.setBounds (sceneRow.removeFromLeft (sceneRow.getWidth() / 2 - 3));
+    sceneSeason.setBounds (sceneRow.withTrimmedLeft (6));
     scene.setBounds (left);
     memory.setBounds (memRow.withTrimmedLeft (74).withTrimmedRight (74));
     top.removeFromLeft (8);

@@ -19,9 +19,9 @@ RoomScene::RoomScene()
 }
 
 // static picture: walls, window and what is outside it, piano, the shape of the light beam
-void RoomScene::rebuild (int world)
+void RoomScene::rebuild (int world, int tod, int season)
 {
-    built = world;
+    built = world + 8 * tod + 64 * season;
     const size_t n = (size_t) (W * H);
     baseR.assign (n, 0); baseG = baseB = beam = candle = glow = vig = baseR;
     // outside: sky colours by world
@@ -33,7 +33,10 @@ void RoomScene::rebuild (int world)
         { 0.02f, 0.04f, 0.10f, 0.07f, 0.09f, 0.18f, 0.6f, 0.8f, 0.18f },   // fireplace: night
         { 0.50f, 0.42f, 0.62f, 1.00f, 0.70f, 0.48f, 0.85f, 0.3f, 0.85f },   // dawn
         { 0.20f, 0.14f, 0.30f, 0.85f, 0.45f, 0.38f, 0.6f, 0.4f, 0.45f } };  // distant audience: violet dusk
-    const auto& sk = sky[juce::jlimit (0, 5, world)];
+    const auto lk = lookFor (world, tod, season);
+    const float lum = 0.3f * lk.v[kSunR] + 0.59f * lk.v[kSunG] + 0.11f * lk.v[kSunB];
+    const Sky sk { lk.v[kTopR], lk.v[kTopG], lk.v[kTopB], lk.v[kBotR], lk.v[kBotG], lk.v[kBotB], lk.v[kAmb] * (1.0f - 0.35f * lk.v[kNight]), lk.v[kNight] > 0.5f ? 0.8f : 0.3f, juce::jlimit (0.1f, 1.0f, 0.15f + 0.75f * lum) };
+    (void) sky;
     skyR = lerpf (sk.tr, sk.br, 0.6f); skyG = lerpf (sk.tg, sk.bg, 0.6f); skyB = lerpf (sk.tb, sk.bb, 0.6f);
     ambient = sk.amb; warm = sk.warm;
     const float beamI = sk.beamI;
@@ -77,11 +80,22 @@ void RoomScene::rebuild (int world)
                     const float dx = (wu - 0.68f) * 0.9f, dy = (wv - 0.72f) * 1.4f, d = std::sqrt (dx * dx + dy * dy);
                     const float sun = std::exp (-d * 5.0f) * 0.6f + (d < 0.05f ? 0.8f : 0.0f);
                     sr += sun * sk.br; sg += sun * sk.bg * 0.9f; sb += sun * sk.bb * 0.7f;
-                    if (world == 3 && hash2 (std::floor (wu * 40), std::floor (wv * 40)) > 0.985f && wv < 0.6f) { sr += 0.5f; sg += 0.5f; sb += 0.6f; }
+                    if (lk.v[kNight] > 0.5f && hash2 (std::floor (wu * 40), std::floor (wv * 40)) > 0.985f && wv < 0.6f) { sr += 0.5f; sg += 0.5f; sb += 0.6f; }
                     const float hill = 0.80f + 0.05f * std::sin (wu * 8.0f) + 0.03f * std::sin (wu * 21.0f + 1.0f);
                     const float tx = wu - 0.25f, ty = wv - 0.66f;
                     const bool tree = (tx * tx * 6.0f + ty * ty * 2.2f < 0.03f && wv < hill) || (std::abs (tx) < 0.012f && wv > 0.66f && wv < hill + 0.03f);
-                    if (wv > hill || tree) { sr *= 0.12f; sg *= 0.12f; sb *= 0.14f; }
+                    if (wv > hill || tree)
+                    {
+                        if (lk.v[kSeason] < 0.5f) { sr *= 0.12f; sg *= 0.12f; sb *= 0.14f; }
+                        else
+                        {
+                            const float lt = (0.25f + 0.9f * lk.v[kOutL]) * (0.8f + 0.4f * hash2 (std::floor (wu * 90.0f), std::floor (wv * 90.0f)));
+                            const bool crown = tree && wv < hill && std::abs (tx) >= 0.012f;
+                            const float* c3 = crown ? &lk.v[kFoR] : &lk.v[kGrR];
+                            const float fa = crown ? juce::jmax (lk.v[kFoAmt], 0.25f) : 1.0f;
+                            sr = lerpf (sr * 0.5f, c3[0] * lt, fa); sg = lerpf (sg * 0.5f, c3[1] * lt, fa); sb = lerpf (sb * 0.5f, c3[2] * lt, fa);
+                        }
+                    }
                     
                     r = sr * 1.5f; g = sg * 1.5f; b = sb * 1.5f;
                 }
@@ -176,6 +190,7 @@ RoomUniforms RoomScene::uniforms() const
     u.time = (float) f.time; u.memory = f.memory; u.age = f.timeAge; u.world = (float) f.worldType; u.energy = f.energy;
     u.scale = quality == 0 ? 0.5f : quality == 1 ? 0.75f : 1.0f;
     for (int i = 0; i < 88; ++i) u.keys[i] = juce::jlimit (0.0f, 1.0f, f.keyLevel[(size_t) (21 + i)] * 3.0f);
+    u.look = look; u.look.v[kHours] += (float) (f.time / 3600.0); u.seed = f.seed; u.section = sectionEnv;
     u.hit = hitEnv; u.pedal = f.pedal; u.flame = flame; u.intimacy = f.intimacy; u.warmth = f.warmth; u.space = f.space;
     return u;
 }
@@ -190,6 +205,11 @@ void RoomScene::tick (const Frame& fr)
     const bool hit = fr.hitCounter != lastHits;
     lastHits = fr.hitCounter;
     hitEnv = hit ? 1.0f : hitEnv * (float) std::exp (-dt * 3.0);
+    {   // the look eases towards the chosen hour / season; the chorus lifts the light a little
+        const auto tgt = lookFor (fr.worldType, fr.sceneTime, fr.sceneSeason);
+        if (! lookInit) { look = tgt; lookInit = true; } else easeLook (look, tgt, 1.0f - (float) std::exp (-dt * 1.4));
+        sectionEnv += ((fr.section >= 2 ? 1.0f : fr.section == 1 ? 0.4f : 0.0f) - sectionEnv) * (1.0f - (float) std::exp (-dt * 0.8));
+    }
     for (auto& m : motes)
     {
         if (hit) { m.vx += (rng.nextFloat() - 0.5f) * 0.05f; m.vy -= 0.02f * rng.nextFloat(); }
@@ -222,7 +242,7 @@ void RoomScene::tick (const Frame& fr)
 void RoomScene::renderNow (const Frame& fr)
 {
     f = fr;
-    if (built != fr.worldType || baseR.empty()) rebuild (fr.worldType);
+    if (built != fr.worldType + 8 * fr.sceneTime + 64 * fr.sceneSeason || baseR.empty()) rebuild (fr.worldType, fr.sceneTime, fr.sceneSeason);
     const float mem = juce::jlimit (0.0f, 1.0f, fr.memory), age = juce::jlimit (0.0f, 1.0f, fr.timeAge);
     const float aging = juce::jlimit (0.0f, 1.0f, mem * (0.55f + 0.45f * age));
     const float beamI = 0.9f * (0.8f + 0.4f * fr.energy);

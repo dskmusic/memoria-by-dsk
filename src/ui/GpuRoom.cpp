@@ -14,6 +14,8 @@ void main() { gl_Position = vec4 (position, 0.0, 1.0); }
 // ------------------------------------------------------------------ the room
 const char* roomShader = R"GLSL(
 uniform vec2 uRes;
+uniform vec3 uTop, uBot, uSunCol, uGround, uFoliage;
+uniform float uSunI, uSunPx, uSunPy, uDirX, uDirY, uAmb, uNight, uCloud, uWind, uRain, uOutL, uFoAmt, uSnow, uBlossom, uLeaf, uSeason, uHours, uSeed, uSection;
 uniform float uTime, uMemory, uAge, uWorld, uEnergy, uHit, uPedal, uFlame, uIntimacy, uWarmth, uSpace;
 uniform float uKeys[88];
 #ifdef MINI
@@ -62,7 +64,8 @@ vec2 opU (vec2 a, vec2 b) { return a.x < b.x ? a : b; }
 const float WY0 = 0.95, WY1 = 2.55, WX0 = -2.55, WX1 = -0.65;
 const vec3 PIANO = vec3 (1.35, 0.0, -2.62);
 const vec3 FLAMEP = vec3 (1.95, 1.40, -2.62);
-const vec3 SUNL = vec3 (-0.33, 0.40, -0.85);       // direction towards the light (through the window in the back wall)
+vec3 SUNL;                                          // direction towards the light (through the window in the back wall); set in main from the hour
+const vec3 CLK = vec3 (0.20, 2.38, -2.99);          // the wall clock
 
 vec2 map (vec3 p)
 {
@@ -81,9 +84,19 @@ vec2 map (vec3 p)
     r = opU (r, vec2 (min (dFrame, dMull), 11.0));
     r = opU (r, vec2 (sdBox (p - vec3 (wc.x, WY0 - 0.03, -2.88), vec3 (wh.x + 0.1, 0.022, 0.15)), 11.0));
     float fold = 0.018 * sin (p.x * 34.0 + p.y * 1.5) + 0.01 * sin (p.x * 71.0);
-    if (uWorld > 1.5 && uWorld < 2.5) fold += 0.07 * (0.5 + 0.5 * sin (uTime * 0.31)) * (1.9 - p.y * 0.5) * sin (uTime * 1.3 + p.y * 1.8 + p.x * 3.0);
+    float sway = uWind * 0.07 + 0.045 * clamp (uEnergy * 4.0 + uSection, 0.0, 1.0);
+    fold += sway * (0.5 + 0.5 * sin (uTime * 0.31)) * (1.9 - p.y * 0.5) * sin (uTime * 1.3 + p.y * 1.8 + p.x * 3.0);
     r = opU (r, vec2 (sdBox (p - vec3 (WX0 - 0.22, 1.62, -2.86), vec3 (0.2 + fold, 1.55, 0.12)), 8.0));
     r = opU (r, vec2 (sdBox (p - vec3 (WX1 + 0.22, 1.62, -2.86), vec3 (0.2 + fold, 1.55, 0.12)), 8.0));
+    // wall clock: brass bezel and enamel dial (the hands are painted on the dial in material())
+    vec3 cq = p - CLK;
+    if (abs (cq.x) < 0.36 && abs (cq.y) < 0.36 && cq.z < 0.3)
+    {
+        float cd = length (cq.xy);
+        r = opU (r, vec2 (max (abs (cd - 0.2625) - 0.0275, abs (cq.z - 0.03) - 0.045), 14.0));
+        r = opU (r, vec2 (max (cd - 0.236, abs (cq.z - 0.02) - 0.018), 15.0));
+        r = opU (r, vec2 (max (cd - 0.31, abs (cq.z - 0.0) - 0.012), 11.0));
+    }
     // picture on the back wall
     r = opU (r, vec2 (sdBox (p - vec3 (1.35, 1.95, -2.975), vec3 (0.42, 0.30, 0.02)), 13.0));
     // the piano (upright) and its bench, only evaluated near them
@@ -204,31 +217,86 @@ float windowLight (vec3 q)
 
 vec3 skyColour (vec2 w)
 {
-    int wd = int (uWorld + 0.5);
-    vec3 top = vec3 (0.62, 0.46, 0.34), bot = vec3 (1.0, 0.80, 0.50);
-    float sunI = 1.0; vec2 sunP = vec2 (0.68, 0.30);
-    if (wd == 1) { top = vec3 (0.36, 0.42, 0.50); bot = vec3 (0.58, 0.62, 0.68); sunI = 0.0; }
-    else if (wd == 2) { top = vec3 (0.38, 0.52, 0.72); bot = vec3 (0.88, 0.86, 0.80); sunI = 0.55; sunP = vec2 (0.35, 0.3); }
-    else if (wd == 3) { top = vec3 (0.01, 0.02, 0.06); bot = vec3 (0.05, 0.07, 0.15); sunI = 0.0; }
-    else if (wd == 4) { top = vec3 (0.45, 0.38, 0.62); bot = vec3 (1.0, 0.68, 0.46); sunI = 0.9; sunP = vec2 (0.55, 0.22); }
-    else if (wd == 5) { top = vec3 (0.18, 0.12, 0.30); bot = vec3 (0.85, 0.42, 0.38); sunI = 0.3; sunP = vec2 (0.25, 0.2); }
-    vec3 c = mix (bot, top, pow (clamp (w.y, 0.0, 1.0), 0.6));
+    vec2 sunP = vec2 (uSunPx, uSunPy);
+    vec3 sg = uSunCol / max (max (uSunCol.r, max (uSunCol.g, uSunCol.b)), 0.001);
+    vec3 c = mix (uBot, uTop, pow (clamp (w.y, 0.0, 1.0), 0.6));
     float d = length ((w - sunP) * vec2 (1.0, 1.2));
-    c += vec3 (1.0, 0.8, 0.5) * sunI * (exp (-d * 6.0) * 0.7 + ss (0.045, 0.03, d) * 1.2);
-    float cl = fbm (vec2 (w.x * 3.0 + uTime * (wd == 2 ? 0.09 : 0.01), w.y * 6.0));
-    c = mix (c, c * 0.7 + vec3 (0.15), ss (0.5, 0.8, cl) * (wd == 1 ? 0.8 : 0.35));
-    if (wd == 3)
+    c += sg * uSunI * (exp (-d * 6.0) * 0.7 + ss (0.045, 0.03, d) * 1.2);
+    c += vec3 (0.75, 0.82, 1.0) * uNight * (exp (-d * 7.0) * 0.30 + ss (0.04, 0.028, d) * 0.85);    // the moon
+    float cl = fbm (vec2 (w.x * 3.0 + uTime * (0.01 + 0.08 * uWind), w.y * 6.0));
+    c = mix (c, c * 0.7 + vec3 (0.15), ss (0.5, 0.8, cl) * uCloud);
+    if (uNight > 0.01)
     {
-        vec2 g = floor (w * 44.0);
-        c += step (0.985, hash12 (g)) * vec3 (0.7, 0.75, 0.9) * (0.5 + 0.5 * sin (uTime * 2.0 + hash12 (g) * 30.0));
+        vec2 g = w * 44.0, gid = floor (g);
+        vec2 gf = fract (g) - 0.5 - (vec2 (hash12 (gid + 1.3), hash12 (gid + 2.9)) - 0.5) * 0.5;
+        c += step (0.985, hash12 (gid)) * ss (0.20, 0.0, length (gf)) * vec3 (0.7, 0.75, 0.9) * (0.5 + 0.5 * sin (uTime * 2.0 + hash12 (gid) * 30.0)) * uNight;
     }
     float hill = 0.22 + 0.05 * sin (w.x * 8.0) + 0.03 * sin (w.x * 21.0 + 1.0);
     vec3 dark = c * 0.09 + vec3 (0.0, 0.004, 0.01);
     vec2 t = w - vec2 (0.25, 0.34);
-    if (wd == 2) t.x += 0.012 * sin (uTime * 1.7 + w.y * 6.0) * (0.5 + 0.5 * sin (uTime * 0.4));
+    t.x += 0.012 * sin (uTime * 1.7 + w.y * 6.0) * (0.5 + 0.5 * sin (uTime * 0.4)) * uWind;
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
-    if (w.y < hill || crown < 0.0 || (abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12)) c = dark;
-    return c * 1.25;
+    float crownE = crown + 0.07 * (fbm (t * 22.0 + 5.0) - 0.5);
+    bool isTrunk = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
+    bool isGround = w.y < hill;
+    c *= mix (1.0, 0.60, uSeason);
+    vec3 outc = c;
+    float outK = 1.25;
+    if (isGround || crownE < 0.0 || isTrunk)
+    {
+        if (uSeason < 0.5) outc = dark;
+        else
+        {
+            outK = 0.72;
+            vec3 lightC = mix (vec3 (1.0), uBot * 1.25, 0.5) * (0.20 + 0.65 * uOutL);
+            float far = ss (hill - 0.07, hill, w.y);
+            vec3 gcol = uGround * lightC * (0.78 + 0.42 * fbm (w * vec2 (24.0, 70.0)));
+            gcol *= 0.80 + 0.35 * ss (0.0, hill, w.y);
+            gcol = mix (gcol, c * 0.9, 0.22 * far + 0.12);
+            outc = gcol;
+            vec3 bark = vec3 (0.16, 0.11, 0.08) * lightC;
+            if (isTrunk) outc = bark * (0.8 + 0.4 * fbm (vec2 (t.x * 90.0, t.y * 8.0)));
+            if (crownE < 0.0 && ! isGround)
+            {
+                float cover = fbm (t * 17.0 + 3.0);
+                float leaf = ss (uFoAmt * 0.95 + 0.05, uFoAmt * 0.95 - 0.12, cover);
+                float shade = (0.42 + 0.62 * ss (-0.14, 0.12, t.y)) * (0.62 + 0.9 * fbm (t * 40.0 + 2.0));
+                vec3 fol = uFoliage * lightC * shade;
+                fol += uBlossom * step (0.74, fbm (t * 34.0 + 7.0)) * vec3 (0.95, 0.72, 0.78) * lightC * 0.8;
+                float twig = step (0.60, fbm (vec2 (t.x * 24.0, t.y * 11.0))) * (1.0 - 0.9 * uFoAmt);
+)GLSL" R"GLSL(
+                outc = mix (c, bark, twig * 0.85);
+                outc = mix (outc, fol, leaf * uFoAmt * 1.1);
+                outc = mix (outc, vec3 (0.93, 0.95, 1.0) * lightC, uSnow * twig * 0.5);
+            }
+        }
+    }
+    return outc * outK;
+}
+
+vec4 fallers (vec2 uv)
+{
+    vec4 r = vec4 (0.0);
+    float amt = max (uSnow, max (uLeaf, uBlossom * 0.6));
+    if (amt < 0.01) return r;
+    for (int k = 0; k < 3; k++)
+    {
+        float fk = float (k), s = 9.0 + 7.0 * fk;
+        vec2 g = uv * vec2 (s * 0.8, s) + vec2 (fk * 7.3, fk * 2.9);
+        g.y += uTime * (0.35 + 0.18 * fk) * (uSnow > 0.5 ? 1.0 : 0.6);
+        g.x += sin (uTime * 0.5 + fk * 3.0 + g.y * 0.6) * 0.5;
+        vec2 id = floor (g), f = fract (g) - 0.5;
+        float h = hash12 (id + fk * 5.1);
+        if (h > amt * 0.5) continue;
+        vec2 off = (vec2 (hash12 (id + 1.7), hash12 (id + 8.3)) - 0.5) * 0.5;
+        vec2 sc2 = uSnow > 0.5 ? vec2 (1.0, 1.0) : vec2 (1.0, 1.9);
+        float d = length ((f - off) * sc2);
+        float rad = (0.08 + 0.05 * hash12 (id + 3.3)) * (1.0 - 0.18 * fk);
+        float a = clamp (exp (-d * d / (rad * rad * 0.35)) * (0.60 + 0.15 * fk) - 0.05, 0.0, 1.0);
+        vec3 col = uSnow > 0.5 ? vec3 (0.95, 0.96, 1.0) : (uLeaf > 0.5 ? mix (vec3 (0.85, 0.42, 0.10), vec3 (0.62, 0.20, 0.06), hash12 (id + 9.9)) : vec3 (0.97, 0.78, 0.82));
+        r.rgb = mix (r.rgb, col, a); r.a = max (r.a, a);
+    }
+    return r;
 }
 
 vec3 rainDrops (vec2 uv, float t)
@@ -255,22 +323,18 @@ vec3 windowSky (vec3 p)
 {
     vec2 wc = vec2 (0.5 * (WX0 + WX1), 0.5 * (WY0 + WY1)), wh = vec2 (0.5 * (WX1 - WX0), 0.5 * (WY1 - WY0));
     vec2 wu = vec2 ((p.x - (wc.x - wh.x)) / (2.0 * wh.x), (p.y - (wc.y - wh.y)) / (2.0 * wh.y));
-    vec3 rd = int (uWorld + 0.5) == 1 ? rainDrops (wu * vec2 (1.3, 1.0), uTime) : vec3 (0.0);
+    vec3 rd = uRain > 0.5 ? rainDrops (wu * vec2 (1.3, 1.0), uTime) : vec3 (0.0);
     vec3 sc = skyColour (wu + rd.xy * 0.06);
-    if (int (uWorld + 0.5) == 1) sc = sc * (0.80 + rd.z * 0.45) + rd.z * 0.22;
+    if (uRain > 0.5) sc = sc * (0.80 + rd.z * 0.45) + rd.z * 0.22;
+    vec4 fl = fallers (wu);
+    sc = mix (sc, fl.rgb * (0.30 + 0.9 * uOutL), fl.a * 0.9);
+    float edge = min (min (wu.x, 1.0 - wu.x), min (wu.y, 1.0 - wu.y) * 1.6);
+    float frost = uSnow * ss (0.17, 0.0, edge + 0.08 * fbm (wu * 16.0));
+    sc = mix (sc, vec3 (0.82, 0.88, 0.95) * (0.45 + 0.55 * uOutL), frost * 0.5);
     return sc;
 }
 
-vec3 sunColour()
-{
-    int wd = int (uWorld + 0.5);
-    if (wd == 1) return vec3 (0.55, 0.65, 0.85) * 0.35;
-    if (wd == 2) return vec3 (0.95, 0.90, 0.80) * 0.85;
-    if (wd == 3) return vec3 (0.45, 0.55, 0.95) * 0.22;
-    if (wd == 4) return vec3 (1.0, 0.70, 0.55) * 1.0;
-    if (wd == 5) return vec3 (0.85, 0.50, 0.70) * 0.55;
-    return vec3 (1.0, 0.78, 0.50) * 1.25;
-}
+vec3 sunColour() { return uSunCol; }
 
 // key index (0..87) under a point of the keyboard, and which key it is
 float keyDown (float midiIdx)
@@ -279,9 +343,64 @@ float keyDown (float midiIdx)
 #ifdef LITE
     return v;
 #endif
-)GLSL" R"GLSL(
     for (int i = 0; i < 88; i++) if (float (i) == midiIdx) v = uKeys[i];
     return v;
+}
+
+// a soft, faded photograph that changes with the preset (seed): horizon, a couple of figures out of focus, grain
+vec3 photo (vec2 u)
+{
+    float s = fract (uSeed * 0.6180339), s2 = fract (uSeed * 0.3819 + 0.31);
+    float hz = -0.25 + 0.5 * s;
+    float tone = 0.62 + 0.25 * fbm (u * 2.0 + s * 9.0);
+    vec3 sky = mix (vec3 (0.80, 0.74, 0.62), vec3 (0.55, 0.52, 0.48), ss (hz, 1.0, u.y));
+    vec3 gnd = mix (vec3 (0.36, 0.31, 0.24), vec3 (0.20, 0.17, 0.13), ss (hz, -1.0, u.y));
+    vec3 c = mix (gnd, sky, ss (hz - 0.06, hz + 0.06, u.y));
+    float bx = -0.5 + s2;
+    float fig = ss (0.30, 0.0, length ((u - vec2 (bx, hz + 0.12)) * vec2 (2.4, 0.95)) - 0.22);
+    float fig2 = ss (0.26, 0.0, length ((u - vec2 (bx + 0.30, hz + 0.05)) * vec2 (2.8, 1.1)) - 0.16);
+    c = mix (c, vec3 (0.10, 0.085, 0.07), max (fig, fig2) * 0.85);
+    c *= tone + 0.2;
+    c = mix (c, vec3 (dot (c, vec3 (0.33))), 0.55);
+    c *= mix (vec3 (1.08, 0.97, 0.80), vec3 (0.92, 1.0, 1.08), step (0.78, s));
+    c *= 1.0 - 0.45 * dot (u, u) * 0.5;
+    c += (fbm (u * 90.0) - 0.5) * 0.12;
+    return c;
+}
+
+float segD (vec2 p, vec2 a, vec2 b)
+{
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp (dot (pa, ba) / dot (ba, ba), 0.0, 1.0);
+    return length (pa - ba * h);
+}
+
+// the dial of the clock: ticks, hands (with a soft shadow), seconds hand and hub; the time comes from uHours
+vec3 clockDial (vec2 cp)
+{
+    float cr = length (cp), an = atan (cp.x, cp.y);
+    vec3 face = vec3 (0.88, 0.84, 0.72) * (0.93 + 0.07 * fbm (cp * 40.0));
+    face *= 1.0 - 0.18 * ss (0.14, 0.24, cr);
+    vec3 ink = vec3 (0.07, 0.06, 0.055);
+    float pxm = 6.2831853 * cr;
+    float fm = abs (fract (an * 60.0 / 6.2831853 + 0.5) - 0.5) * pxm / 60.0;
+    float fh = abs (fract (an * 12.0 / 6.2831853 + 0.5) - 0.5) * pxm / 12.0;
+    float mt = ss (0.0018, 0.0008, fm) * step (0.205, cr) * step (cr, 0.225);
+    float ht = ss (0.0042, 0.0028, fh) * step (0.182, cr) * step (cr, 0.226);
+    float ring = ss (0.0016, 0.0006, abs (cr - 0.229)) + ss (0.0012, 0.0004, abs (cr - 0.1985));
+    face = mix (face, ink, clamp (max (max (mt, ht), ring * 0.8), 0.0, 1.0));
+    float hh = mod (uHours, 12.0);
+    float aH = hh / 12.0 * 6.2831853, aM = fract (hh) * 6.2831853, aS = floor (mod (uHours * 3600.0, 60.0)) / 60.0 * 6.2831853;
+    vec2 dH = vec2 (sin (aH), cos (aH)), dM = vec2 (sin (aM), cos (aM)), dS = vec2 (sin (aS), cos (aS));
+    vec2 so = vec2 (0.007, -0.010);
+    float shadow = max (ss (0.010, 0.002, segD (cp - so, -dH * 0.03, dH * 0.125)), ss (0.007, 0.001, segD (cp - so, -dM * 0.035, dM * 0.19)));
+    face *= 1.0 - 0.38 * shadow;
+    float hand = max (ss (0.0075, 0.0055, segD (cp, -dH * 0.03, dH * 0.125)), ss (0.0050, 0.0033, segD (cp, -dM * 0.035, dM * 0.19)));
+    face = mix (face, ink, hand);
+    float sec = ss (0.0024, 0.0013, segD (cp, -dS * 0.05, dS * 0.215)) + ss (0.011, 0.008, length (cp - dS * 0.17) - 0.0);
+    face = mix (face, vec3 (0.55, 0.07, 0.05), clamp (sec * step (0.0, 1.0) * 0.9, 0.0, 1.0) * (1.0 - hand * 0.0));
+    face = mix (face, vec3 (0.75, 0.55, 0.22), ss (0.012, 0.009, cr));
+    return face;
 }
 
 // material at a point: albedo, roughness, base reflectivity
@@ -360,10 +479,12 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
     {
         vec2 u = p.xy - vec2 (1.35, 1.95);
         float inside = step (abs (u.x), 0.37) * step (abs (u.y), 0.255);
-        vec3 art = mix (vec3 (0.18, 0.26, 0.32), vec3 (0.60, 0.40, 0.22), fbm (u * 5.0 + 2.0));
-        alb = mix (vec3 (0.28, 0.17, 0.08), art, inside); rough = 0.5;
+        float mat = step (abs (u.x), 0.34) * step (abs (u.y), 0.225);
+        vec3 art = photo (u / vec2 (0.34, 0.225));
+        alb = mix (vec3 (0.28, 0.17, 0.08), mix (vec3 (0.80, 0.76, 0.66), art, mat), inside); rough = 0.5;
     }
-    else { alb = vec3 (0.75, 0.55, 0.22); rough = 0.25; f0 = 0.6; }                // brass
+    else if (id < 14.5) { alb = vec3 (0.75, 0.55, 0.22); rough = 0.25; f0 = 0.6; }                // brass
+    else { alb = clockDial (p.xy - CLK.xy); rough = 0.22; f0 = 0.05; }                              // the clock dial
 }
 
 vec3 environment (vec3 r, float rough)
@@ -385,8 +506,9 @@ vec3 shadeHit (vec3 ro, vec3 rd, float t, float id)
     if (id > 7.5 && id < 8.5) n = normalize (n + vec3 (0.5 * cos (p.x * 34.0 + p.y * 1.5), 0.0, 0.0) * 0.4);
     float ao = calcAO (p, n);
     vec3 sc = sunColour();
-    float flick = uFlame * (0.94 + 0.06 * sin (uTime * 11.0)) + 0.16 * uEnergy + 0.10 * uHit;
+    float flick = uFlame * (0.94 + 0.06 * sin (uTime * 11.0)) + 0.16 * uEnergy + 0.10 * uHit + 0.12 * uSection;
     // the window: sun through the glass with soft shadows, plus sky fill from the opening
+)GLSL" R"GLSL(
     float wl = windowLight (p + n * 0.02);
     float sunD = max (dot (n, SUNL), 0.0);
     float sh = wl > 0.01 && sunD > 0.0 ? softShadow (p + n * 0.02, SUNL, 7.0) : 0.0;
@@ -395,15 +517,15 @@ vec3 shadeHit (vec3 ro, vec3 rd, float t, float id)
     vec3 wcen = vec3 (-1.6, 1.75, -2.9);
     vec3 toW = wcen - p; float dW = length (toW); toW /= dW;
     float fill = max (dot (n, toW), 0.0) * 1.8 / (1.0 + 0.35 * dW * dW);
-    vec3 skyFill = mix (vec3 (0.9, 0.8, 0.7), sc, 0.4) * (wd == 3 ? 0.25 : wd == 1 ? 0.6 : 1.0);
+    vec3 skyFill = mix (vec3 (0.9, 0.8, 0.7), sc, 0.4) * uAmb;
     col += alb * skyFill * fill * ao * 1.1;
     // bounce / ambient
-    col += alb * mix (vec3 (0.07, 0.045, 0.03), vec3 (0.15, 0.12, 0.10), n.y * 0.5 + 0.5) * ao * (wd == 3 ? 0.5 : 1.0);
+    col += alb * mix (vec3 (0.07, 0.045, 0.03), vec3 (0.15, 0.12, 0.10), n.y * 0.5 + 0.5) * ao * (1.0 - 0.5 * uNight);
     // the candle
     vec3 pl = FLAMEP + vec3 (0.002 * sin (uTime * 6.0), 0.0, 0.0) - p;
     float dc = length (pl); pl /= dc;
     float cs = dot (n, pl) > 0.0 ? candleShadow (p + n * 0.02, pl, dc) : 0.0;
-    vec3 candle = vec3 (1.0, 0.56, 0.22) * flick * (wd == 3 ? 1.6 : 1.0);
+    vec3 candle = vec3 (1.0, 0.56, 0.22) * flick * (1.0 + 0.6 * uNight);
     col += alb * candle * max (dot (n, pl), 0.0) * cs * (1.6 / (1.0 + 7.0 * dc * dc)) * ao;
     // reflections: the window and the candle in glossy surfaces
     vec3 r = reflect (rd, n);
@@ -504,7 +626,7 @@ vec3 sceneColour (vec2 uv0)
     if (tF > 0.0 && tF < t + 0.05)
     {
         float dF = length (toF - rd * tF);
-        float flick = uFlame * (0.94 + 0.06 * sin (uTime * 11.0)) + 0.16 * uEnergy + 0.10 * uHit;
+        float flick = uFlame * (0.94 + 0.06 * sin (uTime * 11.0)) + 0.16 * uEnergy + 0.10 * uHit + 0.12 * uSection;
         float shape = dF / (0.011 * (1.0 + 0.2 * sin (uTime * 9.0)));
         col += mix (vec3 (1.0, 0.55, 0.15), vec3 (1.0, 0.95, 0.8), exp (-shape * shape * 0.8)) * exp (-shape * shape * 0.25) * 2.2 * flick;
         col += vec3 (1.0, 0.55, 0.22) * exp (-dF * 22.0 / (0.6 + tF * 0.2)) * 0.30 * flick;
@@ -516,6 +638,7 @@ vec3 aces (vec3 x) { return clamp ((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.
 
 void main()
 {
+    SUNL = normalize (vec3 (uDirX, uDirY, -0.85));
     vec2 uv0 = gl_FragCoord.xy / uRes;
     float aging = clamp (uMemory * (0.55 + 0.45 * uAge), 0.0, 1.0);
     vec2 uv = uv0;
@@ -537,7 +660,6 @@ void main()
     {
         float fi = float (i);
         float sx = hash12 (vec2 (floor (uTime * 9.0), fi * 3.1));
-)GLSL" R"GLSL(
         sc += ss (0.0007, 0.0, abs (uv0.x - sx)) * step (0.35, hash12 (vec2 (fi, floor (uTime * 9.0) + 2.0)));
     }
     c += vec3 (0.20, 0.18, 0.14) * sc * ss (0.25, 0.7, aging);
@@ -685,6 +807,15 @@ void GpuRoom::render (const RoomUniforms& u, int w, int h)
     prog->setUniform ("uPedal", u.pedal); prog->setUniform ("uFlame", u.flame); prog->setUniform ("uIntimacy", u.intimacy);
     prog->setUniform ("uWarmth", u.warmth); prog->setUniform ("uSpace", u.space);
     prog->setUniform ("uKeys", u.keys, 88);
+    {
+        const auto& v = u.look.v;
+        prog->setUniform ("uTop", v[kTopR], v[kTopG], v[kTopB]); prog->setUniform ("uBot", v[kBotR], v[kBotG], v[kBotB]); prog->setUniform ("uSunCol", v[kSunR], v[kSunG], v[kSunB]);
+        prog->setUniform ("uGround", v[kGrR], v[kGrG], v[kGrB]); prog->setUniform ("uFoliage", v[kFoR], v[kFoG], v[kFoB]);
+        prog->setUniform ("uSunI", v[kSunI]); prog->setUniform ("uSunPx", v[kSunPx]); prog->setUniform ("uSunPy", v[kSunPy]); prog->setUniform ("uDirX", v[kDirX]); prog->setUniform ("uDirY", v[kDirY]);
+        prog->setUniform ("uAmb", v[kAmb]); prog->setUniform ("uNight", v[kNight]); prog->setUniform ("uCloud", v[kCloud]); prog->setUniform ("uWind", v[kWind]); prog->setUniform ("uRain", v[kRain]);
+        prog->setUniform ("uOutL", v[kOutL]); prog->setUniform ("uFoAmt", v[kFoAmt]); prog->setUniform ("uSnow", v[kSnow]); prog->setUniform ("uBlossom", v[kBlossom]); prog->setUniform ("uLeaf", v[kLeaf]);
+        prog->setUniform ("uSeason", v[kSeason]); prog->setUniform ("uHours", v[kHours]); prog->setUniform ("uSeed", u.seed); prog->setUniform ("uSection", u.section);
+    }
     drawQuad (*prog);
     if (glow)
     {

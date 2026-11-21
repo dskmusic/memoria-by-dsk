@@ -37,8 +37,9 @@ private:
     juce::SpinLock ulock;
     RoomUniforms uni;
     juce::Image external;
-    float hitEnv = 0;
-    void rebuild (int world);
+    float hitEnv = 0, sectionEnv = 0;
+    SceneLook look; bool lookInit = false;
+    void rebuild (int world, int tod, int season);
     struct Mote { float x, y, vx, vy, ph, size; };
     struct Drop { float x, y, v, len; };
     int built = -1;

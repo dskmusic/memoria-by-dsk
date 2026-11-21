@@ -17,6 +17,7 @@ namespace P
         roomType, tape, vinyl, wood, world, worldLevel,             // layers of life
         hands, handsKey, handsScale, handsStyle, handsBars, handsTempo, handsDensity, handsExpress, handsSeed, handsPedal, handsEndless,   // generative hands
         handsForm,                                                  // song form (appended later: older presets get the default)
+        sceneTime, sceneSeason,                                     // scene: hour of the day and season (0 = auto, from the World layer)
         numParams
     };
 }
@@ -45,6 +46,8 @@ const juce::StringArray& handsScaleNames();
 const juce::StringArray& handsStyleNames();
 const juce::StringArray& handsBarsNames();
 const juce::StringArray& handsFormNames();
+const juce::StringArray& sceneTimeNames();
+const juce::StringArray& sceneSeasonNames();
 int handsBarsFromIndex (int index);
 const juce::StringArray& keyNames();
 }

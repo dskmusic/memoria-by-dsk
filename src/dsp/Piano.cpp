@@ -417,6 +417,11 @@ void Engine::tickHands()
         else ++i;
     tele.songBar.store (juce::jlimit (0, 100000, (int) std::floor (sb / std::max (1, score.beatsPerBar))));
     tele.songBars.store (score.bars);
+    {
+        int st = 0; const int bar = tele.songBar.load();
+        for (auto& sc : score.sections) if (bar >= sc.startBar && bar < sc.startBar + sc.bars) st = sc.type == 'B' ? 2 : (sc.type == 'P' || sc.type == 'C') ? 1 : 0;
+        tele.sectionType.store (st);
+    }
 }
 
 void Engine::tick()

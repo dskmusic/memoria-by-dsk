@@ -51,6 +51,16 @@ const juce::StringArray& handsFormNames()
     static const juce::StringArray n { "Full song", "Loop (8 bars)", "Chorus (8 bars)", "Short piece" };
     return n;
 }
+const juce::StringArray& sceneTimeNames()
+{
+    static const juce::StringArray n { "Auto time", "Dawn", "Morning", "Afternoon", "Sunset", "Night" };
+    return n;
+}
+const juce::StringArray& sceneSeasonNames()
+{
+    static const juce::StringArray n { "Auto season", "Spring", "Summer", "Autumn", "Winter" };
+    return n;
+}
 const juce::StringArray& keyNames()
 {
     static const juce::StringArray n { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
@@ -136,6 +146,9 @@ std::vector<ParamDef> build()
     b.addBool (handsPedal, "hands_pedal", "Pedal", true);
     b.addBool (handsEndless, "hands_endless", "Endless", true);
     b.addChoice (handsForm, "hands_form", "Form", handsFormNames(), 0);
+    b.group = "scene";
+    b.addChoice (sceneTime, "scene_time", "Time of day", sceneTimeNames(), 0);
+    b.addChoice (sceneSeason, "scene_season", "Season", sceneSeasonNames(), 0);
     return b.defs;
 }
 } // namespace

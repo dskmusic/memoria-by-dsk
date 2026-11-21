@@ -285,6 +285,30 @@ int main (int argc, char** argv)
         }
         return 0;
     }
+    if (cmd == "scenegrid")
+    {
+        // MemoriaTool scenegrid <dir> [tier]: every hour of the day x every season (look at them before shipping)
+        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "scenegrid");
+        if (argc > 3) gx::ui::gpuForceTier() = juce::String (argv[3]).getIntValue();
+        dir.createDirectory();
+        for (int tod = 1; tod <= 5; ++tod)
+            for (int season = 0; season <= 4; ++season)
+                for (int w : { 0, 1 })
+                {
+                    if (w == 1 && season != 4 && season != 0) continue;
+                    gx::ui::RoomUniforms u; u.time = 20.0f + 7.0f * (float) tod; u.memory = 0.15f; u.age = 0.5f; u.world = (float) w; u.look = gx::ui::lookFor (w, tod, season); u.seed = 11; u.energy = 0.3f; u.pedal = 1.0f; u.scale = 1.0f;
+                    for (int k : { 27, 31, 34, 39 }) u.keys[k] = 0.6f;
+                    auto img = gx::ui::OffscreenRoom::get().render (u, 960, 600);
+                    if (img.isNull()) { std::puts ("GPU render failed"); return 1; }
+                    juce::PNGImageFormat png;
+                    const auto f = dir.getChildFile ("t" + juce::String (tod) + "_s" + juce::String (season) + (w == 1 ? "_rain" : "") + ".png");
+                    f.deleteFile();
+                    std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
+                    if (os != nullptr) png.writeImageToStream (img, *os);
+                }
+        std::puts (("grid in " + dir.getFullPathName() + " [" + gx::ui::getGpuInfo() + "]").toRawUTF8());
+        return 0;
+    }
     if (cmd == "scene")
     {
         // MemoriaTool scene <dir>: the GPU room for review (several worlds and memory levels)
@@ -294,7 +318,7 @@ int main (int argc, char** argv)
         struct C { const char* n; float mem, age; int world; } cs[] { { "golden_clean", 0.0f, 0.5f, 0 }, { "rain", 0.3f, 0.5f, 1 }, { "cafe", 0.2f, 0.5f, 2 }, { "fire_night", 0.5f, 0.6f, 3 }, { "dawn_old", 1.0f, 0.9f, 4 }, { "audience", 0.0f, 0.5f, 5 } };
         for (auto& c : cs)
         {
-            gx::ui::RoomUniforms u; u.time = 12.3f; u.memory = c.mem; u.age = c.age; u.world = (float) c.world; u.energy = 0.3f; u.pedal = 1.0f; u.scale = 1.0f; for (int k : { 27, 31, 34, 39 }) u.keys[k] = 0.9f;
+            gx::ui::RoomUniforms u; u.time = 12.3f; u.memory = c.mem; u.age = c.age; u.world = (float) c.world; u.look = gx::ui::lookFor (c.world, 0, 0); u.seed = 7; u.energy = 0.3f; u.pedal = 1.0f; u.scale = 1.0f; for (int k : { 27, 31, 34, 39 }) u.keys[k] = 0.9f;
             auto img = gx::ui::OffscreenRoom::get().render (u, 1056, 660);
             if (img.isNull()) { std::puts ("GPU render failed"); return 1; }
             juce::PNGImageFormat png;

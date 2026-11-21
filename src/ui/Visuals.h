@@ -20,6 +20,8 @@ struct Frame
     int voices = 0, hitCounter = 0;
     float memory = 0, timeAge = 0.5f, intimacy = 0.5f, warmth = 0, space = 0.5f;
     int worldType = 0, songBar = 0, songBars = 0;
+    int sceneTime = 0, sceneSeason = 0, section = 0;
+    float seed = 1;
     bool handsOn = false;
     bool reduced = false;                    // reduced animation mode
 };

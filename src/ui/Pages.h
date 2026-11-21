@@ -74,6 +74,7 @@ public:
     std::function<void (const Preset&)> onLoaded;
 private:
     juce::Slider memory;
+    ParamCombo sceneTime, sceneSeason;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> memoryAtt;
     HandsPanel hands;
     SoundGenPanel gen;

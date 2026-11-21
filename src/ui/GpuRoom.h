@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_opengl/juce_opengl.h>
+#include "SceneLook.h"
 
 namespace gx::ui
 {
@@ -7,6 +8,8 @@ namespace gx::ui
 struct RoomUniforms
 {
     float time = 0, memory = 0, age = 0.5f, world = 0, energy = 0, hit = 0, pedal = 0, flame = 1, intimacy = 0.5f, warmth = 0, space = 0.5f, scale = 1.0f;
+    SceneLook look;         // sky, light, season, clock (eased by the scene)
+    float seed = 1, section = 0;
     float keys[88] {};      // how much each key (A0 .. C8) is down / ringing
 };
 
