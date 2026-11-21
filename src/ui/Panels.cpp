@@ -288,12 +288,12 @@ void HandsPanel::randomise (bool all)
     if (! lockKey.getToggleState()) set (P::handsKey, (float) r.nextInt (12));
     if (! lockScale.getToggleState())
     {
-        static const int sc[6][3] { { 1, 2, 1 }, { 1, 0, 1 }, { 1, 7, 0 }, { 0, 1, 2 }, { 0, 3, 0 }, { 0, 1, 0 } };
+        static const int sc[7][3] { { 1, 2, 1 }, { 1, 0, 1 }, { 1, 7, 0 }, { 0, 1, 2 }, { 0, 3, 0 }, { 0, 1, 0 }, { 0, 0, 0 } };
         set (P::handsScale, (float) sc[st][r.nextInt (3)]);
     }
     if (! lockTempo.getToggleState())
     {
-        static const int lo[6] { 66, 60, 56, 70, 80, 62 }, hi[6] { 88, 92, 84, 104, 110, 86 };
+        static const int lo[7] { 66, 60, 56, 70, 80, 62, 60 }, hi[7] { 88, 92, 84, 104, 110, 86, 84 };
         set (P::handsTempo, (float) (lo[st] + r.nextInt (hi[st] - lo[st] + 1)));
     }
     set (P::handsDensity, 0.45f + 0.4f * r.nextFloat());

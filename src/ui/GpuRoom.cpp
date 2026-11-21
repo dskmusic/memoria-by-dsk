@@ -30,7 +30,7 @@ const int FOGN = 16;
 float hash12 (vec2 p) { vec3 p3 = fract (vec3 (p.xyx) * 0.1031); p3 += dot (p3, p3.yzx + 33.33); return fract ((p3.x + p3.y) * p3.z); }
 float hash13 (vec3 p3) { p3 = fract (p3 * 0.1031); p3 += dot (p3, p3.zyx + 31.32); return fract ((p3.x + p3.y) * p3.z); }
 vec2 hash22 (vec2 p) { vec3 p3 = fract (vec3 (p.xyx) * vec3 (0.1031, 0.1030, 0.0973)); p3 += dot (p3, p3.yzx + 33.33); return fract ((p3.xx + p3.yz) * p3.zy); }
-float noise (vec2 p)
+float valueNoise2 (vec2 p)
 {
     vec2 i = floor (p), f = fract (p);
     f = f * f * (3.0 - 2.0 * f);
@@ -40,10 +40,10 @@ float fbm (vec2 p)
 {
     float v = 0.0, a = 0.5;
     mat2 m = mat2 (1.6, 1.2, -1.2, 1.6);
-    for (int i = 0; i < 5; i++) { v += a * noise (p); p = m * p; a *= 0.5; }
+    for (int i = 0; i < 5; i++) { v += a * valueNoise2 (p); p = m * p; a *= 0.5; }
     return v;
 }
-float noise3 (vec3 p)
+float valueNoise3 (vec3 p)
 {
     vec3 i = floor (p), f = fract (p);
     f = f * f * (3.0 - 2.0 * f);
@@ -427,7 +427,7 @@ float fogLight (vec3 ro, vec3 rd, float tmax)
         vec3 q = ro + rd * t;
         float vis = windowLight (q);
         if (q.x < -3.45 || q.x > 3.55 || q.y < 0.0 || q.y > 3.2 || q.z < -2.95) continue;
-        float dust = 0.6 + 0.9 * noise3 (q * 2.2 + vec3 (uTime * 0.03, uTime * -0.02, 0.0));
+        float dust = 0.6 + 0.9 * valueNoise3 (q * 2.2 + vec3 (uTime * 0.03, uTime * -0.02, 0.0));
         acc += vis * dust;
     }
     float ph = 0.35 + 1.4 * pow (max (dot (rd, -SUNL), 0.0), 3.0);
@@ -529,7 +529,7 @@ void main()
         float on = step (0.992, hash12 (id));
         vec2 f = fract (gc) - 0.5 - (hash22 (id + 4.7) - 0.5) * 0.45;
         float rad = 0.10 + 0.26 * hash12 (id + 9.1);
-        float wob = noise3 (vec3 (f * 7.0, hash12 (id) * 30.0)) * 0.30;
+        float wob = valueNoise3 (vec3 (f * 7.0, hash12 (id) * 30.0)) * 0.30;
         float d = length (f * vec2 (1.0, 0.7 + 0.7 * hash12 (id + 2.2))) - rad * (0.75 + wob);
         float speck = ss (0.05, -0.015, d) * on;
         c = mix (c, vec3 (0.03, 0.025, 0.02), speck * ss (0.25, 0.7, aging) * 0.75);

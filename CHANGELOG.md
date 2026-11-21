@@ -10,6 +10,7 @@
   world (rain, wind, fireplace, dawn birds) and five rooms.
 - Hands v2: a song composer (intro / verse / chorus / bridge / outro) with functional harmony, developing motifs, hooks, expressive performance and pedalling; 6 styles, 8 scales, any key, 16-128 bars,
   locked to the DAW tempo and transport or an internal clock; New variation, Random song with locks; export as MIDI or WAV (drag into the DAW or save).
+- Classical style: Pachelbel's Canon in D (public domain) with growing variations.
 - Random sound generator with section locks.
 - One-page interface: room scene, Memory slider, Hands, sound generator and every control.
 - GPU shader room: a real 3D ray-marched scene (soft shadows, AO, reflections, volumetric light with dust, rain on glass, candle, film ageing), piano keys that go down with the notes, three quality levels, CPU fallback.
@@ -19,6 +20,7 @@
 - Browsing presets quickly no longer piles up test chords (the previous chord is released before a new one is struck).
 - GPU scene: starts without waiting for a window, a lighter shader tier if the first one fails, safe smoothstep for Intel drivers, status line in Settings and log in Documents/DSK Music/Memoria/gpu-log.txt.
 - Film flaws are round, irregular specks instead of squares.
+- Shader fix for Intel graphics (a function name clashed with a GLSL built-in: noise3).
 - Strings view: 88 live strings, hammers, dampers and pedal in the Piano panel.
 - Click on the song map to jump to that bar while playing (in a DAW the song is aligned to the host position).
 - Composer v3: pre-chorus, hook repeats, bass approach notes, pushed chords, key lift in the last chorus, best-of-six takes by melodic quality.

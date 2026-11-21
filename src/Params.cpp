@@ -37,7 +37,7 @@ const juce::StringArray& handsScaleNames()
 }
 const juce::StringArray& handsStyleNames()
 {
-    static const juce::StringArray n { "Lo-Fi Chill", "Cinematic", "Romantic", "Minimal", "Lullaby (Waltz)", "Power Ballad" };
+    static const juce::StringArray n { "Lo-Fi Chill", "Cinematic", "Romantic", "Minimal", "Lullaby (Waltz)", "Power Ballad", "Classical (Canon)" };
     return n;
 }
 const juce::StringArray& handsBarsNames()

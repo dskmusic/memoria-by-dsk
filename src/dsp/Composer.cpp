@@ -459,6 +459,97 @@ struct Composer
 };
 }
 
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Classical: Pachelbel's Canon in D (public domain). The famous ground bass (D A Bm F#m G D G A, two beats each) and the
+// descending violin line over it, followed by variations that get busier cycle after cycle: half notes, quarters, eighths,
+// arpeggiated sixteenths, a lyrical dotted variation, and the theme again, softly, in the high register.
+// ---------------------------------------------------------------------------------------------------------------------------
+static void composeCanon (const ComposeCfg& cfg, Score& out)
+{
+    Rng rng (cfg.seed * 2654435761u + 4242u);
+    for (int i = 0; i < 4; ++i) rng.next();
+    const int cycles = std::max (3, cfg.bars / 4);
+    int tr = ((cfg.key - 2) % 12 + 12) % 12; if (tr > 6) tr -= 12;                  // D major unless another key is chosen
+    const float expr = juce::jlimit (0.0f, 1.0f, cfg.expression);
+    const double msBeat = cfg.bpm / 60000.0;
+    static const int semis[7] { 2, 4, 6, 7, 9, 11, 13 };                             // D E F# G A B C#
+    auto dm = [&] (int deg) { return 60 + tr + semis[((deg % 7) + 7) % 7] + 12 * (int) std::floor ((double) deg / 7.0); };
+    static const int rootDeg[8] { 0, 4, 5, 2, 3, 0, 3, 4 };                          // D A Bm F#m G D G A
+    static const int lineDeg[8] { 9, 8, 7, 6, 5, 4, 5, 6 };                          // F# E D C# B A B C#   (the violin line)
+    out.notes.clear(); out.pedal.clear(); out.sections.clear();
+    out.beatsPerBar = 4; out.bars = cycles * 4;
+    out.totalBeats = (double) out.bars * 4 + 2.0;
+    for (int k = 0; k < cycles; ++k)
+        out.sections.push_back ({ k == 0 ? 'I' : k == cycles - 1 ? 'O' : k == cycles - 2 ? 'B' : 'A', k * 4, 4 });
+    auto add = [&] (double start, double len, int note, int vel, float jit = 5.0f, bool mel = false)
+    {
+        if (note < 21 || note > 108) return;
+        NoteEv n;
+        n.start = std::max (0.0, start + (double) ((rng.uni() - 0.5f) * 2.0f * jit * expr) * msBeat);
+        n.len = std::max (0.08, len); n.note = note; n.voice = mel ? 1 : 0;
+        n.vel = juce::jlimit (1, 127, vel + (int) ((rng.uni() - 0.5f) * 8.0f * expr));
+        out.notes.push_back (n);
+    };
+    static const int baseVel[8] { 44, 50, 56, 64, 72, 62, 52, 40 };
+    for (int k = 0; k < cycles; ++k)
+    {
+        const int v = std::min (7, k);
+        const bool last = k == cycles - 1;
+        const int variant = (int) ((cfg.seed + (uint32_t) k) % 3u);
+        for (int c = 0; c < 8; ++c)
+        {
+            const double t0 = (double) (k * 16 + c * 2);                              // two beats per chord
+            const int rd = rootDeg[c];
+            const int bass = dm (rd - 14);
+            const int vel = baseVel[last ? 7 : v] + (c % 2 == 0 ? 3 : 0);
+            const int m = lineDeg[c], nxt = lineDeg[(c + 1) % 8], dir = nxt > m ? 1 : nxt < m ? -1 : 1;
+            // chord tones around the melody register (degrees stacked in thirds)
+            const int t0d = rd + 7, t1d = rd + 9, t2d = rd + 11;                      // octave above the root: 1, 3, 5
+            if (cfg.mode != 3)
+            {
+                add (t0, 2.0, bass, vel + 8, 3.0f);
+                if (k >= 1 && ! last) for (int e = 0; e < 4; ++e) add (t0 + 0.5 * e, 0.95, dm (rd - 7 + (e == 1 || e == 3 ? 2 : e == 2 ? 4 : 0)), vel - 16, 5.0f);
+                if (k >= 3 && k <= 4) add (t0 + 1.0, 0.9, bass + 12, vel - 12, 5.0f);
+            }
+            if (cfg.mode != 2 && k >= 0)
+            {
+                if (k == 0 || last)                                                    // the theme in half notes (soft, high at the end)
+                    add (t0, 2.0, dm (m) + (last ? 12 : 0), vel + 6, 8.0f, true);
+                else if (k == 1)                                                       // quarters: the line and a step towards the next note
+                { add (t0, 1.0, dm (m), vel + 8, 6.0f, true); add (t0 + 1.0, 1.0, dm (m + dir), vel + 4, 6.0f, true); }
+                else if (k == 2)                                                       // eighths
+                {
+                    static const int p[3][4] { { 0, 1, 0, -1 }, { 0, 2, 1, 0 }, { 0, -1, -2, -1 } };
+                    for (int e = 0; e < 4; ++e) add (t0 + 0.5 * e, 0.55, dm (m + p[variant][e] * (e ? dir : 1)), vel + 6 + (e == 0 ? 6 : 0), 5.0f, true);
+                }
+                else if (k == 3)                                                       // arpeggiated sixteenths on the chord
+                {
+                    const int arp[3][8] { { 0, 1, 2, 1, 0, 1, 2, 1 }, { 2, 1, 0, 1, 2, 1, 0, 1 }, { 0, 2, 1, 2, 0, 2, 1, 2 } };
+                    const int tones[3] { t0d, t1d, t2d };
+                    for (int e = 0; e < 8; ++e) add (t0 + 0.25 * e, 0.3, dm (tones[arp[variant][e]]), vel + 4 + (e % 4 == 0 ? 7 : 0), 4.0f, true);
+                }
+                else if (k == 4)                                                       // lyrical: dotted rhythm, a long note and a step
+                { add (t0, 1.5, dm (m + (c % 2 == 0 ? 1 : 0)), vel + 10, 7.0f, true); add (t0 + 1.5, 0.5, dm (m + dir), vel + 2, 5.0f, true); }
+                else                                                                   // later variations alternate between runs and long notes
+                {
+                    if (c % 2 == 0) for (int e = 0; e < 4; ++e) add (t0 + 0.5 * e, 0.55, dm (m + (e % 2 ? dir : 0)), vel + 4, 5.0f, true);
+                    else add (t0, 2.0, dm (m + 1), vel + 6, 6.0f, true);
+                }
+            }
+            if (cfg.pedal) { if (c > 0 || k > 0) out.pedal.push_back ({ t0 - 0.06, 0 }); out.pedal.push_back ({ t0 + 0.02, 127 }); }
+        }
+    }
+    // the ending: a rolled D major chord held
+    {
+        const double e0 = (double) (cycles * 16);
+        for (int i = 0; i < 5; ++i) add (e0 - 0.0 + 0.05 * i, 3.5, dm (i == 0 ? -14 : i == 1 ? -7 : i == 2 ? 0 : i == 3 ? 2 : 4), 40, 1.0f);
+        out.pedal.push_back ({ e0 + 2.4, 0 });
+    }
+    std::stable_sort (out.notes.begin(), out.notes.end(), [] (const NoteEv& a, const NoteEv& b) { return a.start < b.start; });
+    std::stable_sort (out.pedal.begin(), out.pedal.end(), [] (const PedEv& a, const PedEv& b) { return a.beat < b.beat; });
+}
+
 // how "song-like" the melody is: stepwise motion, repeated rhythmic cells, a singable amount of notes per bar
 static float quality (const Score& sc)
 {
@@ -492,6 +583,7 @@ static float quality (const Score& sc)
 
 void compose (const ComposeCfg& cfg, Score& out)
 {
+    if (cfg.style == ssClassic) { composeCanon (cfg, out); return; }
     // several takes, the most song-like one is kept (deterministic: the takes come from sub-seeds)
     Score best; float bestQ = -1.0e9f;
     for (int i = 0; i < 6; ++i)

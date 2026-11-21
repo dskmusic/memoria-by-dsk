@@ -24,7 +24,7 @@ la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano d
   vinilo (crackle, rumble, pop de la aguja) y un mundo lejano: lluvia, viento, chimenea, pájaros al amanecer. Cinco salas: salón, iglesia, estudio, cabaña de madera y sala de conciertos vacía.
 - **Manos: un compositor generativo para quien no toca.** Escribe canciones enteras - intro, estrofas, estribillos, puente y final - con armonía funcional
   (séptimas, novenas, acordes sus, dominantes, cadencias), motivos que se desarrollan, estribillos con gancho, patrones de acompañamiento y una interpretación expresiva
-  (dinámica, acordes arpegiados, rubato, pedal). Seis estilos (Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna y Power Ballad), 8 escalas, cualquier tono,
+  (dinámica, acordes arpegiados, rubato, pedal). Siete estilos (Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna, Power Ballad y Classical: el Canon en Re de Pachelbel, dominio público, con variaciones crecientes), 8 escalas, cualquier tono,
   de 16 a 128 compases, sincronizado con el tempo y el transporte de tu DAW. **Nueva variación** y **Canción al azar** (con bloqueos) crean otra con un clic. Pulsa en cualquier punto del mapa de la canción para saltar ahí mientras suena.
   **Exporta la canción:** arrástrala como archivo MIDI (o como WAV renderizado) directamente a tu DAW, o guárdala como .mid / .wav.
 - **210 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.

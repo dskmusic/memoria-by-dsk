@@ -24,7 +24,7 @@ struct Score
 };
 
 enum HandsMode { hmOff, hmSong, hmAccomp, hmMelody };
-enum SongStyle { ssLofi, ssCinematic, ssRomantic, ssMinimal, ssLullaby, ssBallad, numSongStyles };
+enum SongStyle { ssLofi, ssCinematic, ssRomantic, ssMinimal, ssLullaby, ssBallad, ssClassic, numSongStyles };
 
 struct ComposeCfg
 {

@@ -122,14 +122,14 @@ float ramp (double t, double a, double b) { return (float) juce::jlimit (0.0, 1.
 
 void setP (MemoriaProcessor& p, const char* id, float v) { gxtest::setParam (p, id, v); }
 
-void prepareSound (MemoriaProcessor& proc, int category, int hands, float tempo, uint32_t seed)
+void prepareSound (MemoriaProcessor& proc, int category, int hands, float tempo, uint32_t seed, int style = 0, int key = 9, int scale = 1)
 {
     gx::GenRequest rq; rq.category = gx::categories()[category]; rq.seed = seed;
     auto pr = gx::Generator::generate (rq);
     pr.params[(size_t) gx::P::hands] = (float) hands;
     pr.params[(size_t) gx::P::handsTempo] = tempo;
     pr.params[(size_t) gx::P::memory] = 0.0f; pr.params[(size_t) gx::P::world] = 0; pr.params[(size_t) gx::P::tape] = 0; pr.params[(size_t) gx::P::vinyl] = 0;
-    pr.params[(size_t) gx::P::piano] = 0; pr.params[(size_t) gx::P::handsKey] = 9; pr.params[(size_t) gx::P::handsScale] = 1; pr.params[(size_t) gx::P::handsBars] = 3;
+    pr.params[(size_t) gx::P::piano] = 0; pr.params[(size_t) gx::P::handsKey] = (float) key; pr.params[(size_t) gx::P::handsScale] = (float) scale; pr.params[(size_t) gx::P::handsBars] = 1; pr.params[(size_t) gx::P::handsStyle] = (float) style; pr.params[(size_t) gx::P::handsExpress] = 0.75f;
     pr.params[(size_t) gx::P::room] = 0.3f; pr.params[(size_t) gx::P::roomType] = 0;
     pr.applyTo (proc);
     proc.setPlaying (true);
@@ -169,7 +169,7 @@ int runVideo (const juce::File& dir, bool trailer)
         { "MEMORIA", "dskmusic.com", 17.5, 22.0, true } };
     Setter setter = [] (MemoriaProcessor& p, double t)
     {
-        if (t < 0.02) prepareSound (p, 2, 1, 70.0f, 5);
+        if (t < 0.02) prepareSound (p, 8, 1, 84.0f, 5, 6, 2, 0);
         setP (p, "memory", 0.1f + 0.85f * ramp (t, 4.0, 18.0));
         setP (p, "world", t > 8.0 ? 4.0f : 0.0f);
         setP (p, "world_level", 0.6f);
