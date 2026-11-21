@@ -15,7 +15,7 @@ const juce::StringArray& subcategories (const juce::String& cat)
         { "Lo-Fi", { "Tape Dream", "Dusty Vinyl", "Bedroom" } },
         { "Felt", { "Soft", "Intimate", "Muted" } },
         { "Cinematic", { "Emotional", "Hopeful", "Tension" } },
-        { "Rainy", { "Window", "Cafe", "Night" } },
+        { "Rainy", { "Window", "Windy", "Night" } },
         { "Vintage", { "Old Upright", "Honky-Tonk", "Attic Tape" } },
         { "Church", { "Nave", "Chapel", "Cathedral" } },
         { "Lullaby", { "Music Box", "Dreaming", "Goodnight" } },

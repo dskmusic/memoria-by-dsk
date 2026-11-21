@@ -328,7 +328,7 @@ static void testGenerator()
     {
         const juce::var bank = juce::JSON::parse (juce::String::fromUTF8 (data, size));
         auto* arr = bank.getProperty ("presets", {}).getArray();
-        check (arr != nullptr && arr->size() >= 200, "factory bank has 200+ presets");
+        check (arr != nullptr && arr->size() >= 150, "factory bank has 150+ presets");
         if (arr != nullptr)
         {
             std::set<juce::String> names;

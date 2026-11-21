@@ -21,7 +21,7 @@ const juce::StringArray& roomNames()
 }
 const juce::StringArray& worldNames()
 {
-    static const juce::StringArray n { "No ambience", "Rain", "Cafe", "Fireplace", "Dawn Birds", "Distant Audience" };
+    static const juce::StringArray n { "No ambience", "Rain", "Wind", "Fireplace", "Dawn Birds" };
     return n;
 }
 

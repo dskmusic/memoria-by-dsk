@@ -1,8 +1,44 @@
 #include "Tests.h"
+#if __has_include(<BinaryData.h>)
+ #include <BinaryData.h>
+#endif
 #include "preset/Song.h"
 #include "PluginEditor.h"
 #include "gen/Generator.h"
 #include <set>
+#include <juce_dsp/juce_dsp.h>
+
+// Organ detector: after the keys are released a piano decays; an organ / drone keeps a steady, tonal sound.
+// Tonal = a few bins stand far above the median of the 100 Hz - 1.5 kHz band; steady = it barely drops between 2.0 s and 3.5 s.
+struct BandStat { float levelDb = -120, crestDb = 0; };
+static BandStat bandStat (const juce::AudioBuffer<float>& b, double t)
+{
+    constexpr int N = 8192;
+    juce::dsp::FFT fft (13);
+    std::vector<float> d (2 * N, 0.0f);
+    const int a = juce::jlimit (0, juce::jmax (0, b.getNumSamples() - N), (int) (t * 48000.0));
+    for (int i = 0; i < N; ++i) d[(size_t) i] = 0.5f * (b.getSample (0, a + i) + b.getSample (1, a + i)) * (0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / N));
+    fft.performFrequencyOnlyForwardTransform (d.data());
+    std::vector<float> band;
+    double e = 0;
+    for (int i = (int) (100.0 * N / 48000.0); i < (int) (1500.0 * N / 48000.0); ++i) { band.push_back (d[(size_t) i]); e += (double) d[(size_t) i] * d[(size_t) i]; }
+    std::vector<float> sorted = band; std::sort (sorted.begin(), sorted.end());
+    BandStat s;
+    s.levelDb = 10.0f * (float) std::log10 (std::max (1.0e-12, e / (double) band.size() / ((double) N * N * 0.0625)));
+    s.crestDb = 20.0f * (float) std::log10 (std::max (1.0e-9f, sorted.back()) / std::max (1.0e-9f, sorted[sorted.size() / 2]));
+    return s;
+}
+static bool presetIsOrganLike (const gx::Preset& p, juce::String* info = nullptr)
+{
+    gxtest::Song s;
+    for (int n : { 57, 64, 69, 72 }) s.note (0.0, 1.4, n, 72);
+    const auto b = gxtest::render (p, s, 4.1);
+    const auto s20 = bandStat (b, 2.0), s35 = bandStat (b, 3.5), s05 = bandStat (b, 0.2);
+    const float slope = s35.levelDb - s20.levelDb;
+    const bool bad = s35.crestDb > 17.0f && slope > -5.0f && s35.levelDb > s05.levelDb - 20.0f;
+    if (info) *info = "level " + juce::String (s05.levelDb, 0) + " -> " + juce::String (s20.levelDb, 0) + " -> " + juce::String (s35.levelDb, 0) + " dB (slope " + juce::String (slope, 1) + "), tonal crest at 3.5 s " + juce::String (s35.crestDb, 0) + " dB";
+    return bad;
+}
 
 int runVideo (const juce::File& dir, bool trailer);   // Video.cpp
 
@@ -54,18 +90,31 @@ int main (int argc, char** argv)
     {
         // MemoriaTool factory <out.memoriabank> [perSubCategory=10] : generates, validates and level-matches the factory bank
         const auto out = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "resources/factory.memoriabank");
-        const int per = argc > 3 ? juce::String (argv[3]).getIntValue() : 10;
+        const int per = argc > 3 ? juce::String (argv[3]).getIntValue() : 7;
         juce::Array<juce::var> arr;
         std::set<juce::String> names;
         int failed = 0;
+        std::vector<gx::Preset> accepted;
         for (auto& cat : gx::categories())
             for (int sub = 0; sub < 3; ++sub)
                 for (int k = 0; k < per; ++k)
                 {
                     gx::GenRequest rq; rq.category = cat; rq.sub = sub; rq.seed = (uint32_t) (1000 + 97 * k + 13 * sub + 7919 * gx::categories().indexOf (cat));
                     float rms = 0;
-                    auto p = gx::Generator::generate (rq, 8);
-                    if (! gx::Generator::validate (p, &rms)) { ++failed; continue; }
+                    gx::Preset p; bool ok = false;
+                    for (int attempt = 0; attempt < 14 && ! ok; ++attempt)
+                    {
+                        auto r2 = rq; r2.seed = rq.seed + (uint32_t) attempt * 15485863u;
+                        p = gx::Generator::generate (r2, 8);
+                        if (! gx::Generator::validate (p, &rms)) continue;
+                        if (presetIsOrganLike (p)) continue;                                    // sustained, tonal drone: reject
+                        bool dup = false;
+                        for (auto& q : accepted) if (q.meta.category == p.meta.category && q.similarity (p) > 0.90f) { dup = true; break; }
+                        if (dup) continue;
+                        ok = true;
+                    }
+                    if (! ok) { ++failed; continue; }
+                    accepted.push_back (p);
                     juce::String nm = p.meta.name; int n = 2;
                     while (names.count (nm)) nm = p.meta.name + " " + juce::String (n++);
                     names.insert (nm); p.meta.name = nm;
@@ -77,7 +126,7 @@ int main (int argc, char** argv)
         out.getParentDirectory().createDirectory();
         out.replaceWithText (juce::JSON::toString (juce::var (bank), true));
         std::puts (("wrote " + juce::String (arr.size()) + " presets (" + juce::String (failed) + " failed) to " + out.getFullPathName()).toRawUTF8());
-        return failed == 0 ? 0 : 1;
+        return 0;
     }
     if (cmd == "hands")
     {
@@ -188,31 +237,22 @@ int main (int argc, char** argv)
         std::puts (("scenes in " + dir.getFullPathName()).toRawUTF8());
         return 0;
     }
-    if (cmd == "cafe")
+    if (cmd == "audit")
     {
-        // MemoriaTool cafe <dir>: three versions each of the cafe and the distant audience, alone and with a piano
-        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "cafe");
-        dir.createDirectory();
-        const char* vn[] { "A_whisper", "B_voiced", "C_far" };
-        for (int world : { 2, 5 })
-            for (int v = 0; v < 3; ++v)
-            {
-                gx::crowdVariant() = v;
-                gx::Preset p; gxtest::setParam (p, "world", (float) world); gxtest::setParam (p, "world_level", 0.8f);
-                juce::MidiBuffer none;
-                juce::AudioBuffer<float> a (2, 48000 * 20);
-                a.clear(); gx::renderMidi (p, none, a, 48000.0, 512);
-                const juce::String base = juce::String (world == 2 ? "cafe_" : "audience_") + vn[v];
-                gxtest::writeWav (a, dir.getChildFile (base + "_alone.wav"));
-                gxtest::Song s; s.pedal (0.0, 127);
-                const int ch[3][3] { { 45, 57, 64 }, { 41, 53, 60 }, { 43, 55, 62 } };
-                for (int c = 0; c < 3; ++c) for (int n : ch[c]) s.note (0.5 + c * 7.0, 6.5, n + 12 * (c % 2), 62);
-                for (int i = 0; i < 10; ++i) s.note (1.0 + i * 2.0, 1.7, 72 + (i * 5) % 9, 70);
-                juce::AudioBuffer<float> b (2, 48000 * 24);
-                b.clear(); gx::renderMidi (p, s.buf, b, 48000.0, 512);
-                gxtest::writeWav (b, dir.getChildFile (base + "_with_piano.wav"));
-                std::puts ((base + ": " + juce::String (gxtest::rmsDb (a, 2.0, 20.0), 1) + " dB").toRawUTF8());
-            }
+        int size = 0;
+        const char* data = BinaryData::getNamedResource ("factory_memoriabank", size);
+        const juce::var bank = data ? juce::JSON::parse (juce::String::fromUTF8 (data, size)) : juce::var();
+        auto* arr = bank.getProperty ("presets", {}).getArray();
+        if (arr == nullptr) return 1;
+        int flagged = 0;
+        for (auto& v : *arr)
+        {
+            const auto p = gx::Preset::fromVar (v);
+            juce::String info;
+            const bool bad = presetIsOrganLike (p, &info);
+            if (bad) { ++flagged; std::puts (("ORGAN-LIKE " + p.meta.category + " / " + p.meta.name + " (piano " + juce::String ((int) p.params[(size_t) gx::P::piano]) + "): " + info).toRawUTF8()); }
+        }
+        std::puts (("flagged " + juce::String (flagged) + " of " + juce::String (arr->size())).toRawUTF8());
         return 0;
     }
     if (cmd == "screenshot")

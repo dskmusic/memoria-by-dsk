@@ -29,7 +29,7 @@ void RoomScene::rebuild (int world)
     static const Sky sky[] {
         { 0.75f, 0.45f, 0.30f, 1.00f, 0.82f, 0.50f, 1.00f, 0.3f, 1.00f },   // golden afternoon
         { 0.40f, 0.46f, 0.56f, 0.60f, 0.64f, 0.70f, 0.55f, 0.0f, 0.30f },   // rain: overcast
-        { 0.18f, 0.22f, 0.38f, 0.95f, 0.55f, 0.28f, 0.75f, 0.5f, 0.55f },   // cafe: dusk and street lamps
+        { 0.45f, 0.55f, 0.70f, 0.85f, 0.85f, 0.80f, 0.85f, 0.1f, 0.60f },   // wind: bright, clear and windy
         { 0.02f, 0.04f, 0.10f, 0.07f, 0.09f, 0.18f, 0.6f, 0.8f, 0.18f },   // fireplace: night
         { 0.50f, 0.42f, 0.62f, 1.00f, 0.70f, 0.48f, 0.85f, 0.3f, 0.85f },   // dawn
         { 0.20f, 0.14f, 0.30f, 0.85f, 0.45f, 0.38f, 0.6f, 0.4f, 0.45f } };  // distant audience: violet dusk
@@ -82,7 +82,7 @@ void RoomScene::rebuild (int world)
                     const float tx = wu - 0.25f, ty = wv - 0.66f;
                     const bool tree = (tx * tx * 6.0f + ty * ty * 2.2f < 0.03f && wv < hill) || (std::abs (tx) < 0.012f && wv > 0.66f && wv < hill + 0.03f);
                     if (wv > hill || tree) { sr *= 0.12f; sg *= 0.12f; sb *= 0.14f; }
-                    if (world == 2 && wv > hill - 0.06f && hash2 (std::floor (wu * 26), 1.0f) > 0.8f) { sr += 0.9f; sg += 0.6f; sb += 0.2f; }   // street lamps
+                    
                     r = sr * 1.5f; g = sg * 1.5f; b = sb * 1.5f;
                 }
             }
@@ -131,11 +131,11 @@ void RoomScene::rebuild (int world)
 
 RoomScene::~RoomScene() { setGpu (false); }
 
-void RoomScene::parentHierarchyChanged() { if (gpuWanted && gl == nullptr && getPeer() != nullptr) setGpu (true); }
+void RoomScene::parentHierarchyChanged() { if (gpuWanted && gl == nullptr) setGpu (true); }
 
 void RoomScene::setGpu (bool on)
 {
-    if (on && gl == nullptr && gpuStatus().load() >= 0 && getPeer() != nullptr)
+    if (on && gl == nullptr && gpuStatus().load() >= 0)
     {
         gl = std::make_unique<juce::OpenGLContext>();
         gl->setRenderer (this);

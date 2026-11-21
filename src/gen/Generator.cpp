@@ -18,7 +18,7 @@ struct Arch
     std::vector<const char*> adj, noun;
 };
 
-enum { W_OFF, W_RAIN, W_CAFE, W_FIRE, W_BIRDS, W_AUDIENCE };
+enum { W_OFF, W_RAIN, W_WIND, W_FIRE, W_BIRDS };
 enum { R_LIVING, R_CHURCH, R_STUDIO, R_CABIN, R_HALL };
 
 const std::vector<Arch>& archs()
@@ -26,7 +26,7 @@ const std::vector<Arch>& archs()
     static const std::vector<Arch> a {
         { "Lo-Fi", { 1, 1, 0, 0 }, { 0.30f, 0.55f }, { 0.3f, 0.6f }, { 0.4f, 0.6f }, { 0.4f, 0.7f }, { 0.4f, 0.8f }, { 0.5f, 0.8f }, { 0.3f, 0.5f }, { 0.5f, 0.8f }, { 0.3f, 0.6f }, { 0.7f, 1.1f }, { 0.15f, 0.35f }, { 0.2f, 0.4f },
           { 0.55f, 0.95f }, { 0.4f, 0.9f }, { 0.5f, 0.9f }, { 0.4f, 0.9f }, { 0.2f, 0.5f }, { 0.4f, 0.8f }, { 0.3f, 0.7f }, { 0.3f, 0.8f }, { 0.25f, 0.6f },
-          { { { "Tape Dream", W_OFF, R_LIVING, 0.0f }, { "Dusty Vinyl", W_RAIN, R_LIVING, 0.0f }, { "Bedroom", W_CAFE, R_CABIN, -0.1f } } },
+          { { { "Tape Dream", W_OFF, R_LIVING, 0.0f }, { "Dusty Vinyl", W_RAIN, R_LIVING, 0.0f }, { "Bedroom", W_WIND, R_CABIN, -0.1f } } },
           { "Dusty", "Faded", "Late Night", "Sunday", "Bedroom", "Borrowed", "Slow", "Tape", "Washed", "Warm", "Hazy" },
           { "Memories", "Morning", "Notes", "Letter", "Tapes", "Loop", "Afternoon", "Hours", "Drive", "Postcards" } },
         { "Felt", { 2, 2, 2, 1 }, { 0.15f, 0.4f }, { 0.1f, 0.4f }, { 0.3f, 0.55f }, { 0.5f, 0.8f }, { 0.2f, 0.5f }, { 0.3f, 0.6f }, { 0.4f, 0.7f }, { 0.4f, 0.7f }, { 0.3f, 0.6f }, { 0.5f, 0.9f }, { 0.1f, 0.3f }, { 0.15f, 0.35f },
@@ -41,12 +41,12 @@ const std::vector<Arch>& archs()
           { "Horizon", "Farewell", "Credits", "Return", "Embers", "Dawn", "Theme", "Station", "Promise", "Light" } },
         { "Rainy", { 0, 1, 1, 0 }, { 0.3f, 0.55f }, { 0.35f, 0.6f }, { 0.45f, 0.65f }, { 0.4f, 0.7f }, { 0.3f, 0.6f }, { 0.5f, 0.8f }, { 0.4f, 0.7f }, { 0.5f, 0.8f }, { 0.4f, 0.7f }, { 0.8f, 1.1f }, { 0.2f, 0.45f }, { 0.2f, 0.45f },
           { 0.3f, 0.75f }, { 0.4f, 0.8f }, { 0.4f, 0.8f }, { 0.3f, 0.8f }, { 0.2f, 0.5f }, { 0.2f, 0.6f }, { 0.1f, 0.5f }, { 0.3f, 0.7f }, { 0.4f, 0.8f },
-          { { { "Window", W_RAIN, R_LIVING, 0.0f }, { "Cafe", W_CAFE, R_LIVING, 0.0f }, { "Night", W_RAIN, R_CABIN, 0.1f } } },
+          { { { "Window", W_RAIN, R_LIVING, 0.0f }, { "Windy", W_WIND, R_LIVING, 0.0f }, { "Night", W_RAIN, R_CABIN, 0.1f } } },
           { "Rainy", "Grey", "Wet", "Drizzle", "Blue", "Misty", "Umbrella", "Puddle", "Cold", "Evening" },
-          { "Window", "Window Seat", "Tea", "Streets", "Afternoon", "Café", "Train", "Reflections", "Thoughts", "Season" } },
+          { "Window", "Window Seat", "Tea", "Streets", "Afternoon", "Wind", "Train", "Reflections", "Thoughts", "Season" } },
         { "Vintage", { 1, 1, 3, 3, 0 }, { 0.35f, 0.65f }, { 0.4f, 0.7f }, { 0.35f, 0.55f }, { 0.4f, 0.7f }, { 0.65f, 1.0f }, { 0.5f, 0.9f }, { 0.4f, 0.7f }, { 0.6f, 0.9f }, { 0.3f, 0.6f }, { 0.7f, 1.0f }, { 0.2f, 0.4f }, { 0.2f, 0.4f },
           { 0.6f, 1.0f }, { 0.5f, 0.9f }, { 0.4f, 0.8f }, { 0.7f, 1.0f }, { 0.2f, 0.5f }, { 0.5f, 0.9f }, { 0.4f, 0.9f }, { 0.4f, 0.9f }, { 0.2f, 0.5f },
-          { { { "Old Upright", W_OFF, R_LIVING, 0.0f }, { "Honky-Tonk", W_AUDIENCE, R_LIVING, 0.0f }, { "Attic Tape", W_OFF, R_CABIN, 0.1f } } },
+          { { { "Old Upright", W_OFF, R_LIVING, 0.0f }, { "Honky-Tonk", W_OFF, R_LIVING, 0.0f }, { "Attic Tape", W_OFF, R_CABIN, 0.1f } } },
           { "Grandmother's", "Attic", "Saloon", "Old", "Forgotten", "Antique", "Yellowed", "Sepia", "Creaky", "1974" },
           { "Parlor", "Upright", "Reel", "Rag", "Photographs", "Trunk", "Jukebox", "Ballroom", "Music Room", "Recital" } },
         { "Church", { 0, 0, 2 }, { 0.35f, 0.6f }, { 0.3f, 0.55f }, { 0.55f, 0.85f }, { 0.4f, 0.6f }, { 0.1f, 0.4f }, { 0.5f, 0.8f }, { 0.5f, 0.8f }, { 0.4f, 0.7f }, { 0.6f, 0.9f }, { 1.0f, 1.4f }, { 0.6f, 0.9f }, { 0.7f, 1.0f },
@@ -123,6 +123,8 @@ Preset Generator::candidate (const GenRequest& req)
         else if (cn == "Concert") { set (P::piano, 0.0f); between (P::tone, 0.58f, 0.88f); between (P::hammer, 0.62f, 0.92f); between (P::sustain, 0.6f, 0.9f); set (P::roomType, 4.0f); between (P::room, 0.3f, 0.5f); between (P::memory, 0.0f, 0.06f); between (P::intimacy, 0.2f, 0.5f); }
         else if (cn == "Toy") { choose (P::piano, { 4, 4, 5 }); between (P::tone, 0.6f, 0.92f); between (P::hammer, 0.45f, 0.75f); between (P::detune, 0.2f, 0.5f); }
     }
+    set (P::sustain, std::min (p.params[(size_t) P::sustain], 0.80f));
+    set (P::damper, std::max (p.params[(size_t) P::damper], 0.40f));
     p.meta.category = a->cat; p.meta.subcategory = v.name;
     const juce::String name = juce::String (a->adj[rng.next() % a->adj.size()]) + " " + a->noun[rng.next() % a->noun.size()];
     p.meta.name = name;

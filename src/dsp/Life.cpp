@@ -4,6 +4,7 @@ namespace gx
 {
 namespace
 {
+inline float ss01 (float a, float b, float x) { const float t = juce::jlimit (0.0f, 1.0f, (x - a) / (b - a)); return t * t * (3.0f - 2.0f * t); }
 inline uint32_t mix32 (uint32_t a, uint32_t b)
 {
     uint32_t h = a * 0x9E3779B1u ^ (b + 0x7F4A7C15u) * 0x85EBCA6Bu;
@@ -35,6 +36,8 @@ void Life::reset (uint32_t s)
     gust = gustTarget = 1; gustCount = 0;
     for (auto& k : talk) k = Talker();
     smear.clear();
+    wg1 = wg1t = 0.4f; wg2 = wg2t = wg3 = 0.5f; wc1 = wc2 = wCoef = 0; wPhase = 0;
+    for (int c = 0; c < 2; ++c) { wRum[c] = wRum2[c] = 0; for (auto& x : wk[c]) x = 0; wBody[c].reset(); wAir[c].reset(); for (auto& f : wWhist[c]) f.reset(); }
     babLp[0] = babLp[1] = 0;
     wowPh = 0; flPh = 0.3f; drift = driftTarget = 0; dropG = dropTarget = 1; dropLeft = 0;
     for (auto& b : tapeLp) b.reset();
@@ -280,12 +283,51 @@ void Life::world (float& l, float& r)
                 spawn (700.0f + 1900.0f * rng.uni(), 0, 14.0f, 0.045f, 0.020f * w, rng.uni());       // a bigger drop on the glass
             break;
         }
-        case 2: // cafe: voices, cups, an espresso machine now and then
-            murmur (l, r, 1.0f * w, 1.0f, 7);
-            if (rng.uni() < 0.000010f) spawn (3200.0f + 1800.0f * rng.uni(), 0, 25.0f, 0.16f, 0.018f * w, rng.uni());     // cup clink
-            if (rng.uni() < 0.0000035f) spawn (4200.0f, 0, 1.2f, 1.1f, 0.012f * w, 0.2f + 0.6f * rng.uni());             // steam hiss
-            if (rng.uni() < 0.000004f) spawn (210.0f, 0, 3.0f, 0.12f, 0.02f * w, rng.uni());                              // a chair
+        case 2: // wind
+        {
+            if (--wc1 <= 0) { wc1 = (int) ((5.0f + 9.0f * rng.uni()) * (float) sr); wg1t = juce::jlimit (0.10f, 1.0f, 0.12f + 1.3f * rng.uni() * rng.uni()); }
+            if (--wc2 <= 0) { wc2 = (int) ((0.8f + 2.2f * rng.uni()) * (float) sr); wg2t = rng.uni(); }
+            wg1 += (wg1t - wg1) * 6.0e-6f;
+            wg2 += (wg2t - wg2) * 4.0e-5f;
+            wg3 += (rng.uni() - wg3) * 3.0e-4f;
+            wPhase += 1.0f / (float) sr;
+            const float gl = juce::jlimit (0.0f, 1.0f, wg1 * (0.55f + 0.45f * wg2) * (0.75f + 0.5f * wg3));
+            if ((++wCoef & 15) == 0)
+            {
+                const float fc = 170.0f + 1500.0f * gl * std::sqrt (gl), fa = 2600.0f + 2400.0f * gl;
+                static const float base[3] { 610.0f, 930.0f, 1380.0f };
+                for (int c = 0; c < 2; ++c)
+                {
+                    wBody[c].set (std::tan (kPi * fc * (c ? 1.07f : 1.0f) / (float) sr), 1.0f / 0.9f);
+                    wAir[c].set (std::tan (kPi * fa / (float) sr), 1.0f / 0.7f);
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        const float f = base[i] * (1.0f + 0.05f * std::sin (wPhase * (0.6f + 0.2f * (float) i) + (float) i * 2.1f + (float) c * 0.9f) + 0.10f * (gl - 0.5f));
+                        wWhist[c][i].set (std::tan (kPi * f / (float) sr), 1.0f / 14.0f);
+                    }
+                }
+            }
+            const float whistleAmt = ss01 (0.50f, 0.95f, gl);
+            for (int c = 0; c < 2; ++c)
+            {
+                const float wn = rng.bi();
+                wk[c][0] = 0.99765f * wk[c][0] + wn * 0.0990460f;
+                wk[c][1] = 0.96300f * wk[c][1] + wn * 0.2965164f;
+                wk[c][2] = 0.57000f * wk[c][2] + wn * 1.0526913f;
+                const float pink = (wk[c][0] + wk[c][1] + wk[c][2] + wn * 0.1848f) * 0.11f;
+                float bp, hp;
+                const float body = wBody[c].tick (pink, bp, hp);
+                float air; { float lp2, bp2; air = 0; lp2 = wAir[c].tick (wn, bp2, air); (void) lp2; }
+                float whistle = 0;
+                for (int i = 0; i < 3; ++i) { float b2, h2; wWhist[c][i].tick (wn, b2, h2); whistle += b2 * (i == 1 ? 1.0f : 0.7f); }
+                wRum[c] += 0.010f * (rng.bi() - wRum[c]); wRum2[c] += 0.05f * (wRum[c] - wRum2[c]);
+                const float s = body * 0.55f * (0.15f + gl) + air * 0.010f * gl * gl + whistle * 0.045f * whistleAmt * whistleAmt + wRum2[c] * 0.45f * gl;
+                (c == 0 ? l : r) += s * w;
+            }
+            if (rng.uni() < 0.0009f * gl * gl * gl)
+                spawn (3200.0f + 2600.0f * rng.uni(), 0, 2.2f, 0.07f, 0.010f * w * (0.5f + gl), rng.uni());     // leaves rustling in a strong gust
             break;
+        }
         case 3: // fireplace
             for (int c = 0; c < 2; ++c)
             {
@@ -311,7 +353,6 @@ void Life::world (float& l, float& r)
                 l += s * std::cos (b.pan * 1.5708f); r += s * std::sin (b.pan * 1.5708f);
             }
             break;
-        case 5: murmur (l, r, 0.8f * w, 0.55f, 10); break;   // distant audience
         default: break;
     }
 }

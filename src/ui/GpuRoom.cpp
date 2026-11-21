@@ -16,6 +16,11 @@ const char* roomShader = R"GLSL(
 uniform vec2 uRes;
 uniform float uTime, uMemory, uAge, uWorld, uEnergy, uHit, uPedal, uFlame, uIntimacy, uWarmth, uSpace;
 uniform float uKeys[88];
+#ifdef LITE
+const int MARCH = 56;
+#else
+const int MARCH = 90;
+#endif
 
 float hash12 (vec2 p) { vec3 p3 = fract (vec3 (p.xyx) * 0.1031); p3 += dot (p3, p3.yzx + 33.33); return fract ((p3.x + p3.y) * p3.z); }
 float hash13 (vec3 p3) { p3 = fract (p3 * 0.1031); p3 += dot (p3, p3.zyx + 31.32); return fract ((p3.x + p3.y) * p3.z); }
@@ -40,6 +45,8 @@ float noise3 (vec3 p)
     return mix (mix (mix (hash13 (i), hash13 (i + vec3 (1, 0, 0)), f.x), mix (hash13 (i + vec3 (0, 1, 0)), hash13 (i + vec3 (1, 1, 0)), f.x), f.y),
                 mix (mix (hash13 (i + vec3 (0, 0, 1)), hash13 (i + vec3 (1, 0, 1)), f.x), mix (hash13 (i + vec3 (0, 1, 1)), hash13 (i + vec3 (1, 1, 1)), f.x), f.y), f.z);
 }
+
+float ss (float a, float b, float x) { float t = clamp ((x - a) / (b - a), 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
 
 float sdBox (vec3 p, vec3 b) { vec3 d = abs (p) - b; return length (max (d, 0.0)) + min (max (d.x, max (d.y, d.z)), 0.0); }
 float sdRoundBox (vec3 p, vec3 b, float r) { return sdBox (p, b - vec3 (r)) - r; }
@@ -69,6 +76,7 @@ vec2 map (vec3 p)
     r = opU (r, vec2 (min (dFrame, dMull), 11.0));
     r = opU (r, vec2 (sdBox (p - vec3 (wc.x, WY0 - 0.03, -2.88), vec3 (wh.x + 0.1, 0.022, 0.15)), 11.0));
     float fold = 0.018 * sin (p.x * 34.0 + p.y * 1.5) + 0.01 * sin (p.x * 71.0);
+    if (uWorld > 1.5 && uWorld < 2.5) fold += 0.07 * (0.5 + 0.5 * sin (uTime * 0.31)) * (1.9 - p.y * 0.5) * sin (uTime * 1.3 + p.y * 1.8 + p.x * 3.0);
     r = opU (r, vec2 (sdBox (p - vec3 (WX0 - 0.22, 1.62, -2.86), vec3 (0.2 + fold, 1.55, 0.12)), 8.0));
     r = opU (r, vec2 (sdBox (p - vec3 (WX1 + 0.22, 1.62, -2.86), vec3 (0.2 + fold, 1.55, 0.12)), 8.0));
     // picture on the back wall
@@ -120,6 +128,9 @@ vec3 calcNormal (vec3 p)
 
 float softShadow (vec3 ro, vec3 rd, float tmax)
 {
+#ifdef LITE
+    return 1.0;
+#endif
     float res = 1.0, t = 0.03;
     for (int i = 0; i < 26; i++)
     {
@@ -133,6 +144,9 @@ float softShadow (vec3 ro, vec3 rd, float tmax)
 
 float calcAO (vec3 p, vec3 n)
 {
+#ifdef LITE
+    return 1.0;
+#endif
     float occ = 0.0, sca = 1.0;
     for (int i = 0; i < 4; i++)
     {
@@ -151,8 +165,8 @@ float windowLight (vec3 q)
     vec3 h = q + SUNL * t;
     vec2 wc = vec2 (0.5 * (WX0 + WX1), 0.5 * (WY0 + WY1)), wh = vec2 (0.5 * (WX1 - WX0), 0.5 * (WY1 - WY0));
     vec2 d = abs (h.xy - wc) - wh;
-    float inside = smoothstep (0.05, -0.05, max (d.x, d.y));
-    float mull = max (smoothstep (0.04, 0.012, abs (h.x - wc.x)), smoothstep (0.03, 0.01, abs (abs (h.y - wc.y) - 0.27)));
+    float inside = ss (0.05, -0.05, max (d.x, d.y));
+    float mull = max (ss (0.04, 0.012, abs (h.x - wc.x)), ss (0.03, 0.01, abs (abs (h.y - wc.y) - 0.27)));
     return inside * (1.0 - 0.8 * mull);
 }
 
@@ -162,15 +176,15 @@ vec3 skyColour (vec2 w)
     vec3 top = vec3 (0.62, 0.46, 0.34), bot = vec3 (1.0, 0.80, 0.50);
     float sunI = 1.0; vec2 sunP = vec2 (0.68, 0.30);
     if (wd == 1) { top = vec3 (0.36, 0.42, 0.50); bot = vec3 (0.58, 0.62, 0.68); sunI = 0.0; }
-    else if (wd == 2) { top = vec3 (0.12, 0.16, 0.32); bot = vec3 (0.95, 0.55, 0.28); sunI = 0.4; sunP = vec2 (0.3, 0.2); }
+    else if (wd == 2) { top = vec3 (0.38, 0.52, 0.72); bot = vec3 (0.88, 0.86, 0.80); sunI = 0.55; sunP = vec2 (0.35, 0.3); }
     else if (wd == 3) { top = vec3 (0.01, 0.02, 0.06); bot = vec3 (0.05, 0.07, 0.15); sunI = 0.0; }
     else if (wd == 4) { top = vec3 (0.45, 0.38, 0.62); bot = vec3 (1.0, 0.68, 0.46); sunI = 0.9; sunP = vec2 (0.55, 0.22); }
     else if (wd == 5) { top = vec3 (0.18, 0.12, 0.30); bot = vec3 (0.85, 0.42, 0.38); sunI = 0.3; sunP = vec2 (0.25, 0.2); }
     vec3 c = mix (bot, top, pow (clamp (w.y, 0.0, 1.0), 0.6));
     float d = length ((w - sunP) * vec2 (1.0, 1.2));
-    c += vec3 (1.0, 0.8, 0.5) * sunI * (exp (-d * 6.0) * 0.7 + smoothstep (0.045, 0.03, d) * 1.2);
-    float cl = fbm (vec2 (w.x * 3.0 + uTime * 0.01, w.y * 6.0));
-    c = mix (c, c * 0.7 + vec3 (0.15), smoothstep (0.5, 0.8, cl) * (wd == 1 ? 0.8 : 0.35));
+    c += vec3 (1.0, 0.8, 0.5) * sunI * (exp (-d * 6.0) * 0.7 + ss (0.045, 0.03, d) * 1.2);
+    float cl = fbm (vec2 (w.x * 3.0 + uTime * (wd == 2 ? 0.09 : 0.01), w.y * 6.0));
+    c = mix (c, c * 0.7 + vec3 (0.15), ss (0.5, 0.8, cl) * (wd == 1 ? 0.8 : 0.35));
     if (wd == 3)
     {
         vec2 g = floor (w * 44.0);
@@ -179,13 +193,9 @@ vec3 skyColour (vec2 w)
     float hill = 0.22 + 0.05 * sin (w.x * 8.0) + 0.03 * sin (w.x * 21.0 + 1.0);
     vec3 dark = c * 0.09 + vec3 (0.0, 0.004, 0.01);
     vec2 t = w - vec2 (0.25, 0.34);
+    if (wd == 2) t.x += 0.012 * sin (uTime * 1.7 + w.y * 6.0) * (0.5 + 0.5 * sin (uTime * 0.4));
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
     if (w.y < hill || crown < 0.0 || (abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12)) c = dark;
-    if (wd == 2 && w.y < hill + 0.04 && w.y > hill - 0.12)
-    {
-        float lamp = step (0.72, hash12 (vec2 (floor (w.x * 18.0), 1.0)));
-        c += vec3 (1.0, 0.7, 0.3) * lamp * smoothstep (0.12, 0.0, length (vec2 (fract (w.x * 18.0) - 0.5, (w.y - hill) * 5.0))) * 0.9;
-    }
     return c * 1.25;
 }
 
@@ -200,8 +210,8 @@ vec3 rainDrops (vec2 uv, float t)
         float rn = hash12 (id + fk * 13.7), rn2 = hash12 (id + 5.1 + fk);
         vec2 pos = vec2 ((rn - 0.5) * 0.5, 0.38 - 0.76 * fract (t * (0.08 + 0.35 * rn2) + rn * 9.0));
         float rad = 0.05 + 0.06 * rn2, d = length (f - pos);
-        float drop = smoothstep (rad, rad * 0.35, d);
-        float trail = smoothstep (0.03, 0.0, abs (f.x - pos.x)) * step (pos.y, f.y) * smoothstep (pos.y + 0.4, pos.y, f.y) * 0.35;
+        float drop = ss (rad, rad * 0.35, d);
+        float trail = ss (0.03, 0.0, abs (f.x - pos.x)) * step (pos.y, f.y) * ss (pos.y + 0.4, pos.y, f.y) * 0.35;
         float on = step (0.35, rn2);
         r.xy += (f - pos) * drop * 0.9 * on;
         r.z += (drop * 0.9 + trail * 1.4) * on;
@@ -223,7 +233,7 @@ vec3 sunColour()
 {
     int wd = int (uWorld + 0.5);
     if (wd == 1) return vec3 (0.55, 0.65, 0.85) * 0.35;
-    if (wd == 2) return vec3 (1.0, 0.60, 0.35) * 0.65;
+    if (wd == 2) return vec3 (0.95, 0.90, 0.80) * 0.85;
     if (wd == 3) return vec3 (0.45, 0.55, 0.95) * 0.22;
     if (wd == 4) return vec3 (1.0, 0.70, 0.55) * 1.0;
     if (wd == 5) return vec3 (0.85, 0.50, 0.70) * 0.55;
@@ -234,6 +244,9 @@ vec3 sunColour()
 float keyDown (float midiIdx)
 {
     float v = 0.0;
+#ifdef LITE
+    return v;
+#endif
     for (int i = 0; i < 88; i++) if (float (i) == midiIdx) v = uKeys[i];
     return v;
 }
@@ -247,7 +260,7 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
         float board = floor (p.z / 0.16);
         float shade = 0.75 + 0.5 * hash12 (vec2 (board, 3.0));
         float grain = fbm (vec2 (p.x * 2.5 + hash12 (vec2 (board, 1.0)) * 40.0, p.z * 90.0));
-        float seam = smoothstep (0.012, 0.0, abs (fract (p.z / 0.16) - 0.5) - 0.485) + smoothstep (0.01, 0.0, abs (fract ((p.x + hash12 (vec2 (board, 7.0)) * 3.0) / 1.2) - 0.5) - 0.495);
+        float seam = ss (0.012, 0.0, abs (fract (p.z / 0.16) - 0.5) - 0.485) + ss (0.01, 0.0, abs (fract ((p.x + hash12 (vec2 (board, 7.0)) * 3.0) / 1.2) - 0.5) - 0.495);
         alb = vec3 (0.34, 0.20, 0.11) * shade * (0.7 + 0.6 * grain) * (1.0 - 0.6 * min (seam, 1.0));
         rough = 0.30; f0 = 0.05; bump = grain;
     }
@@ -270,8 +283,8 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
         float semis = (m < 0.5 ? 0.0 : m < 1.5 ? 2.0 : m < 2.5 ? 3.0 : m < 3.5 ? 5.0 : m < 4.5 ? 7.0 : m < 5.5 ? 8.0 : 10.0) + 12.0 * floor (wi / 7.0);
         float midiIdx = semis;
         float pressed = keyDown (midiIdx);
-        alb = mix (vec3 (0.80, 0.76, 0.66), vec3 (0.97, 0.94, 0.86), hash12 (vec2 (wi, 4.0))) * (1.0 - 0.12 * smoothstep (0.0, 0.06, wf < 0.5 ? wf : 1.0 - wf) * 0.0);
-        alb *= 1.0 - 0.55 * smoothstep (0.03, 0.0, min (wf, 1.0 - wf));          // the gap between keys
+        alb = mix (vec3 (0.80, 0.76, 0.66), vec3 (0.97, 0.94, 0.86), hash12 (vec2 (wi, 4.0))) * (1.0 - 0.12 * ss (0.0, 0.06, wf < 0.5 ? wf : 1.0 - wf) * 0.0);
+        alb *= 1.0 - 0.55 * ss (0.03, 0.0, min (wf, 1.0 - wf));          // the gap between keys
         float zf = (p.z - (PIANO.z + 0.41)) ;
         bool hasBlack = m < 1.5 || (m > 2.5 && m < 5.5);
         float bx = abs (wf - 1.0) < 0.02 ? 0.0 : 0.0;
@@ -292,7 +305,7 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
     {
         vec2 u = p.xz * 9.0;
         float pat = 0.5 + 0.5 * sin (u.x) * sin (u.y);
-        float border = smoothstep (0.15, 0.0, min (min (abs (p.x - 0.7) - 1.35, 0.0) * -1.0, min (abs (p.z + 1.5) - 1.15, 0.0) * -1.0) - 0.0);
+        float border = ss (0.15, 0.0, min (min (abs (p.x - 0.7) - 1.35, 0.0) * -1.0, min (abs (p.z + 1.5) - 1.15, 0.0) * -1.0) - 0.0);
         alb = mix (vec3 (0.30, 0.06, 0.05), vec3 (0.55, 0.32, 0.16), pat) * (0.55 + 0.5 * fbm (p.xz * 60.0));
         rough = 1.0; f0 = 0.0;
     }
@@ -372,7 +385,7 @@ vec3 shadeHit (vec3 ro, vec3 rd, float t, float id)
             vec3 hp = p + r * tw;
             vec2 wc = vec2 (0.5 * (WX0 + WX1), 0.5 * (WY0 + WY1)), wh = vec2 (0.5 * (WX1 - WX0), 0.5 * (WY1 - WY0));
             vec2 d = abs (hp.xy - wc) - wh;
-            float inW = smoothstep (0.06 + rough * 0.4, -0.04, max (d.x, d.y));
+            float inW = ss (0.06 + rough * 0.4, -0.04, max (d.x, d.y));
             env += windowSky (hp) * inW * 1.6;
         }
         vec3 cp = FLAMEP - p;
@@ -406,6 +419,9 @@ float fogLight (vec3 ro, vec3 rd, float tmax)
 vec3 mote (vec3 ro, vec3 rd)
 {
     vec3 add = vec3 (0.0);
+#ifdef LITE
+    return add;
+#endif
     for (int l = 0; l < 3; l++)
     {
         float fl = float (l);
@@ -418,7 +434,7 @@ vec3 mote (vec3 ro, vec3 rd)
         vec3 off = vec3 (hash13 (id + 3.1), hash13 (id + 7.7), hash13 (id + 9.3)) - 0.5;
         float d = length (f - off * 0.6);
         float vis = windowLight (q);
-        add += sunColour() * smoothstep (0.12, 0.0, d) * vis * (0.6 + 0.4 * sin (uTime * (1.0 + 3.0 * h) + h * 40.0)) * 1.6;
+        add += sunColour() * ss (0.12, 0.0, d) * vis * (0.6 + 0.4 * sin (uTime * (1.0 + 3.0 * h) + h * 40.0)) * 1.6;
     }
     return add;
 }
@@ -434,7 +450,7 @@ vec3 sceneColour (vec2 uv0)
     vec3 rd = normalize (p2.x * rt + p2.y * up + 1.75 * f);
     float t = 0.05; vec2 h = vec2 (0.0);
     float hitId = -1.0;
-    for (int i = 0; i < 90; i++)
+    for (int i = 0; i < MARCH; i++)
     {
         h = map (ro + rd * t);
         if (h.x < 0.0012 * t) { hitId = h.y; break; }
@@ -479,17 +495,29 @@ void main()
     c += vec3 (0.05, 0.043, 0.032) * aging;
     vec2 v = (uv0 - 0.5) * vec2 (1.0, 1.1);
     c *= 1.0 - (0.30 + 0.45 * aging) * pow (clamp (length (v) * 1.3, 0.0, 1.0), 2.2);
-    c += vec3 (1.0, 0.45, 0.18) * smoothstep (0.82, 1.0, uv0.x) * (0.12 + 0.08 * sin (uTime * 0.7)) * smoothstep (0.4, 0.9, aging);
+    c += vec3 (1.0, 0.45, 0.18) * ss (0.82, 1.0, uv0.x) * (0.12 + 0.08 * sin (uTime * 0.7)) * ss (0.4, 0.9, aging);
     float sc = 0.0;
     for (int i = 0; i < 3; i++)
     {
         float fi = float (i);
         float sx = hash12 (vec2 (floor (uTime * 9.0), fi * 3.1));
-        sc += smoothstep (0.0007, 0.0, abs (uv0.x - sx)) * step (0.35, hash12 (vec2 (fi, floor (uTime * 9.0) + 2.0)));
+        sc += ss (0.0007, 0.0, abs (uv0.x - sx)) * step (0.35, hash12 (vec2 (fi, floor (uTime * 9.0) + 2.0)));
     }
-    c += vec3 (0.20, 0.18, 0.14) * sc * smoothstep (0.25, 0.7, aging);
-    vec2 dg = floor (uv0 * uRes / 9.0 + floor (uTime * 12.0) * 31.0);
-    c = mix (c, vec3 (0.02), step (0.9985, hash12 (dg)) * smoothstep (0.3, 0.8, aging) * 0.6);
+    c += vec3 (0.20, 0.18, 0.14) * sc * ss (0.25, 0.7, aging);
+    {
+        float fr = floor (uTime * 12.0);
+        vec2 gc = uv0 * uRes / 16.0 + vec2 (fr * 7.3, fr * 3.1);
+        vec2 id = floor (gc);
+        float on = step (0.992, hash12 (id));
+        vec2 f = fract (gc) - 0.5 - (hash22 (id + 4.7) - 0.5) * 0.45;
+        float rad = 0.10 + 0.26 * hash12 (id + 9.1);
+        float wob = noise3 (vec3 (f * 7.0, hash12 (id) * 30.0)) * 0.30;
+        float d = length (f * vec2 (1.0, 0.7 + 0.7 * hash12 (id + 2.2))) - rad * (0.75 + wob);
+        float speck = ss (0.05, -0.015, d) * on;
+        c = mix (c, vec3 (0.03, 0.025, 0.02), speck * ss (0.25, 0.7, aging) * 0.75);
+        float on2 = step (0.9965, hash12 (id + 17.0));
+        c = mix (c, c + vec3 (0.10, 0.09, 0.07), ss (0.06, -0.01, length (f * vec2 (1.0, 1.4)) - rad * 0.8 * (0.7 + wob)) * on2 * ss (0.25, 0.7, aging));
+    }
     c += (hash12 (uv0 * uRes + fract (uTime * 7.3) * 113.0) - 0.5) * (0.014 + 0.07 * aging);
     gl_FragColor = vec4 (clamp (c, 0.0, 1.0), 1.0);
 }
@@ -523,26 +551,43 @@ void main()
 }
 
 // ------------------------------------------------------------------ GpuRoom
+namespace
+{
+juce::CriticalSection infoLock;
+juce::String infoText;
+}
+juce::String getGpuInfo() { const juce::ScopedLock sl (infoLock); return infoText; }
+void setGpuInfo (const juce::String& t) { const juce::ScopedLock sl (infoLock); infoText = t; }
+
 bool GpuRoom::init (juce::OpenGLContext& c)
 {
     ctx = &c;
     error.clear();
+    const juce::String renderer = juce::String ((const char*) glGetString (GL_VERSION)) + "  " + juce::String ((const char*) glGetString (GL_RENDERER));
+    auto log = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("DSK Music").getChildFile ("Memoria").getChildFile ("gpu-log.txt");
+    // two tiers: the full scene, then a lighter one (no soft shadows / ambient occlusion / dust) if the driver rejects or cannot link the first
+    for (int tier = 0; tier < 2 && prog == nullptr; ++tier)
     {
         auto p = std::make_unique<juce::OpenGLShaderProgram> (c);
-        const juce::String fs = juce::String ("uniform float uPedalDummy;\n") + roomShader;
-        if (! p->addVertexShader (juce::OpenGLHelpers::translateVertexShaderToV3 (vertexShader))
-            || ! p->addFragmentShader (juce::OpenGLHelpers::translateFragmentShaderToV3 (roomShader))
-            || ! p->link())
+        const juce::String fs = (tier == 1 ? juce::String ("#define LITE 1\n") : juce::String()) + roomShader;
+        if (p->addVertexShader (juce::OpenGLHelpers::translateVertexShaderToV3 (vertexShader))
+            && p->addFragmentShader (juce::OpenGLHelpers::translateFragmentShaderToV3 (fs))
+            && p->link())
         {
-            error << "room: " << p->getLastError() << "\n";
-            DBG (error);
-            (void) fs;
-            auto log = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("DSK Music").getChildFile ("Memoria").getChildFile ("gpu-log.txt");
+            prog = std::move (p);
+            setGpuInfo (juce::String (tier == 0 ? "OK (full) - " : "OK (light) - ") + renderer);
             log.getParentDirectory().createDirectory();
-            log.replaceWithText ("Memoria GPU scene\nOpenGL: " + juce::String ((const char*) glGetString (GL_VERSION)) + "  " + juce::String ((const char*) glGetString (GL_RENDERER)) + "\n\n" + error);
-            return false;
+            log.replaceWithText ("Memoria GPU scene\nOpenGL: " + renderer + "\nTier: " + (tier == 0 ? "full" : "light") + "\n" + error);
         }
-        prog = std::move (p);
+        else error << (tier == 0 ? "full: " : "light: ") << p->getLastError() << "\n";
+    }
+    if (prog == nullptr)
+    {
+        DBG (error);
+        setGpuInfo ("shader failed - " + renderer);
+        log.getParentDirectory().createDirectory();
+        log.replaceWithText ("Memoria GPU scene\nOpenGL: " + renderer + "\n\n" + error);
+        return false;
     }
     {
         auto b = std::make_unique<juce::OpenGLShaderProgram> (c);

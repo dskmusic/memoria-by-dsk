@@ -78,6 +78,11 @@ private:
     };
     std::array<Talker, 10> talk;
     DelayLine smear;
+    // wind: gusts on three time scales driving a breathy body, a high air band, whistling through the gaps and a low rumble
+    float wg1 = 0.4f, wg1t = 0.4f, wg2 = 0.5f, wg2t = 0.5f, wg3 = 0.5f, wPhase = 0;
+    int wc1 = 0, wc2 = 0, wCoef = 0;
+    float wk[2][3] {}, wRum[2] {}, wRum2[2] {};
+    Svf wBody[2], wAir[2], wWhist[2][3];
     float babLp[2] {}, espresso = 0;
     Smooth tapeS, vinylS, worldS;
 };

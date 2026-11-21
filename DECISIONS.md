@@ -15,4 +15,4 @@
 | 12 | Life layers | Wood, tape, vinyl, world and rooms synthesised in `dsp/Life.*`; macros (Memory, Warmth, Intimacy, Time, Space) are offsets applied to the effective parameters inside the engine | No samples, deterministic, presets stay plain parameter lists. |
 | 13 | Hands | `dsp/Hands.*`: step-by-step generative player (progressions, voice-leading, phrases) driven by host ppq/bpm or an internal clock, decisions from (seed, step) hashes | Bounce == playback. |
 | 14 | Room scene | Rendered on the CPU at 416x260 and scaled up (soft, filmic) instead of GLSL shaders | Verifiable offscreen in screenshots / video, no GPU driver risks. A GPU path can be added later. |
-| 15 | Factory bank | 300 presets (10 categories x 3 sub-categories x 10), validated and level-matched to -24 dB RMS | Reproducible with the tool; the test suite re-validates samples of it. |
+| 15 | Factory bank | 210 presets (10 categories x 3 sub-categories x 7, curated), validated, level-matched to -24 dB RMS and checked for organ-like drones | Reproducible with the tool; the test suite re-validates samples of it. |

@@ -42,5 +42,8 @@ private:
     bool tried = false, ok = false;
 };
 
+// What happened when the shader scene was set up (shown in Settings, also written to Documents/DSK Music/Memoria/gpu-log.txt)
+juce::String getGpuInfo();
+void setGpuInfo (const juce::String&);
 inline std::atomic<int>& gpuStatus() { static std::atomic<int> s { 0 }; return s; }   // 0 unknown, 1 ok, -1 failed
 }

@@ -11,6 +11,7 @@ PianoPage::PianoPage (Context& c)
 {
     scene.gpuWanted = c.settings.gpu();
     scene.quality = c.settings.gpuQuality();
+    scene.setGpu (scene.gpuWanted);   // not waiting for a window: the context attaches itself as soon as there is one
     piano.accent = col::accent;
     macros.accent = col::accent;
     life.accent = col::accent2;

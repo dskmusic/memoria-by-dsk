@@ -70,8 +70,10 @@ void MemoriaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     if (previewRequested.load() && duck != Duck::Out)
     {
         previewRequested.store (false);
+        // browsing presets quickly must not pile chords up: release the previous test chord, then strike a fresh one, and never held longer than ~1.4 s
+        for (int n : { 57, 64, 69, 72 }) midi.addEvent (juce::MidiMessage::noteOff (1, n), 0);
         for (int n : { 57, 64, 69, 72 }) midi.addEvent (juce::MidiMessage::noteOn (1, n, (juce::uint8) 72), 0);
-        previewOffLeft = (int) (1.4 * engine.getSampleRate());
+        previewOffLeft = (int) (1.1 * engine.getSampleRate());
     }
     else if (previewOffLeft > 0 && (previewOffLeft -= buffer.getNumSamples()) <= 0)
         for (int n : { 57, 64, 69, 72 }) midi.addEvent (juce::MidiMessage::noteOff (1, n), 0);

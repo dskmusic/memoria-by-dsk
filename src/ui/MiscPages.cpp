@@ -365,6 +365,7 @@ SettingsPage::SettingsPage (Context& c, std::function<void (float)> setScale, st
 
 void SettingsPage::paint (juce::Graphics& g)
 {
+    const auto gpuLine = L ("Escena GPU: ", "GPU scene: ") + (gpuStatus().load() < 0 ? L ("no disponible (se usa la escena por CPU) - ", "not available (the CPU scene is used) - ") : juce::String()) + getGpuInfo();
     auto r = getLocalBounds().reduced (12).removeFromLeft (680).toFloat();
     drawPanel (g, r);
     g.setColour (col::text);
@@ -375,6 +376,9 @@ void SettingsPage::paint (juce::Graphics& g)
     rows.removeFromTop (40);
     g.setColour (col::textDim);
     g.setFont (font (12.0f));
+    g.setColour (col::textDim); g.setFont (font (11.5f));
+    g.drawFittedText (gpuLine, juce::Rectangle<int> (28, getHeight() - 120, 640, 40), juce::Justification::topLeft, 2);
+    g.setColour (col::textDim); g.setFont (font (12.0f));
     g.drawFittedText (L ("Consejo: clic derecho en cualquier mando para asignarlo a tu controlador (MIDI Learn). El pedal de sustain (CC64) admite medio pedal.",
                          "Tip: right-click any knob to map it to your controller (MIDI Learn). The sustain pedal (CC64) supports half-pedaling."),
                       rows.removeFromTop (60).translated (0, 40), juce::Justification::topLeft, 2);
