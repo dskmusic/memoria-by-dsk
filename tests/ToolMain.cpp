@@ -152,6 +152,42 @@ int main (int argc, char** argv)
         std::puts (("wrote " + juce::String (arr.size()) + " presets (" + juce::String (failed) + " failed) to " + out.getFullPathName()).toRawUTF8());
         return 0;
     }
+    if (cmd == "addbank")
+    {
+        // MemoriaTool addbank <bank>: appends curated Electric Piano and Vibraphone presets (levelled, organ-audited) to an existing bank
+        const auto f = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "resources/factory.memoriabank");
+        const juce::var bank = juce::JSON::parse (f.loadFileAsString());
+        juce::Array<juce::var> arr = *bank.getProperty ("presets", {}).getArray();
+        for (int i = arr.size() - 1; i >= 0; --i) { const auto pp = gx::Preset::fromVar (arr[i]); if ((int) pp.get (gx::P::piano) >= 6) arr.remove (i); }
+        struct Want { int piano; const char* cat; const char* name; };
+        const Want wants[] { { 6, "Lo-Fi", "Rhodes Late Night" }, { 6, "Lo-Fi", "Rhodes Dusty Tape" }, { 6, "Study", "Rhodes Quiet Desk" }, { 6, "Cinematic", "Rhodes Slow Film" }, { 6, "Rainy", "Rhodes Window Rain" }, { 6, "Vintage", "Rhodes Old Club" },
+                             { 7, "Lullaby", "Vibraphone Moon" }, { 7, "Study", "Vibraphone Calm" }, { 7, "Cinematic", "Vibraphone Glass Hall" }, { 7, "Lo-Fi", "Vibraphone Smoky Room" }, { 7, "Rainy", "Vibraphone After Rain" }, { 7, "Concert", "Vibraphone Stage" } };
+        int added = 0;
+        for (auto& w : wants)
+        {
+            bool ok = false; gx::Preset p; float rms = 0;
+            for (int attempt = 0; attempt < 30 && ! ok; ++attempt)
+            {
+                gx::GenRequest rq; rq.category = w.cat; rq.sub = attempt % 3; rq.seed = (uint32_t) (5000 + 31 * added + 977 * attempt);
+                p = gx::Generator::candidate (rq);
+                p.params[(size_t) gx::P::piano] = (float) w.piano;
+                p.params[(size_t) gx::P::hammer] = juce::jlimit (0.2f, 0.6f, p.params[(size_t) gx::P::hammer]);
+                p.params[(size_t) gx::P::resonance] = 0.15f;
+                if (! gx::Generator::validate (p, &rms)) continue;
+                if (presetIsOrganLike (p)) continue;
+                ok = true;
+            }
+            if (! ok) { std::puts (("skipped " + juce::String (w.name)).toRawUTF8()); continue; }
+            p.meta.name = w.name; p.meta.category = w.cat;
+            arr.add (p.toVar()); ++added;
+            std::puts ((juce::String (w.name) + "  rms " + juce::String (rms, 1) + " dB").toRawUTF8());
+        }
+        auto* nb = new juce::DynamicObject();
+        nb->setProperty ("format", "memoriabank"); nb->setProperty ("version", 1); nb->setProperty ("presets", arr);
+        f.replaceWithText (juce::JSON::toString (juce::var (nb), true));
+        std::puts (("bank now has " + juce::String (arr.size()) + " presets").toRawUTF8());
+        return 0;
+    }
     if (cmd == "hands")
     {
         // MemoriaTool hands <dir> [seconds]: every song style, for listening (WAV + MIDI)

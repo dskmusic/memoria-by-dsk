@@ -10,7 +10,7 @@ static Range lin (float lo, float hi, float step = 0.0f) { return Range (lo, hi,
 
 const juce::StringArray& pianoNames()
 {
-    static const juce::StringArray n { "Concert Grand", "Upright", "Felt Piano", "Honky-Tonk", "Toy Piano", "Celesta" };
+    static const juce::StringArray n { "Concert Grand", "Upright", "Felt Piano", "Honky-Tonk", "Toy Piano", "Celesta", "Electric Piano", "Vibraphone" };
     return n;
 }
 

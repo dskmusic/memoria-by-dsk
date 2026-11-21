@@ -18,7 +18,7 @@ window. One slider, **Memory**, takes you from a crisp, present studio piano to 
 - **Physically modelled piano (no sample library):** every partial is a decaying resonator with real string inharmonicity,
   2-3 detuned strings per note (beating), the piano's double decay, hammer felt that gets brighter with velocity,
   strike-position comb, dampers, soundboard modes and sympathetic resonance. The sustain pedal (CC64) is continuous: half pedal works.
-- **Six instruments:** concert grand, upright, felt piano, honky-tonk, toy piano and celesta.
+- **Eight instruments:** concert grand, upright, felt piano, honky-tonk, toy piano, celesta, electric piano (Rhodes-style) and vibraphone.
 - **Memory macro** plus Warmth, Intimacy (close mic to far), Time (how aged the piano is) and Space.
 - **Layers of life:** wooden sounds (bench, key action, pedal, dampers), tape (wow and flutter, saturation, dull highs, hiss, dropouts),
   vinyl (crackle, rumble, needle pop) and a distant world: rain, wind, fireplace, dawn birds. Five rooms: living room, church, studio, wooden cabin, empty concert hall.
@@ -27,7 +27,7 @@ window. One slider, **Memory**, takes you from a crisp, present studio piano to 
   (dynamics, rolled chords, rubato, pedalling). Ten styles (Lo-Fi Chill, Cinematic, Romantic, Minimal, Lullaby waltz, Power Ballad, Classical: Pachelbel's Canon in D with growing variations, Jazz Ballad, Lo-Fi Loop and a Chopin-style Nocturne), 8 scales, any key,
   16 to 128 bars, playing on their own clock (PLAY inside the instrument, never with the DAW transport); drag the MIDI into your DAW to use it there. **New variation** and **Random song** (with locks) make a new one in a click. Click anywhere on the song map to jump there while it plays.
   **Export the song:** drag it as a MIDI file (or as a rendered WAV) straight into your DAW, or save it as .mid / .wav.
-- **210 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy.
+- **222 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy.
   **Random sound** generates a new piano + room + layers + macros in any category, with locks for each section, validated and level-matched.
 - **A cinematic 3D room, rendered live on your graphics card:** a real 3D scene (ray-marched, soft shadows, ambient occlusion, lacquer and floor reflections,
   volumetric light shafts with floating dust, rain on the glass, a flickering candle, film ageing). The keys of the piano go down with the notes that sound.

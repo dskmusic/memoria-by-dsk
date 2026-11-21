@@ -78,6 +78,62 @@ const std::vector<Loop>& book()
         l.push_back (mkLoop ({ 5, 2, 3, 0 },
             mk ("0:2:2 2:2:0", "0:2:4 2:2:2", "0:2:5 2:2:3", "0:4:4"), "0:4:2",
             mk ("0:2:5 2:2:7", "0:2:6 2:2:9", "0:2:10 2:2:12", "0:2:11 2:2:7"), "0:2:11 2:2:9"));
+        // anthem I-iii-IV-V
+        l.push_back (mkLoop ({ 0, 2, 3, 4 },
+            mk ("0:1:4 1:1:2 2:2:4", "0:1.5:6 1.5:.5:4 2:2:2", "0:1.5:5 1.5:.5:4 2:2:3", "0:1:4 1:1:6 2:2:4"), "0:1:6 1:1:4 2:2:8",
+            mk ("0:.5:7 .5:.5:7 1:1:9 2:2:7", "0:1:9 1:1:11 2:2:9", "0:1:10 1:1:9 2:2:7", "0:1:11 1:1:9 2:2:11"), "0:1:13 1:1:11 2:2:8"));
+        // emotional vi-iii-IV-V
+        l.push_back (mkLoop ({ 5, 2, 3, 4 },
+            mk ("0:1.5:2 1.5:.5:0 2:2:2", "0:1.5:4 1.5:.5:2 2:2:4", "0:2:5 2:2:3", "0:1.5:6 1.5:.5:4 2:2:6"), "0:1.5:6 1.5:.5:4 2:2:1",
+            mk ("0:1:5 1:1:7 2:2:9", "0:1:11 1:1:9 2:2:11", "0:1.5:12 1.5:.5:10 2:2:10", "0:1:13 1:1:11 2:2:13"), "0:1:11 1:1:13 2:2:8"));
+        // turnaround I-vi-ii-V
+        l.push_back (mkLoop ({ 0, 5, 1, 4 },
+            mk ("0:1:2 1:1:4 2:2:7", "0:1.5:5 1.5:.5:4 2:2:2", "0:1:3 1:1:5 2:2:3", "0:1.5:4 1.5:.5:6 2:2:4"), "0:1.5:6 1.5:.5:4 2:2:1",
+            mk ("0:1:7 1:1:9 2:2:11", "0:1:12 1:1:11 2:2:9", "0:1.5:12 1.5:.5:10 2:2:8", "0:1:11 1:1:13 2:2:11"), "0:1:13 1:1:11 2:2:8"));
+        // doo-wop I-IV-vi-V
+        l.push_back (mkLoop ({ 0, 3, 5, 4 },
+            mk ("0:1.5:4 1.5:.5:4 2:1:2 3:1:4", "0:1.5:5 1.5:.5:5 2:2:3", "0:1:7 1:1:6 2:2:5", "0:1.5:6 1.5:.5:4 2:2:6"), "0:1.5:4 1.5:.5:6 2:2:1",
+            mk ("0:1:11 1:1:9 2:1:7 3:1:9", "0:2:10 2:2:12", "0:1.5:14 1.5:.5:12 2:2:9", "0:1:13 1:1:11 2:2:13"), "0:1:11 1:1:13 2:2:8"));
+        // rock ballad vi-V-IV-V
+        l.push_back (mkLoop ({ 5, 4, 3, 4 },
+            mk ("0:2:2 2:2:0", "0:2:1 2:2:6", "0:2:0 2:1:5 3:1:3", "0:2:4 2:2:6"), "0:2:6 2:2:8",
+            mk ("0:2:9 2:2:7", "0:2:8 2:2:11", "0:2:10 2:1:12 3:1:10", "0:2:11 2:2:13"), "0:2:13 2:2:11"));
+        // cinematic vi-IV-I-iii
+        l.push_back (mkLoop ({ 5, 3, 0, 2 },
+            mk ("0:2:2 2:2:0", "0:2:3 2:2:5", "0:2:4 2:2:2", "0:2:4 2:2:6"), "0:2:2 2:2:4",
+            mk ("0:2:7 2:2:9", "0:2:10 2:2:12", "0:2:11 2:2:9", "0:2:11 2:2:13"), "0:2:13 2:2:9"));
+        // waltz I-IV-V-I
+        l.push_back (mkLoop ({ 0, 3, 4, 0 },
+            mk ("0:1:2 1:1:4 2:1:2", "0:2:3 2:1:5", "0:1:4 1:1:6 2:1:4", "0:2:2 2:1:1"), "0:3:0",
+            mk ("0:1:7 1:1:9 2:1:11", "0:2:10 2:1:12", "0:1:11 1:1:13 2:1:11", "0:2:9 2:1:8"), "0:3:7", true));
+        // waltz vi-IV-I-V
+        l.push_back (mkLoop ({ 5, 3, 0, 4 },
+            mk ("0:2:2 2:1:0", "0:1:3 1:1:5 2:1:7", "0:2:4 2:1:2", "0:2:6 2:1:4"), "0:3:1",
+            mk ("0:2:9 2:1:7", "0:1:10 1:1:12 2:1:14", "0:2:11 2:1:9", "0:2:13 2:1:11"), "0:3:8", true));
+        // axis IV-I-V-vi
+        l.push_back (mkLoop ({ 3, 0, 4, 5 },
+            mk ("0:1.5:3 1.5:.5:5 2:2:7", "0:1.5:4 1.5:.5:2 2:2:0", "0:1:6 1:1:4 2:2:6", "0:1.5:7 1.5:.5:5 2:2:2"), "0:1.5:7 1.5:.5:5 2:2:7",
+            mk ("0:1:12 1:1:10 2:2:12", "0:1:11 1:1:9 2:2:7", "0:1:13 1:1:11 2:2:13", "0:1.5:14 1.5:.5:12 2:2:9"), "0:1.5:14 1.5:.5:12 2:2:14"));
+        // sweet I-iii-vi-IV
+        l.push_back (mkLoop ({ 0, 2, 5, 3 },
+            mk ("0:1.5:2 1.5:.5:4 2:2:2", "0:1:4 1:1:6 2:2:4", "0:1.5:7 1.5:.5:5 2:2:2", "0:1:5 1:1:3 2:2:5"), "0:1.5:5 1.5:.5:3 2:2:7",
+            mk ("0:1:7 1:1:9 2:2:11", "0:1:13 1:1:11 2:2:13", "0:1:12 1:1:14 2:2:16", "0:1:14 1:1:12 2:2:10"), "0:1:14 1:1:12 2:2:14"));
+        // resolved ii-V-I-I
+        l.push_back (mkLoop ({ 1, 4, 0, 0 },
+            mk ("0:1:5 1:1:3 2:2:5", "0:1.5:4 1.5:.5:6 2:2:8", "0:2:7 2:2:4", "0:2:4 2:2:2"), "0:4:7",
+            mk ("0:1:12 1:1:10 2:2:8", "0:1:11 1:1:13 2:2:11", "0:2:14 2:2:11", "0:1:9 1:1:11 2:2:9"), "0:4:14"));
+        // walk I-V-vi-iii
+        l.push_back (mkLoop ({ 0, 4, 5, 2 },
+            mk ("0:1:4 1:1:3 2:1:2 3:1:1", "0:1:1 1:1:2 2:2:4", "0:1:2 1:1:1 2:2:0", "0:1:2 1:1:3 2:2:4"), "0:1:2 1:1:3 2:2:2",
+            mk ("0:1:11 1:1:10 2:1:9 3:1:8", "0:1:8 1:1:9 2:2:11", "0:1:9 1:1:8 2:2:7", "0:1:9 1:1:10 2:2:11"), "0:1:9 1:1:10 2:2:9"));
+        // bittersweet iii-IV-I-V
+        l.push_back (mkLoop ({ 2, 3, 0, 4 },
+            mk ("0:2:4 2:1:2 3:1:4", "0:2:5 2:2:3", "0:2:4 2:2:2", "0:1.5:6 1.5:.5:4 2:2:6"), "0:2:4 2:2:1",
+            mk ("0:1:9 1:1:11 2:2:13", "0:1:12 1:1:10 2:2:7", "0:1:11 1:1:9 2:2:11", "0:1:13 1:1:11 2:2:13"), "0:2:13 2:2:8"));
+        // longing vi-I-V-IV
+        l.push_back (mkLoop ({ 5, 0, 4, 3 },
+            mk ("0:1.5:2 1.5:.5:0 2:2:2", "0:1:4 1:1:2 2:2:0", "0:1.5:6 1.5:.5:4 2:2:1", "0:1:5 1:1:3 2:2:5"), "0:1:5 1:1:3 2:2:0",
+            mk ("0:1:9 1:1:7 2:2:9", "0:1:11 1:1:9 2:2:7", "0:1.5:13 1.5:.5:11 2:2:8", "0:1:12 1:1:10 2:2:12"), "0:1:12 1:1:10 2:2:7"));
         return l;
     }();
     return b;
@@ -113,9 +169,10 @@ struct Composer
         expr = juce::jlimit (0.0f, 1.0f, c.expression); dens = juce::jlimit (0.0f, 1.0f, c.density);
         msBeat = c.bpm / 60000.0;
         // the loops that suit each style (indices into the songbook); the seed picks one, the next one is the bridge
-        static const int tbl[10][4] { { 3, 0, 2, -1 }, { 1, 5, 0, -1 }, { 1, 2, 5, -1 }, { 5, 2, 1, -1 }, { 4, -1, -1, -1 }, { 0, 1, 2, 5 }, { 0, -1, -1, -1 }, { 3, -1, -1, -1 }, { 3, 2, 0, -1 }, { 1, 5, 2, -1 } };
+        static const int tbl[10][8] { { 3, 8, 2, 15, 16, 19, 17, 1 }, { 1, 5, 11, 7, 10, 19, 18, 14 }, { 1, 2, 7, 15, 18, 17, 9, 19 }, { 5, 11, 2, 17, 18, 15, 7, 16 }, { 4, 12, 13, -1, -1, -1, -1, -1 },
+                                      { 0, 10, 7, 6, 14, 9, 19, 1 }, { 1, -1, -1, -1, -1, -1, -1, -1 }, { 3, 16, 8, 2, 15, 18, -1, -1 }, { 8, 3, 15, 2, 16, 17, -1, -1 }, { 1, 5, 11, 18, 7, 17, -1, -1 } };
         const int* t = tbl[juce::jlimit (0, 9, c.style)];
-        int cnt = 0; while (cnt < 4 && t[cnt] >= 0) ++cnt;
+        int cnt = 0; while (cnt < 8 && t[cnt] >= 0) ++cnt;
         const auto& bk = book();
         loop = &bk[(size_t) t[c.seed % (uint32_t) cnt]];
         bridgeLoop = &bk[(size_t) t[(c.seed + 1u) % (uint32_t) cnt]];
@@ -130,13 +187,37 @@ struct Composer
         return loop->chords[b % 4];
     }
 
-    // the hand-written melody of the section: question and answer phrases, the chorus higher and more rhythmic
+    // the hand-written melody of the section: question and answer phrases, the chorus higher and more rhythmic.
+    // Repeats are never copies: the second verse gets anticipations and passing notes, choruses get a counter-melody and a
+    // low bass octave, and the last chorus (after the key change) is doubled an octave down.
+    int verseCount = 0, chorusCount = 0;
+    BookBar vary (BookBar bar, int rep) const
+    {
+        if (rep <= 0) return bar;
+        BookBar o;
+        for (size_t k = 0; k < bar.size(); ++k)
+        {
+            BookNote n = bar[k];
+            const bool prevFree = k == 0 || bar[k - 1].b + bar[k - 1].d <= 1.55f;
+            if (rep % 2 == 1 && bpb == 4 && std::abs (n.b - 2.0f) < 0.01f && n.d >= 1.5f && prevFree) { n.b -= 0.5f; n.d += 0.5f; }      // anticipation
+            if (n.d >= 2.0f && (rep >= 1) && k + 1 == bar.size() && ((int) (n.b * 2) + rep) % 2 == 0)
+            {   // split the last long note: it holds, then steps up as a neighbour before the next bar
+                o.push_back ({ n.b, n.d - 0.5f, n.deg }); o.push_back ({ n.b + n.d - 0.5f, 0.5f, n.deg + 1 }); continue;
+            }
+            o.push_back (n);
+        }
+        return o;
+    }
     void bookMelody (const Sec& sec, float energy)
     {
         if (sec.type == 'I') return;
+        if (sec.start == 0) { verseCount = 0; chorusCount = 0; }
         const Loop* L = sec.type == 'C' ? bridgeLoop : loop;
         const double sw = (c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 0.17 : 0.0;
-        const int dbl = (sec.type == 'B' && (c.style == ssBallad || c.style == ssCinematic || c.style == ssRomantic)) ? -7 : 0;
+        const int rep = sec.type == 'B' ? chorusCount : sec.type == 'A' ? verseCount : 0;
+        const bool lastChorus = sec.type == 'B' && modShift != 0;
+        const int dbl = (sec.type == 'B' && (lastChorus || c.style == ssBallad || c.style == ssCinematic || c.style == ssRomantic)) ? -7 : 0;
+        const bool counter = (sec.type == 'B' || (sec.type == 'A' && rep >= 1)) && bpb == 4 && c.style != ssMinimal;
         for (int b = 0; b < sec.bars; ++b)
         {
             const int g = b / 4, bi = b % 4;
@@ -146,8 +227,12 @@ struct Composer
             else if (sec.type == 'O') bar = (b == sec.bars - 1) ? parseBar (bpb == 3 ? "0:3:7" : "0:4:7") : L->va.bar[bi];
             else if (sec.type == 'B') bar = (answer ? L->ca : L->c).bar[bi];
             else bar = (answer ? L->va : L->v).bar[bi];
+            if (sec.type == 'A' || sec.type == 'B') bar = vary (bar, rep);
             const int gb = sec.start + b;
             const bool secEnd = b == sec.bars - 1;
+            const int chDeg = bookChord (sec, b);
+            if (sec.type == 'B')       // the bass drops an octave on the downbeat in the chorus
+                add ((double) gb * bpb, bpb - 0.3, bassOf (chDeg) - 12, velOf (energy, -14), 3.0f, rubato (gb, 0.0, false, false));
             for (size_t k = 0; k < bar.size(); ++k)
             {
                 const auto& n = bar[k];
@@ -164,8 +249,18 @@ struct Composer
                 if (dbl != 0) add (start, dur * 0.97, midi (n.deg + 7 + dbl), vel - 12, 8.0f, rb, true);
                 if (expr > 0.45f && n.d >= 2.0f && chance (0.3f) && (c.style == ssRomantic || c.style == ssNocturne || c.style == ssCinematic))
                     add (start - 0.14, 0.12, midi (n.deg + 8), vel - 14, 2.0f, 0.0, true);          // grace note before a long note
+                if (counter && n.d >= 2.0f && n.b + 2.0f <= (float) bpb + 0.01f)
+                {   // counter-melody: a chord tone a third or more below, entering one beat after the melody note
+                    for (int off2 : { 2, 4 })
+                    {
+                        const int cn = midi (chDeg + off2 - (chDeg + off2 >= 7 ? 7 : 0));
+                        const int d = note - cn;
+                        if (d >= 3 && d != 11 && d != 13 && (cn % 12) != (note % 12)) { add (start + 1.0, 0.9, cn, vel - 18, 6.0f, rb, false); break; }
+                    }
+                }
             }
         }
+        if (sec.type == 'A') ++verseCount; else if (sec.type == 'B') ++chorusCount;
     }
 
     int midi (int deg) const { return 60 + (key > 6 ? key - 12 : key) + modShift + sc[imod (deg, 7)] + 12 * fdiv (deg, 7); }
@@ -579,7 +674,7 @@ struct Composer
             const auto& sec = secs[si];
             out.sections.push_back ({ sec.type, sec.start, sec.bars });
             bool fin = si + 2 >= secs.size();
-            modShift = (sec.type == 'B' && si + 2 >= secs.size() && totalBars >= 48 && c.style != ssLullaby) ? 2 : 0;   // the last chorus lifts a tone
+            modShift = (sec.type == 'B' && si + 2 >= secs.size() && totalBars >= 32 && c.style != ssLullaby) ? 2 : 0;   // the last chorus lifts a tone
             std::vector<bool> split;
             const auto h = harmony (sec, fin, split);
             for (int b = 0; b < sec.bars; ++b)

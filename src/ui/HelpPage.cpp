@@ -15,10 +15,10 @@ const Item items[] {
       "so the piano breathes with the way you play: soft and it is round, hard and it opens up and shines. "
       "Play with a MIDI keyboard or the on-screen keys. The sustain pedal (CC64) really works, half-pedaling included." },
     { "El piano", "The piano",
-      "PIANO elige el instrumento: cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete o celesta. "
+      "PIANO elige el instrumento: cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete, celesta, piano eléctrico o vibráfono. "
       "TONE es el brillo; HAMMER la dureza del fieltro del martillo; SUSTAIN cuánto dura la nota; DAMPERS lo rápido que cae el apagador al soltar la tecla. "
       "DETUNE desafina un poco las cuerdas de cada nota (más recuerdo, más piano viejo); STRETCH es el estiramiento natural de la afinación; DYNAMICS, cuánto cambia el sonido entre tocar suave y fuerte.",
-      "PIANO picks the instrument: concert grand, upright, felt piano, honky-tonk, toy piano or celesta. "
+      "PIANO picks the instrument: concert grand, upright, felt piano, honky-tonk, toy piano, celesta, electric piano or vibraphone. "
       "TONE is brightness; HAMMER the hardness of the felt; SUSTAIN how long notes ring; DAMPERS how fast the damper falls when you release a key. "
       "DETUNE slightly detunes the strings of each note (more memory, older piano); STRETCH is the natural stretch of the tuning; DYNAMICS how much the sound changes between soft and hard playing." },
     { "Caja y sala", "Body & room",

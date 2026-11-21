@@ -7,6 +7,10 @@ namespace
 {
 const float kBarR[] { 1.0f, 2.756f, 5.404f, 8.933f, 13.344f, 18.64f, 24.81f };
 const float kToyA[] { 1.0f, 0.55f, 0.30f, 0.18f, 0.10f, 0.06f, 0.035f };
+const float kRhR[] { 1.0f, 2.01f, 5.95f, 9.2f };
+const float kRhA[] { 1.0f, 0.22f, 0.12f, 0.04f };
+const float kVibR[] { 1.0f, 3.98f, 9.9f, 17.4f };
+const float kVibA[] { 1.0f, 0.30f, 0.08f, 0.02f };
 const float kCelA[] { 1.0f, 0.16f, 0.05f, 0.016f, 0.007f, 0.003f, 0.0015f };
 
 //                         name       B    T     fc    pFast det   x0     slope thump body  lp     nStr  ratios amps  n
@@ -17,6 +21,8 @@ const PianoModel kModels[] {
     { "Honky",   1.8f, 0.80f, 1.15f, 0.55f, 9.0f, 0.110f, 0.85f, 1.3f, 1.3f, 12000.0f, 3, nullptr, nullptr, 0 },
     { "Toy",     1.0f, 0.10f, 1.60f, 0.50f, 0.0f, 0.100f, 0.00f, 1.6f, 0.6f, 16000.0f, 1, kBarR, kToyA, 7 },
     { "Celesta", 1.0f, 0.30f, 0.90f, 0.50f, 0.0f, 0.100f, 0.00f, 0.2f, 0.5f, 16000.0f, 1, kBarR, kCelA, 7 },
+    { "Rhodes",  1.0f, 0.60f, 1.10f, 0.50f, 0.0f, 0.100f, 0.00f, 0.8f, 0.4f, 12000.0f, 1, kRhR, kRhA, 4 },
+    { "Vibraphone", 1.0f, 1.80f, 0.70f, 0.50f, 0.0f, 0.100f, 0.00f, 0.2f, 0.3f, 14000.0f, 1, kVibR, kVibA, 4 },
 };
 
 inline uint32_t hash32 (uint32_t a, uint32_t b = 0, uint32_t c = 0)

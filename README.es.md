@@ -18,7 +18,7 @@ la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano d
 - **Piano modelado físicamente (sin librería de muestras):** cada parcial es un resonador con decaimiento e inharmonicidad real de cuerda,
   2-3 cuerdas desafinadas por nota (batidos), el doble decaimiento del piano, fieltro del martillo que brilla más con la velocidad,
   posición de golpe, apagadores, modos de la caja y resonancia simpática. El pedal de sustain (CC64) es continuo: el medio pedal funciona.
-- **Seis instrumentos:** cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete y celesta.
+- **Ocho instrumentos:** cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete, celesta, piano eléctrico (estilo Rhodes) y vibráfono.
 - **Macro Memoria** más Calidez, Intimidad (micro cerca o lejos), Tiempo (cuánto ha envejecido el piano) y Espacio.
 - **Capas de vida:** sonidos de madera (banco, mecanismo, pedal, apagadores), cinta (wow y flutter, saturación, pérdida de agudos, ruido, dropouts),
   vinilo (crackle, rumble, pop de la aguja) y un mundo lejano: lluvia, viento, chimenea, pájaros al amanecer. Cinco salas: salón, iglesia, estudio, cabaña de madera y sala de conciertos vacía.
@@ -27,7 +27,7 @@ la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano d
   (dinámica, acordes arpegiados, rubato, pedal). Diez estilos (Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna, Power Ballad, Classical: el Canon en Re de Pachelbel con variaciones crecientes, Jazz Ballad, Lo-Fi Loop y un Nocturno al estilo de Chopin), 8 escalas, cualquier tono,
   de 16 a 128 compases, con su propio reloj y botón PLAY (nunca siguen el transporte del DAW); arrastra el MIDI a tu DAW para usarlo allí. **Nueva variación** y **Canción al azar** (con bloqueos) crean otra con un clic. Pulsa en cualquier punto del mapa de la canción para saltar ahí mientras suena.
   **Exporta la canción:** arrástrala como archivo MIDI (o como WAV renderizado) directamente a tu DAW, o guárdala como .mid / .wav.
-- **210 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.
+- **222 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.
   **Sonido al azar** genera un piano + sala + capas + macros nuevos en cualquier categoría, con bloqueos por sección, validado y con el nivel igualado.
 - **Una habitación 3D cinematográfica, renderizada en directo en tu tarjeta gráfica:** una escena 3D real (raymarching, sombras suaves, oclusión ambiental, reflejos en el lacado y el suelo,
   rayos de luz volumétricos con polvo, lluvia en el cristal, una vela que parpadea, envejecimiento de película). Las teclas del piano se hunden con las notas que suenan.
