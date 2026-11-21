@@ -50,7 +50,7 @@ void Engine::prepare (double sampleRate, int mb)
     maxBlock = juce::jmax (mb, 16);
     vbuf.assign ((size_t) maxBlock, 0.0f); mixL = bodyIn = mixR = vbuf;
     room.prepare (sr);
-    limAtk = 1.0f - std::exp (-1.0f / (0.0004f * (float) sr)); limRel = 1.0f - std::exp (-1.0f / (0.12f * (float) sr));
+    limRel = 1.0f - std::exp (-1.0f / (0.25f * (float) sr));
     for (auto* s : { &masterS, &bodyS, &roomS, &widthS }) s->setTime (0.05f, sr);
     // soundboard modes: a handful of broad wooden resonances, slightly different left/right
     static const float f[kModes] { 62, 94, 128, 171, 233, 312, 417, 560, 760, 1050 };
@@ -84,7 +84,8 @@ void Engine::reset (uint32_t s)
     for (auto& b : toneF) b.reset();
     cacheLp = cacheTone = cacheRoom = -1;
     dcX[0] = dcX[1] = dcY[0] = dcY[1] = 0;
-    idleTicks = 0; limG = 1.0f;
+    idleTicks = 0; limG = 1.0f; limSum = (float) kLimW; limIdx = 0;
+    for (int i = 0; i < kLimW; ++i) { limTg[i] = 1.0f; limMn[i] = 1.0f; limDly[0][i] = limDly[1][i] = 0.0f; }
     for (auto& k : tele.keyLevel) k.store (0.0f);
     tele.voices.store (0);
     tele.pedal.store (0.0f);
@@ -145,7 +146,9 @@ void Engine::excite (Voice& v, int note, float vel, bool restrike)
     const int nc = juce::jmax (2, nStr);
 
     // hammer: felt hardness (spectral cut-off) rises steeply with velocity
-    const float ampDb = (vel - 1.0f) * (18.0f + 36.0f * dyn);
+    // velocity -> level: a narrower range than before (ff chords were far hotter than the mf phrases the presets are levelled on);
+    // the offset keeps mezzo-forte (vel 70) exactly where it was
+    const float ampDb = (vel - 1.0f) * (14.0f + 22.0f * dyn) - 0.45f * (4.0f + 14.0f * dyn);
     const float ampLin = std::pow (10.0f, ampDb * 0.05f);
     const float fc = 450.0f * std::exp2 (vel * 3.7f) * m.fcMul * std::exp2 ((tone - 0.5f) * 4.2f) * std::exp2 ((0.5f - hammer) * 3.2f);
     const float x0 = m.x0 * (0.93f + 0.14f * hashUni (seed, (uint32_t) note, 7));
@@ -504,6 +507,7 @@ void Engine::renderChunk (float* L, float* R, int n)
             g.re[0] = x0; g.im[0] = y0; g.re[1] = x1; g.im[1] = y1;
         }
     }
+    if (probing) for (int t = 0; t < n; ++t) probe.voices = std::max (probe.voices, std::max (std::abs (mixL[(size_t) t]), std::abs (mixR[(size_t) t])));
     // soundboard modes + felt low-pass + room + master
     const auto& m = pianoModel ((int) p (P::piano));
     const float bodyAmt = p (P::body) * m.bodyMul, roomAmt = p (P::room), master = dbToGain (p (P::master));
@@ -537,21 +541,34 @@ void Engine::renderChunk (float* L, float* R, int n)
         }
         float l = wl + bl * bAmt * 0.9f, r = wr + br * bAmt * 0.9f;
         l = toneF[0].tick (lpF[0].tick (l)); r = toneF[1].tick (lpF[1].tick (r));
+        if (probing) probe.body = std::max (probe.body, std::max (std::abs (l), std::abs (r)));
         float rl = 0, rr = 0;
         room.process (l, r, rl, rr);
         l += rl * rMix * 0.5f; r += rr * rMix * 0.5f;
-        life.tape (l, r);
+        if (probing) probe.room = std::max (probe.room, std::max (std::abs (l), std::abs (r)));
+        life.tape (l, r, mg);
         life.world (l, r);
+        if (probing) probe.tape = std::max (probe.tape, std::max (std::abs (l), std::abs (r)));
         l *= mg; r *= mg;
         // DC blocker + gentle protection against overs
         float yl = l - dcX[0] + 0.9995f * dcY[0]; dcX[0] = l; dcY[0] = yl;
         float yr = r - dcX[1] + 0.9995f * dcY[1]; dcX[1] = r; dcY[1] = yr;
-        // limiter: ceiling -1 dB, 0.4 ms attack, 120 ms release; the soft clip below is only a last safety net
-        const float pk = std::max (std::abs (yl), std::abs (yr)), tg = pk > 0.8913f ? 0.8913f / pk : 1.0f;
-        limG += (tg - limG) * (tg < limG ? limAtk : limRel);
-        yl *= limG; yr *= limG;
-        L[t] = juce::jlimit (-1.0f, 1.0f, std::abs (yl) < 0.85f ? yl : std::copysign (0.85f + 0.15f * fastTanh ((std::abs (yl) - 0.85f) / 0.15f), yl));
-        R[t] = juce::jlimit (-1.0f, 1.0f, std::abs (yr) < 0.85f ? yr : std::copysign (0.85f + 0.15f * fastTanh ((std::abs (yr) - 0.85f) / 0.15f), yr));
+        // look-ahead limiter, ceiling -1 dB: min of the needed gain over the window, averaged (smooth ramps), slow release
+        {
+            const float pk = std::max (std::abs (yl), std::abs (yr)), tg = pk > 0.8913f ? 0.8913f / pk : 1.0f;
+            limTg[limIdx] = tg; limDly[0][limIdx] = yl; limDly[1][limIdx] = yr;
+            float mn = 1.0f;
+            for (int i = 0; i < kLimW; ++i) mn = std::min (mn, limTg[i]);
+            limSum += mn - limMn[limIdx]; limMn[limIdx] = mn;
+            const float avg = limSum / (float) kLimW;
+            limG = std::min (avg, limG + (1.0f - limG) * limRel);
+            const int di = (limIdx + 1) % kLimW;                       // the oldest sample: output is delayed by the window
+            if (probing) { ++probe.n; if (limG < 0.891f) ++probe.limN; }
+            yl = limDly[0][di] * limG; yr = limDly[1][di] * limG;
+            limIdx = di;
+        }
+        L[t] = juce::jlimit (-0.995f, 0.995f, yl);
+        R[t] = juce::jlimit (-0.995f, 0.995f, yr);
     }
 }
 

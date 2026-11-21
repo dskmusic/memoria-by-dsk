@@ -134,7 +134,7 @@ void Life::wood (float& l, float& r)
     }
 }
 
-void Life::tape (float& l, float& r)
+void Life::tape (float& l, float& r, float refGain)
 {
     const float a = tapeS.step (lv.tape);
     if (a <= 0.0005f && lv.tape <= 0.0005f) return;
@@ -153,8 +153,9 @@ void Life::tape (float& l, float& r)
     const float d = base + a * ((0.0011f * fastSin (wowPh) + 0.0013f * drift) * (float) sr + 0.00012f * fastSin (flPh) * (float) sr);
     dl[0].push (l); dl[1].push (r);
     l = dl[0].read (d); r = dl[1].read (d + 1.5f);
-    l = fastTanh (l * tapeSat) / tapeSat;
-    r = fastTanh (r * tapeSat) / tapeSat;
+    const float ks = juce::jmax (0.02f, refGain) * tapeSat;
+    l = fastTanh (l * ks) / ks;
+    r = fastTanh (r * ks) / ks;
     l = tapeHp[0].tick (tapeLp[0].tick (l)) * dropG;
     r = tapeHp[1].tick (tapeLp[1].tick (r)) * dropG;
     // hiss

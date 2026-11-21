@@ -21,6 +21,7 @@ struct Score
     std::vector<SectionInfo> sections;
     double totalBeats = 0;
     int beatsPerBar = 4, bars = 0;
+    std::vector<std::pair<double, unsigned>> chordMasks;   // (start beat, pitch-class mask of the chord sounding): used by the music lint tests
 };
 
 enum HandsMode { hmOff, hmSong, hmAccomp, hmMelody };

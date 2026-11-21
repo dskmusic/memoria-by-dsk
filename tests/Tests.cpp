@@ -4,6 +4,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_dsp/juce_dsp.h>
 #include <set>
+#include <algorithm>
 #include <chrono>
 #include "gen/Generator.h"
 #if __has_include(<BinaryData.h>)
@@ -464,6 +465,91 @@ static void testHostSilence()
     check (peak > 0.01f, "the hands play with the instrument's own PLAY");
 }
 
+static void testMusicLint()
+{
+    std::puts ("[music lint: the songs follow the rules of the songbook]");
+    double chordTone = 0, topViol = 0, clash = 0, velGap = 0; int runs = 0, worstPoly = 0;
+    for (int style : { 0, 1, 2, 3, 4, 5, 7, 8, 9 })
+        for (uint32_t seed = 1; seed <= 6; ++seed)
+            for (int scale : { 0, 1 })
+            {
+                gx::ComposeCfg c; c.style = style; c.seed = seed * 17u + (uint32_t) style; c.bars = 32; c.key = 0; c.scale = scale;
+                gx::Score s; gx::compose (c, s);
+                // the melody = the highest note of every onset that is flagged as melody
+                std::vector<const gx::NoteEv*> mel, acc;
+                for (auto& n : s.notes) (n.voice == 1 ? mel : acc).push_back (&n);
+                std::vector<const gx::NoteEv*> top;
+                for (size_t i = 0; i < mel.size(); ++i)
+                {
+                    bool highest = true;
+                    for (size_t j = 0; j < mel.size(); ++j) if (j != i && std::abs (mel[j]->start - mel[i]->start) < 0.04 && mel[j]->note > mel[i]->note) highest = false;
+                    if (highest && mel[i]->vel > 25) top.push_back (mel[i]);
+                }
+                int strong = 0, strongOk = 0, tv = 0, cl = 0;
+                for (auto* n : top)
+                {
+                    const double bar = std::floor (n->start / s.beatsPerBar), pos = n->start - bar * s.beatsPerBar;
+                    const bool isStrong = pos < 0.15 || (s.beatsPerBar == 4 && std::abs (pos - 2.0) < 0.15);
+                    unsigned mask = 0;
+                    for (auto& cm : s.chordMasks) if (cm.first <= n->start + 0.2) mask = cm.second;
+                    if (isStrong && n->len >= 0.9) { ++strong; if (mask & (1u << (unsigned) (n->note % 12))) ++strongOk; }
+                    for (auto* a : acc)
+                    {
+                        if (a->start > n->start + 0.02 || a->start + a->len < n->start + 0.05) continue;     // not sounding at the onset
+                        if (a->note >= n->note) { ++tv; break; }
+                    }
+                    for (auto* a : acc)
+                    {
+                        if (a->start > n->start + 0.02 || a->start + a->len < n->start + 0.05) continue;
+                        const int d = n->note - a->note;
+                        if (d > 0 && d < 12 && (d == 1 || d == 11)) { ++cl; break; }
+                    }
+                }
+                std::vector<std::pair<double, int>> ev;
+                for (auto& n : s.notes) { ev.push_back ({ n.start, 1 }); ev.push_back ({ n.start + n.len, -1 }); }
+                std::sort (ev.begin(), ev.end(), [] (auto& a, auto& b) { return a.first < b.first || (a.first == b.first && a.second < b.second); });
+                int cur = 0, mx = 0; for (auto& e : ev) { cur += e.second; mx = std::max (mx, cur); }
+                double mv = 0, av = 0; for (auto* n : top) mv += n->vel; for (auto* a : acc) av += a->vel;
+                mv /= std::max<size_t> (1, top.size()); av /= std::max<size_t> (1, acc.size());
+                chordTone += strong ? (double) strongOk / strong : 1.0; topViol += (double) tv / std::max<size_t> (1, top.size()); clash += (double) cl / std::max<size_t> (1, top.size());
+                velGap += mv - av; worstPoly = std::max (worstPoly, mx); ++runs;
+            }
+    chordTone /= runs; topViol /= runs; clash /= runs; velGap /= runs;
+    std::puts (("    strong-beat chord tones " + juce::String (chordTone * 100, 1) + " %, melody not on top " + juce::String (topViol * 100, 1) + " %, m2/M7 clashes " + juce::String (clash * 100, 1) + " %, melody - accompaniment velocity " + juce::String (velGap, 1) + ", max notes sounding " + juce::String (worstPoly)).toRawUTF8());
+    check (chordTone >= 0.90, "long strong-beat melody notes are chord tones (" + juce::String (chordTone * 100, 1) + " %)");
+    check (topViol <= 0.03, "the melody is the top voice (" + juce::String (topViol * 100, 1) + " % violations)");
+    check (clash <= 0.04, "no harsh m2 / M7 against the accompaniment (" + juce::String (clash * 100, 1) + " %)");
+    check (velGap >= 6.0 && velGap <= 30.0, "the melody sits above the accompaniment in velocity (" + juce::String (velGap, 1) + ")");
+    check (worstPoly <= 18, "polyphony stays playable (" + juce::String (worstPoly) + " notes at once)");
+}
+
+static void testGainStaging()
+{
+    std::puts ("[gain staging]");
+    gx::Preset p;
+    Song chord; chord.pedal (0.0, 127);
+    for (int n : { 45, 52, 57, 64, 69, 72 }) chord.note (0.0, 3.0, n, 110);
+    gx::Engine eng; eng.prepare (48000.0, 512); eng.reset (1); eng.probing = true;
+    gx::HostInfo hi; juce::AudioBuffer<float> b (2, 512);
+    for (int pos = 0; pos < 5 * 48000; pos += 512)
+    {
+        juce::MidiBuffer blk; blk.addEvents (chord.buf, pos, 512, -pos);
+        eng.process (b.getWritePointer (0), b.getWritePointer (1), 512, blk, p.params.data(), hi);
+    }
+    const double pct = 100.0 * (double) eng.probe.limN / (double) std::max<int64_t> (1, eng.probe.n);
+    std::puts (("    6-note ff chord with pedal, default sound: internal peak " + juce::String (juce::Decibels::gainToDecibels (eng.probe.tape, -99.0f), 1) + " dBFS, limiter active " + juce::String (pct, 3) + " % of samples").toRawUTF8());
+    check (pct < 0.1, "the limiter stays idle for a loud chord (" + juce::String (pct, 3) + " %)");
+    for (int style = 0; style < gx::numSongStyles; ++style)
+    {
+        gx::Preset q; q.params[(size_t) gx::P::hands] = 1; q.params[(size_t) gx::P::handsStyle] = (float) style; q.params[(size_t) gx::P::handsBars] = 1;
+        gx::Engine e2; e2.prepare (48000.0, 512); e2.reset (1); e2.probing = true;
+        gx::HostInfo h2; h2.internalPlay = true; juce::MidiBuffer none;
+        for (int blk = 0; blk < 48000 * 20 / 512; ++blk) e2.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, q.params.data(), h2);
+        const double pc = 100.0 * (double) e2.probe.limN / (double) std::max<int64_t> (1, e2.probe.n);
+        check (pc < 0.1, "hands " + gx::handsStyleNames()[style] + ": limiter idle (" + juce::String (pc, 3) + " %)");
+    }
+}
+
 int runAll()
 {
     testParams();
@@ -476,6 +562,8 @@ int runAll()
     testHands();
     testPresetSwitch();
     testHostSilence();
+    testMusicLint();
+    testGainStaging();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

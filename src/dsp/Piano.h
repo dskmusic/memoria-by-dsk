@@ -54,6 +54,9 @@ public:
     void reseed (uint32_t s) { seed = s; }
     void process (float* L, float* R, int n, const juce::MidiBuffer& midi, const float* params, const HostInfo& host);
     Telemetry tele;
+    struct Probe { float voices = 0, body = 0, room = 0, tape = 0; int64_t n = 0, limN = 0, clipN = 0; };   // peaks at each stage (before Master) and limiter / clip activity
+    Probe probe;
+    bool probing = false;
     double getSampleRate() const { return sr; }
     void requestSeek (float bar) { seekReq.store (bar); }
 
@@ -125,7 +128,11 @@ private:
     Fdn room;
     float cacheRoom = -1;
     float dcX[2] {}, dcY[2] {};
-    float limG = 1.0f, limAtk = 0.05f, limRel = 0.0002f;      // output limiter
+    // output limiter with look-ahead (2 ms): the gain comes down smoothly before a peak arrives, so it does not distort
+    static constexpr int kLimW = 96;
+    float limG = 1.0f, limRel = 0.0002f, limSum = (float) kLimW;
+    float limDly[2][kLimW] {}, limTg[kLimW] {}, limMn[kLimW] {};
+    int limIdx = 0;
     Smooth masterS, bodyS, roomS, widthS;
     int idleTicks = 0;
 };

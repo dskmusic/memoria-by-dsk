@@ -36,3 +36,7 @@
 - Long audio export (WAV, FLAC, OGG) with the hands playing; preset import / export.
 - MemoriaTool: tests, factory bank, listening material, screenshots, demo video and trailer.
 - Bilingual interface (English / Spanish), resizable, A/B, undo / redo, MIDI learn, click-free preset changes.
+
+## Unreleased - sound and songs
+- Fix: saturated sound at ff velocities (velocity range narrowed, tape saturation measured at output level, look-ahead limiter instead of a fast clipper).
+- Hands: melodies are now hand-written songbook phrases (question/answer, verse/chorus) over chosen progressions; music lint and gain-staging tests added.

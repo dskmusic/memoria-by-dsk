@@ -1,5 +1,7 @@
 #include "Composer.h"
 #include <algorithm>
+#include <sstream>
+#include <cstdio>
 
 namespace gx
 {
@@ -20,8 +22,75 @@ const int kBankB[6][4] { { 3, 4, 0, 5 }, { 5, 4, 3, 0 }, { 3, 0, 4, 5 }, { 0, 4,
 const int kBankP[4][4] { { 1, 3, 4, 4 }, { 3, 4, 5, 4 }, { 5, 3, 4, 4 }, { 1, 4, 3, 4 } };
 const int kBankC[4][4] { { 1, 4, 0, 5 }, { 5, 2, 3, 4 }, { 3, 5, 1, 4 }, { 2, 5, 3, 4 } };
 
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// The songbook: melodies written by hand, the way a songwriter would, as 4-bar phrases over a 4-chord loop. Each note is
+// "beat:duration:degree" (degree 0 = tonic of the melody register, 7 = the octave above, -1 = the leading tone below).
+// Strong beats (1 and 3) always land on chord tones; weak beats move by step; every loop has a question phrase (ends open),
+// an answer phrase (ends settled), a quieter verse version and a higher, more rhythmic chorus version.
+// The generator chooses a loop for the style, transposes, adds the accompaniment texture, the arrangement and the performance.
+// ---------------------------------------------------------------------------------------------------------------------------
+struct BookNote { float b, d; int deg; };
+using BookBar = std::vector<BookNote>;
+struct Phrase { BookBar bar[4]; };
+struct Loop { int chords[4]; Phrase v, va, c, ca; bool waltz = false; };
+
+BookBar parseBar (const char* s)
+{
+    BookBar out; std::istringstream is (s); std::string tok;
+    while (is >> tok) { float b = 0, d = 0; int deg = 0; if (std::sscanf (tok.c_str(), "%f:%f:%d", &b, &d, &deg) == 3) out.push_back ({ b, d, deg }); }
+    return out;
+}
+Phrase mk (const char* a, const char* b, const char* c, const char* d) { Phrase p; p.bar[0] = parseBar (a); p.bar[1] = parseBar (b); p.bar[2] = parseBar (c); p.bar[3] = parseBar (d); return p; }
+Phrase withLast (Phrase p, const char* last) { p.bar[3] = parseBar (last); return p; }
+Loop mkLoop (std::array<int, 4> ch, Phrase v, const char* vaLast, Phrase c, const char* caLast, bool waltz = false)
+{
+    Loop l; for (int i = 0; i < 4; ++i) l.chords[i] = ch[(size_t) i];
+    l.v = v; l.va = withLast (v, vaLast); l.c = c; l.ca = withLast (c, caLast); l.waltz = waltz;
+    return l;
+}
+const std::vector<Loop>& book()
+{
+    static const std::vector<Loop> b = []
+    {
+        std::vector<Loop> l;
+        // 0: bright pop  I - V - vi - IV
+        l.push_back (mkLoop ({ 0, 4, 5, 3 },
+            mk ("0:1.5:2 1.5:.5:4 2:2:4", "0:1.5:4 1.5:.5:2 2:2:1", "0:1.5:2 1.5:.5:0 2:2:2", "0:1.5:3 1.5:.5:2 2:1:0 3:1:-1"), "0:1.5:3 1.5:.5:2 2:2:0",
+            mk ("0:.5:4 .5:.5:4 1:1:7 2:1.5:7 3.5:.5:6", "0:1:6 1:1:4 2:2:8", "0:.5:7 .5:.5:7 1:1:9 2:1.5:9 3.5:.5:7", "0:1:7 1:1:5 2:2:5"), "0:1:7 1:1:5 2:2:7"));
+        // 1: emotional  vi - IV - I - V
+        l.push_back (mkLoop ({ 5, 3, 0, 4 },
+            mk ("0:1.5:2 1.5:.5:2 2:1:0 3:1:2", "0:1.5:3 1.5:.5:3 2:1:5 3:1:3", "0:1.5:4 1.5:.5:4 2:1:2 3:1:4", "0:2:6 2:1:4 3:1:1"), "0:1.5:6 1.5:.5:4 2:2:4",
+            mk ("0:1:5 1:1:7 2:2:9", "0:1:10 1:1:9 2:2:7", "0:1:7 1:1:9 2:2:11", "0:1:13 1:1:11 2:2:8"), "0:1:13 1:1:11 2:2:11"));
+        // 2: gentle  I - vi - IV - V
+        l.push_back (mkLoop ({ 0, 5, 3, 4 },
+            mk ("0:1:4 1:.5:2 1.5:.5:4 2:2:7", "0:1.5:5 1.5:.5:4 2:2:2", "0:1:3 1:.5:5 1.5:.5:3 2:2:0", "0:1.5:1 1.5:.5:-1 2:2:1"), "0:1.5:-1 1.5:.5:1 2:2:4",
+            mk ("0:1:7 1:1:9 2:1:11 3:1:9", "0:1:9 1:1:7 2:2:5", "0:1:10 1:1:9 2:1:7 3:1:5", "0:2:8 2:1:6 3:1:4"), "0:1:8 1:1:6 2:2:4"));
+        // 3: jazzy  ii - V - I - vi
+        l.push_back (mkLoop ({ 1, 4, 0, 5 },
+            mk ("0.5:1:5 1.5:.5:3 2:2:1", "0:1:6 1:1:4 2:1.5:6 3.5:.5:4", "0.5:1:2 2:2:4", "0:1.5:5 1.5:.5:7 2:2:9"), "0:1.5:5 1.5:.5:4 2:2:2",
+            mk ("0:1:8 1:1:5 2:1:3 3:1:5", "0:1.5:6 1.5:.5:4 2:2:8", "0:1:9 1:1:7 2:2:4", "0:2:5 2:2:2"), "0:2:5 2:1:2 3:1:0"));
+        // 4: lullaby waltz (3/4)  I - IV - I - V
+        l.push_back (mkLoop ({ 0, 3, 0, 4 },
+            mk ("0:2:4 2:1:2", "0:2:5 2:1:3", "0:1:2 1:1:4 2:1:2", "0:2:1 2:1:-1"), "0:2:1 2:1:0",
+            mk ("0:1:7 1:1:9 2:1:7", "0:1:10 1:1:9 2:1:7", "0:1:7 1:1:11 2:1:9", "0:2:8 2:1:6"), "0:2:8 2:1:7", true));
+        // 5: cinematic  vi - iii - IV - I
+        l.push_back (mkLoop ({ 5, 2, 3, 0 },
+            mk ("0:2:2 2:2:0", "0:2:4 2:2:2", "0:2:5 2:2:3", "0:4:4"), "0:4:2",
+            mk ("0:2:5 2:2:7", "0:2:6 2:2:9", "0:2:10 2:2:12", "0:2:11 2:2:7"), "0:2:11 2:2:9"));
+        return l;
+    }();
+    return b;
+}
+const Phrase& preChorus()
+{
+    static const Phrase p = mk ("0:2:3 2:2:5", "0:2:5 2:2:7", "0:2:6 2:2:8", "0:1:8 1:1:8 2:1:6 3:1:4");   // over ii - IV - V - V
+    return p;
+}
+
 struct Composer
 {
+    struct Sec { char type; int bars, start; };
     ComposeCfg c;
     Score& out;
     Rng rng;
@@ -30,6 +99,8 @@ struct Composer
     const int* mask = nullptr;
     float expr = 0.6f, dens = 0.6f;
     double msBeat = 0.0;                 // milliseconds -> beats
+    bool useBook = true;
+    const Loop* loop = nullptr; const Loop* bridgeLoop = nullptr;
 
     Composer (const ComposeCfg& cfg, Score& o) : c (cfg), out (o), rng (cfg.seed * 2654435761u + 977u)
     {
@@ -41,6 +112,60 @@ struct Composer
         mask = scaleIdx == 4 ? kMinorPentMask : scaleIdx == 5 ? kMajorPentMask : nullptr;
         expr = juce::jlimit (0.0f, 1.0f, c.expression); dens = juce::jlimit (0.0f, 1.0f, c.density);
         msBeat = c.bpm / 60000.0;
+        // the loops that suit each style (indices into the songbook); the seed picks one, the next one is the bridge
+        static const int tbl[10][4] { { 3, 0, 2, -1 }, { 1, 5, 0, -1 }, { 1, 2, 5, -1 }, { 5, 2, 1, -1 }, { 4, -1, -1, -1 }, { 0, 1, 2, 5 }, { 0, -1, -1, -1 }, { 3, -1, -1, -1 }, { 3, 2, 0, -1 }, { 1, 5, 2, -1 } };
+        const int* t = tbl[juce::jlimit (0, 9, c.style)];
+        int cnt = 0; while (cnt < 4 && t[cnt] >= 0) ++cnt;
+        const auto& bk = book();
+        loop = &bk[(size_t) t[c.seed % (uint32_t) cnt]];
+        bridgeLoop = &bk[(size_t) t[(c.seed + 1u) % (uint32_t) cnt]];
+        if (loop->waltz) bpb = 3; else if (bpb == 3) bpb = 4;
+    }
+
+    int bookChord (const Sec& sec, int b) const
+    {
+        static const int pre[4] { 1, 3, 4, 4 };
+        if (sec.type == 'P') return pre[b % 4];
+        if (sec.type == 'C') return bridgeLoop->chords[b % 4];
+        return loop->chords[b % 4];
+    }
+
+    // the hand-written melody of the section: question and answer phrases, the chorus higher and more rhythmic
+    void bookMelody (const Sec& sec, float energy)
+    {
+        if (sec.type == 'I') return;
+        const Loop* L = sec.type == 'C' ? bridgeLoop : loop;
+        const double sw = (c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 0.17 : 0.0;
+        const int dbl = (sec.type == 'B' && (c.style == ssBallad || c.style == ssCinematic || c.style == ssRomantic)) ? -7 : 0;
+        for (int b = 0; b < sec.bars; ++b)
+        {
+            const int g = b / 4, bi = b % 4;
+            const bool answer = (g % 2 == 1);
+            BookBar bar;
+            if (sec.type == 'P') bar = preChorus().bar[bi];
+            else if (sec.type == 'O') bar = (b == sec.bars - 1) ? parseBar (bpb == 3 ? "0:3:7" : "0:4:7") : L->va.bar[bi];
+            else if (sec.type == 'B') bar = (answer ? L->ca : L->c).bar[bi];
+            else bar = (answer ? L->va : L->v).bar[bi];
+            const int gb = sec.start + b;
+            const bool secEnd = b == sec.bars - 1;
+            for (size_t k = 0; k < bar.size(); ++k)
+            {
+                const auto& n = bar[k];
+                const bool strong = n.b < 0.01f || (bpb == 4 && std::abs (n.b - 2.0f) < 0.01f);
+                const double frac = n.b - std::floor (n.b);
+                const double off = (sw > 0 && std::abs (frac - 0.5) < 0.01) ? sw : (sw > 0 ? 0.02 : 0.0);
+                const double start = (double) gb * bpb + n.b + off;
+                double dur = n.d;
+                if (sec.type == 'O') dur *= 1.4;
+                const int vel = velOf (energy, 8 + (strong ? 3 : 0) + (int) (2.0f * bi) - (sec.type == 'O' ? 6 : 0));
+                const int note = midi (n.deg + 7);
+                const double rb = rubato (gb, n.b, secEnd, sec.type == 'O');
+                add (start, dur * 0.97, note, vel, 8.0f, rb, true);
+                if (dbl != 0) add (start, dur * 0.97, midi (n.deg + 7 + dbl), vel - 12, 8.0f, rb, true);
+                if (expr > 0.45f && n.d >= 2.0f && chance (0.3f) && (c.style == ssRomantic || c.style == ssNocturne || c.style == ssCinematic))
+                    add (start - 0.14, 0.12, midi (n.deg + 8), vel - 14, 2.0f, 0.0, true);          // grace note before a long note
+            }
+        }
     }
 
     int midi (int deg) const { return 60 + (key > 6 ? key - 12 : key) + modShift + sc[imod (deg, 7)] + 12 * fdiv (deg, 7); }
@@ -85,7 +210,6 @@ struct Composer
     }
 
     // ------------------------------------------------------------------ plan
-    struct Sec { char type; int bars, start; };
     std::vector<Sec> plan()
     {
         std::vector<Sec> s;
@@ -123,14 +247,16 @@ struct Composer
             Chord ch; ch.deg = bank[p][b % 4];
             if (c.style == ssLofiLoop) { static const int L[4][4] { { 0, 5, 1, 4 }, { 1, 4, 0, 5 }, { 0, 2, 5, 4 }, { 3, 2, 1, 4 } }; ch.deg = L[c.seed % 4u][b % 4]; }
             else if (c.style == ssJazz) { static const int J[4][4] { { 1, 4, 0, 5 }, { 2, 5, 1, 4 }, { 0, 5, 1, 4 }, { 3, 4, 2, 5 } }; ch.deg = J[(c.seed + (sec.type == 'B' ? 1u : 0u)) % 4u][b % 4]; }
+            if (useBook) ch.deg = bookChord (sec, b);
             const float colour = c.style == ssLofi ? 0.8f : c.style == ssRomantic ? 0.45f : c.style == ssMinimal ? 0.5f : c.style == ssCinematic ? 0.3f : c.style == ssBallad ? 0.3f : c.style == ssJazz ? 0.95f : c.style == ssLofiLoop ? 0.9f : c.style == ssNocturne ? 0.12f : 0.05f;
             if (chance (colour * (0.4f + 0.6f * dens)))
                 ch.ext = c.style == ssMinimal || c.style == ssCinematic ? (chance (0.5f) ? 3 : 2) : ((c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 1 + pick (2) : 1);
             else if (c.style == ssCinematic && chance (0.15f)) ch.ext = 4;
+            if (useBook && ch.ext >= 3) ch.ext = 2;
             h[(size_t) b][0] = ch; h[(size_t) b][1] = ch;
         }
         // cadences and leading chords
-        if (sec.bars >= 4)
+        if (sec.bars >= 4 && ! useBook)
         {
             const int last = sec.bars - 1;
             if (sec.type == 'A') { h[(size_t) last][0] = { 4, 0 }; if (sec.bars >= 8) h[(size_t) (last - 1)][0] = { chance (0.5f) ? 3 : 1, 0 }; }
@@ -142,13 +268,14 @@ struct Composer
             for (int b = 0; b < sec.bars; ++b) h[(size_t) b][1] = h[(size_t) b][0];
         }
         // two chords in some bars: a dominant leading into the next chord
-        if (c.style != ssLullaby && c.style != ssMinimal)
+        if (c.style != ssLullaby && c.style != ssMinimal && ! useBook)
             for (int b = 0; b + 1 < sec.bars; ++b)
                 if ((b % 4 == 3 || b % 4 == 1) && chance (0.18f + 0.35f * dens))
                 {
                     split[(size_t) b] = true;
                     h[(size_t) b][1] = { imod (h[(size_t) b + 1][0].deg + 4, 7), 0 };
                 }
+        if (useBook && sec.type == 'O' && ! h.empty()) { h.back()[0] = Chord { 0, 2 }; h.back()[1] = h.back()[0]; }      // the song ends at home
         return h;
     }
 
@@ -166,7 +293,7 @@ struct Composer
         a.n[5] = a.n[2] + 12;
         a.n[6] = above (a.n[5], ch.ext == 1 ? ch.deg + 6 : second);
         a.n[7] = above (a.n[6], ch.ext == 2 ? ch.deg + 8 : ch.deg + 4);
-        for (int& x : a.n) while (x > 79) x -= 12;
+        for (int& x : a.n) while (x > 70) x -= 12;      // the melody (from B4 up) is always the top voice
         return a;
     }
     int velOf (float energy, int bonus = 0) const
@@ -440,7 +567,7 @@ struct Composer
 
     void run()
     {
-        out.notes.clear(); out.pedal.clear(); out.sections.clear();
+        out.notes.clear(); out.pedal.clear(); out.sections.clear(); out.chordMasks.clear();
         out.beatsPerBar = bpb;
         const auto secs = plan();
         int totalBars = 0; for (auto& s : secs) totalBars += s.bars;
@@ -463,6 +590,12 @@ struct Composer
                         : sec.type == 'C' ? 0.52f + 0.35f * prog : 0.36f - 0.2f * prog;
                 if (c.style == ssLofi || c.style == ssLofiLoop) e *= 0.85f; if (c.style == ssLullaby) e *= 0.8f;
                 const bool secEnd = b == sec.bars - 1;
+                {
+                    unsigned mask = 0;
+                    const Chord& cc0 = h[(size_t) b][0];
+                    for (int off : { 0, 2, 4, (cc0.ext == 1 ? 6 : -1), (cc0.ext == 2 ? 8 : -1) }) if (off >= 0) mask |= 1u << (unsigned) imod (midi (cc0.deg + off), 12);
+                    out.chordMasks.push_back ({ (double) gb * bpb, mask });
+                }
                 if (c.mode != 3)
                 {
                     const int nd = b + 1 < sec.bars ? h[(size_t) b + 1][0].deg : -1;
@@ -481,7 +614,7 @@ struct Composer
             {
                 float en = sec.type == 'I' ? 0.3f : sec.type == 'A' ? 0.52f : sec.type == 'P' ? 0.66f : sec.type == 'B' ? 0.86f : sec.type == 'C' ? 0.68f : 0.34f;
                 if (c.style == ssLofi || c.style == ssLofiLoop) en *= 0.9f;
-                melody (sec, sec.start, h, en, motifKind, motA, hook);
+                if (useBook) bookMelody (sec, en); else melody (sec, sec.start, h, en, motifKind, motA, hook);
             }
         }
         // the very end: let everything ring

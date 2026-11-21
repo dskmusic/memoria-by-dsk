@@ -40,6 +40,30 @@ static bool presetIsOrganLike (const gx::Preset& p, juce::String* info = nullptr
     return bad;
 }
 
+static gx::Engine::Probe probeRender (const gx::Preset& p, const gxtest::Song& song, double secs, bool hands)
+{
+    gx::Engine eng;
+    eng.prepare (48000.0, 512);
+    eng.reset ((uint32_t) p.get (gx::P::seed));
+    eng.probing = true;
+    gx::HostInfo hi; hi.internalPlay = hands;
+    juce::AudioBuffer<float> out (2, 512);
+    juce::MidiBuffer block;
+    const int total = (int) (secs * 48000.0);
+    for (int pos = 0; pos < total; pos += 512)
+    {
+        block.clear();
+        block.addEvents (song.buf, pos, juce::jmin (512, total - pos), -pos);
+        eng.process (out.getWritePointer (0), out.getWritePointer (1), juce::jmin (512, total - pos), block, p.params.data(), hi);
+    }
+    return eng.probe;
+}
+static juce::String probeLine (const gx::Engine::Probe& q)
+{
+    auto db = [] (float x) { return juce::String (juce::Decibels::gainToDecibels (x, -99.0f), 1); };
+    return "voices " + db (q.voices) + "  body " + db (q.body) + "  room " + db (q.room) + "  tape-in " + db (q.tape) + " dBFS | limiter>1dB " + juce::String (100.0 * (double) q.limN / (double) juce::jmax ((int64_t) 1, q.n), 2) + " %  clip-knee " + juce::String (100.0 * (double) q.clipN / (double) juce::jmax ((int64_t) 1, q.n), 2) + " %";
+}
+
 int runVideo (const juce::File& dir, bool trailer);   // Video.cpp
 
 // MemoriaTool test | piano <dir> | screenshot <dir> [en|es]
@@ -254,6 +278,38 @@ int main (int argc, char** argv)
             if (bad) { ++flagged; std::puts (("ORGAN-LIKE " + p.meta.category + " / " + p.meta.name + " (piano " + juce::String ((int) p.params[(size_t) gx::P::piano]) + "): " + info).toRawUTF8()); }
         }
         std::puts (("flagged " + juce::String (flagged) + " of " + juce::String (arr->size())).toRawUTF8());
+        return 0;
+    }
+    if (cmd == "gainstage")
+    {
+        // MemoriaTool gainstage: where does the signal get hot? Default sound, then every factory preset (ff chord with pedal), then every Hands style
+        gxtest::Song chord; chord.pedal (0.0, 127);
+        for (int n : { 45, 52, 57, 64, 69, 72 }) chord.note (0.0, 3.0, n, 100);
+        for (int n : { 36, 48, 55, 60, 67, 76 }) chord.note (3.0, 3.0, n, 118);
+        std::puts (("default sound, 12-note ff chords with pedal:  " + probeLine (probeRender (gx::Preset(), chord, 8.0, false))).toRawUTF8());
+        int size = 0;
+        const char* data = BinaryData::getNamedResource ("factory_memoriabank", size);
+        const juce::var bank = data ? juce::JSON::parse (juce::String::fromUTF8 (data, size)) : juce::var();
+        if (auto* arr = bank.getProperty ("presets", {}).getArray())
+        {
+            float worstVoices = -99, worstTape = -99; int worstLim = 0; double worstLimPct = 0; juce::String worstName;
+            for (auto& v : *arr)
+            {
+                const auto p = gx::Preset::fromVar (v);
+                const auto q = probeRender (p, chord, 8.0, false);
+                const float dv = juce::Decibels::gainToDecibels (q.voices, -99.0f), dt = juce::Decibels::gainToDecibels (q.tape, -99.0f);
+                const double lp = 100.0 * (double) q.limN / (double) juce::jmax ((int64_t) 1, q.n);
+                worstVoices = juce::jmax (worstVoices, dv); worstTape = juce::jmax (worstTape, dt);
+                if (lp > worstLimPct) { worstLimPct = lp; worstName = p.meta.name; }
+                (void) worstLim;
+            }
+            std::puts (("factory bank (" + juce::String (arr->size()) + "): hottest voice bus " + juce::String (worstVoices, 1) + " dBFS, hottest tape input " + juce::String (worstTape, 1) + " dBFS, most limiting: " + worstName + " " + juce::String (worstLimPct, 2) + " % of samples").toRawUTF8());
+        }
+        for (int style = 0; style < gx::numSongStyles; ++style)
+        {
+            gx::Preset p; p.params[(size_t) gx::P::hands] = 1; p.params[(size_t) gx::P::handsStyle] = (float) style; p.params[(size_t) gx::P::handsTempo] = 90; p.params[(size_t) gx::P::handsBars] = 1;
+            std::puts (("hands " + gx::handsStyleNames()[style] + ": " + probeLine (probeRender (p, gxtest::Song(), 24.0, true))).toRawUTF8());
+        }
         return 0;
     }
     if (cmd == "screenshot")

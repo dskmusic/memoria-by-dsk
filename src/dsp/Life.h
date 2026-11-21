@@ -31,7 +31,7 @@ public:
     void pedal (bool down);
     void tick();                            // once per absolute control tick (random creaks, dropouts)
     void wood (float& l, float& r);         // added before the room: sounds that happen in the room
-    void tape (float& l, float& r);         // processes the whole mix
+    void tape (float& l, float& r, float refGain);   // processes the whole mix; the saturation sees the signal as it will be heard (refGain = Master)
     void world (float& l, float& r);        // added after the tape: vinyl and the outside world
 
 private:
