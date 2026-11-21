@@ -169,10 +169,16 @@ int runVideo (const juce::File& dir, bool trailer)
         { "MEMORIA", "dskmusic.com", 17.5, 22.0, true } };
     Setter setter = [] (MemoriaProcessor& p, double t)
     {
-        if (t < 0.02) prepareSound (p, 0, 1, 76.0f, 21, 8, 0, 0);
-        setP (p, "memory", 0.1f + 0.85f * ramp (t, 4.0, 18.0));
-        setP (p, "world", t > 8.0 ? 4.0f : 0.0f);
-        setP (p, "world_level", 0.6f);
+        if (t < 0.02)
+        {
+            prepareSound (p, 0, 1, 72.0f, 21, 8, 0, 0);
+            setP (p, "piano", 1.0f); setP (p, "tone", 0.30f); setP (p, "hammer", 0.30f); setP (p, "warmth", 0.7f); setP (p, "detune", 0.6f);
+            setP (p, "tape", 0.45f); setP (p, "vinyl", 0.30f); setP (p, "wood", 0.3f); setP (p, "room", 0.22f); setP (p, "room_type", 0.0f);
+            setP (p, "hands_density", 0.45f); setP (p, "hands_express", 0.55f); setP (p, "resonance", 0.0f);
+        }
+        setP (p, "memory", 0.45f + 0.35f * ramp (t, 3.0, 18.0));
+        setP (p, "world", 1.0f);             // rain, very low
+        setP (p, "world_level", 0.08f);
     };
     return makeVideo (dir, "Memoria-coming-soon", 22.0, setter, caps);
 }

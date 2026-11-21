@@ -101,7 +101,7 @@ std::vector<ParamDef> build()
     b.add (dynamics, "dynamics", "Dynamics", lin (0, 1), 0.5f);
     b.group = "space";
     b.add (body, "body", "Body", lin (0, 1), 0.5f);
-    b.add (resonance, "resonance", "Resonance", lin (0, 1), 0.3f);
+    b.add (resonance, "resonance", "Resonance", lin (0, 1), 0.0f);
     b.add (width, "width", "Width", lin (0, 1.5f), 1.0f);
     b.add (room, "room", "Room", lin (0, 1), 0.25f);
     b.add (roomSize, "room_size", "Room Size", lin (0, 1), 0.4f);

@@ -101,7 +101,7 @@ Preset Generator::candidate (const GenRequest& req)
     set (P::piano, (float) a->pianos[rng.next() % a->pianos.size()]);
     set (P::tone, draw (rng, a->tone)); set (P::hammer, draw (rng, a->hammer)); set (P::sustain, draw (rng, a->sustain)); set (P::damper, draw (rng, a->damper));
     set (P::detune, draw (rng, a->detune)); set (P::stretch, draw (rng, a->stretch)); set (P::dynamics, draw (rng, a->dynamics));
-    set (P::body, draw (rng, a->body)); set (P::resonance, draw (rng, a->resonance)); set (P::width, draw (rng, a->width));
+    set (P::body, draw (rng, a->body)); set (P::resonance, 0.0f);                                     // sympathetic resonance stays off in factory sounds set (P::width, draw (rng, a->width));
     set (P::room, draw (rng, a->room)); set (P::roomSize, draw (rng, a->roomSize)); set (P::roomType, (float) v.room);
     set (P::memory, juce::jlimit (0.0f, 1.0f, draw (rng, a->memory) + v.memBias)); set (P::warmth, draw (rng, a->warmth)); set (P::intimacy, draw (rng, a->intimacy));
     set (P::time, draw (rng, a->time)); set (P::spaceMacro, draw (rng, a->space));
