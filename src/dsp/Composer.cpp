@@ -33,7 +33,7 @@ const int kBankC[4][4] { { 1, 4, 0, 5 }, { 5, 2, 3, 4 }, { 3, 5, 1, 4 }, { 2, 5,
 struct BookNote { float b, d; int deg; };
 using BookBar = std::vector<BookNote>;
 struct Phrase { BookBar bar[4]; };
-struct Loop { int chords[4]; Phrase v, va, c, ca; bool waltz = false; };
+struct Loop { int chords[4]; Phrase v, va, c, ca; bool waltz = false; int moods = 0; };
 
 BookBar parseBar (const char* s)
 {
@@ -49,6 +49,8 @@ Loop mkLoop (std::array<int, 4> ch, Phrase v, const char* vaLast, Phrase c, cons
     l.v = v; l.va = withLast (v, vaLast); l.c = c; l.ca = withLast (c, caLast); l.waltz = waltz;
     return l;
 }
+#include "SongbookData.inc"
+
 const std::vector<Loop>& book()
 {
     static const std::vector<Loop> b = []
@@ -134,6 +136,14 @@ const std::vector<Loop>& book()
         l.push_back (mkLoop ({ 5, 0, 4, 3 },
             mk ("0:1.5:2 1.5:.5:0 2:2:2", "0:1:4 1:1:2 2:2:0", "0:1.5:6 1.5:.5:4 2:2:1", "0:1:5 1:1:3 2:2:5"), "0:1:5 1:1:3 2:2:0",
             mk ("0:1:9 1:1:7 2:2:9", "0:1:11 1:1:9 2:2:7", "0:1.5:13 1.5:.5:11 2:2:8", "0:1:12 1:1:10 2:2:12"), "0:1:12 1:1:10 2:2:7"));
+        // moods of the hand-written loops: 1 bright, 2 sad, 4 gentle, 8 jazz, 16 lofi, 32 cinematic
+        static const int hm[20] { 1, 2, 4, 8 | 16, 0, 32, 1, 2, 8 | 16, 1, 2 | 1, 32 | 2, 0, 0, 1, 4 | 16, 8, 4 | 32, 2, 2 | 16 };
+        for (size_t i = 0; i < l.size() && i < 20; ++i) l[i].moods = hm[i];
+        for (const auto& g : kGen)
+        {
+            Loop x = mkLoop ({ g.ch[0], g.ch[1], g.ch[2], g.ch[3] }, mk (g.s[0], g.s[1], g.s[2], g.s[3]), g.s[4], mk (g.s[5], g.s[6], g.s[7], g.s[8]), g.s[9], g.waltz);
+            x.moods = g.moods; l.push_back (x);
+        }
         return l;
     }();
     return b;
@@ -169,13 +179,17 @@ struct Composer
         expr = juce::jlimit (0.0f, 1.0f, c.expression); dens = juce::jlimit (0.0f, 1.0f, c.density);
         msBeat = c.bpm / 60000.0;
         // the loops that suit each style (indices into the songbook); the seed picks one, the next one is the bridge
-        static const int tbl[10][8] { { 3, 8, 2, 15, 16, 19, 17, 1 }, { 1, 5, 11, 7, 10, 19, 18, 14 }, { 1, 2, 7, 15, 18, 17, 9, 19 }, { 5, 11, 2, 17, 18, 15, 7, 16 }, { 4, 12, 13, -1, -1, -1, -1, -1 },
-                                      { 0, 10, 7, 6, 14, 9, 19, 1 }, { 1, -1, -1, -1, -1, -1, -1, -1 }, { 3, 16, 8, 2, 15, 18, -1, -1 }, { 8, 3, 15, 2, 16, 17, -1, -1 }, { 1, 5, 11, 18, 7, 17, -1, -1 } };
-        const int* t = tbl[juce::jlimit (0, 9, c.style)];
-        int cnt = 0; while (cnt < 8 && t[cnt] >= 0) ++cnt;
+        // the loops that suit each style are chosen by mood; the seed picks the theme and (differently) the bridge theme
+        static const int styleMask[10] { 4 | 16 | 8, 32 | 2, 2 | 4 | 1, 32 | 4, 0, 1 | 2, 63, 8, 16 | 8, 2 | 32 };
         const auto& bk = book();
-        loop = &bk[(size_t) t[c.seed % (uint32_t) cnt]];
-        bridgeLoop = &bk[(size_t) t[(c.seed + 1u) % (uint32_t) cnt]];
+        std::vector<int> pool;
+        for (size_t i = 0; i < bk.size(); ++i)
+            if (c.style == ssLullaby ? bk[i].waltz : (! bk[i].waltz && (bk[i].moods & styleMask[juce::jlimit (0, 9, c.style)]) != 0)) pool.push_back ((int) i);
+        if (pool.empty()) pool.push_back (0);
+        const size_t n = pool.size();
+        loop = &bk[(size_t) pool[(size_t) (c.seed % (uint32_t) n)]];
+        bridgeLoop = &bk[(size_t) pool[(size_t) ((c.seed * 2654435761u >> 7) % (uint32_t) n)]];
+        if (bridgeLoop == loop) bridgeLoop = &bk[(size_t) pool[(size_t) ((c.seed % (uint32_t) n + 1) % n)]];
         if (loop->waltz) bpb = 3; else if (bpb == 3) bpb = 4;
     }
 

@@ -197,14 +197,16 @@ int main (int argc, char** argv)
         const char* cats[] { "Lo-Fi", "Cinematic", "Concert", "Study", "Lullaby", "Felt", "Concert", "Vintage", "Lo-Fi", "Church" };
         const double tempos[] { 78, 84, 70, 92, 96, 66, 84, 78, 76, 62 };
         const int keys[] { 9, 2, 3, 0, 7, 4, 2, 5, 0, 3 }, scales[] { 1, 1, 0, 2, 0, 1, 0, 0, 0, 1 };
+        const int takes = argc > 4 ? juce::String (argv[4]).getIntValue() : 1;     // several different songs per style
         for (int style = 0; style < gx::numSongStyles; ++style)
+          for (int take = 0; take < takes; ++take)
         {
             gx::GenRequest rq; rq.category = cats[style]; rq.seed = 77 + (uint32_t) style;
             auto p = gx::Generator::generate (rq);
             auto& q = p.params;
             q[(size_t) gx::P::hands] = 1; q[(size_t) gx::P::handsStyle] = (float) style; q[(size_t) gx::P::handsTempo] = (float) tempos[style];
-            q[(size_t) gx::P::handsKey] = (float) keys[style]; q[(size_t) gx::P::handsScale] = (float) scales[style]; q[(size_t) gx::P::handsBars] = 3; q[(size_t) gx::P::handsSeed] = (float) (10 + style);
-            const auto base = gx::handsStyleNames()[style].retainCharacters ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-") + " - " + p.meta.name;
+            q[(size_t) gx::P::handsKey] = (float) keys[style]; q[(size_t) gx::P::handsScale] = (float) scales[style]; q[(size_t) gx::P::handsBars] = 3; q[(size_t) gx::P::handsSeed] = (float) (10 + style + 37 * take);
+            const auto base = gx::handsStyleNames()[style].retainCharacters ("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-") + (takes > 1 ? " take " + juce::String (take + 1) : juce::String()) + " - " + p.meta.name;
             const auto err = gx::exportAudio (p, dir.getChildFile (base + ".wav"), gx::efWav, secs, 48000.0);
             gx::Score sc; gx::compose (gx::composeCfgFromPreset (p), sc);
             gx::writeMidi (sc, tempos[style], dir.getChildFile (base + ".mid"));

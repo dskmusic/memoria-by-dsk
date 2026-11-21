@@ -42,3 +42,4 @@
 - Hands: melodies are now hand-written songbook phrases (question/answer, verse/chorus) over chosen progressions; music lint and gain-staging tests added.
 - Hands: songbook grown to 20 themes (8 per style, so the same style gives many different songs); repeats are never copies (second verse with anticipations and passing notes), choruses add a counter-melody and a low bass octave, the last chorus is doubled and lifts a tone (now from 32 bars).
 - New instruments: Electric Piano (Rhodes-style) and Vibraphone, with 12 new presets (222 in total).
+- Hands: songbook expanded to 200 themes (20 hand-written + 180 composed offline from motifs, sequences and cadences, scored and filtered; picked per style by mood), 8 progressions for waltzes and 28 for 4/4. Music lint now checks 30 seeds per style.

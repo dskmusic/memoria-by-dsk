@@ -471,7 +471,7 @@ static void testMusicLint()
     std::puts ("[music lint: the songs follow the rules of the songbook]");
     double chordTone = 0, topViol = 0, clash = 0, velGap = 0; int runs = 0, worstPoly = 0;
     for (int style : { 0, 1, 2, 3, 4, 5, 7, 8, 9 })
-        for (uint32_t seed = 1; seed <= 6; ++seed)
+        for (uint32_t seed = 1; seed <= 30; ++seed)
             for (int scale : { 0, 1 })
             {
                 gx::ComposeCfg c; c.style = style; c.seed = seed * 17u + (uint32_t) style; c.bars = 32; c.key = 0; c.scale = scale;
