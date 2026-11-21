@@ -1,0 +1,66 @@
+# ---- Personal / backups (case-insensitive patterns: Linux CI is case-sensitive) ----
+[Cc][Rr][Ee][Aa][Rr][ _-][Bb][Aa][Cc][Kk][Uu][Pp].[Pp][Yy]
+[Cc][Rr][Ee][Aa][Rr][Bb][Aa][Cc][Kk][Uu][Pp].[Pp][Yy]
+[Bb]ackups/
+[Bb]ackup/
+BACKUP*/
+[Cc]opias/
+*backup*/
+*Backup*/
+*BACKUP*/
+*.bak
+/*.zip
+/*.7z
+/prompt inicial.txt
+BUILD_LOCAL.md
+/COMO PUBLICAR VERSION.md
+/HACER BACKUP.bat
+/COMPILAR - USA ESTE.bat
+/COMPILAR EN GITHUB.bat
+/ENLACES DE DESCARGA.md
+/CORREO RONNIE REKKERD.txt
+.Backups/
+
+# ---- Build artifacts ----
+build/
+build-*/
+cmake-build-*/
+out/
+dist/
+.cache/
+_deps/
+CMakeUserPresets.json
+
+# ---- IDE / env ----
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.user
+*.suo
+*.log
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+Thumbs.db
+third_party/JUCE/
+/video/
+/TEXTOS PROMO REDES.txt
+/PLANTILLA DESCARGAS WEB.html
+/web-backup/
+/PROMO ARTICULOS/
+/ESCUCHA A-B/
+/INFORME PRESETS*.md
+/COMO HACER PUBLICO.md
+/CONTEXTO*.md
+/SUBIR CAMBIOS.bat
+/CREAR VERSION LOCAL.bat
+/CORREO PRENSA.txt
+/trailer/
+
+# ---- Session context / prompts (private) ----
+/[0-9][0-9] CONTEXTO*.md
+/[0-9][0-9] PROMPT*.md
+/PLAN*.md
+/NOTAS*.md

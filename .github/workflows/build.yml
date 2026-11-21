@@ -1,0 +1,123 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: win-x64, os: windows-latest, platform: win }
+          - { name: macos-universal, os: macos-latest, platform: mac }
+          - { name: linux-x64, os: ubuntu-24.04, platform: linux }
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEPS: ${{ github.workspace }}/../gx-deps
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build xvfb \
+            libasound2-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev libfreetype-dev \
+            libfontconfig1-dev libgl1-mesa-dev
+
+      - name: macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.name }}
+          max-size: 1G
+
+      - name: Cache JUCE sources
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.DEPS }}
+          key: deps-${{ matrix.name }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          "-DFETCHCONTENT_BASE_DIR=${DEPS}" -DFETCHCONTENT_UPDATES_DISCONNECTED=ON
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          ${{ runner.os == 'macOS' && '"-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"' || '' }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Unit tests
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a ctest --test-dir build --output-on-failure
+          else ctest --test-dir build --output-on-failure; fi
+
+      - name: pluginval
+        run: |
+          VST3="build/Memoria_artefacts/Release/VST3/Memoria by DSK.vst3"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            curl -sSL -o pv.zip https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Linux.zip
+            unzip -q pv.zip && chmod +x pluginval
+            xvfb-run -a ./pluginval --strictness-level 10 --timeout-ms 600000 --verbose --validate "$VST3"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            curl -sSL -o pv.zip https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_macOS.zip
+            unzip -q pv.zip
+            lipo -archs "$VST3/Contents/MacOS/Memoria by DSK" | tee /dev/stderr | grep -q "x86_64 arm64\|arm64 x86_64"
+            pluginval.app/Contents/MacOS/pluginval --strictness-level 10 --timeout-ms 600000 --verbose --validate "$VST3"
+            mkdir -p ~/Library/Audio/Plug-Ins/Components
+            cp -R "build/Memoria_artefacts/Release/AU/Memoria by DSK.component" ~/Library/Audio/Plug-Ins/Components/
+            killall -9 AudioComponentRegistrar || true
+            auval -v aumu Mmra Dskm
+          else
+            curl -sSL -o pv.zip https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_Windows.zip
+            unzip -q pv.zip
+            ./pluginval.exe --strictness-level 10 --timeout-ms 600000 --verbose --validate "$VST3"
+          fi
+
+      - name: Package
+        run: |
+          VER=$(python -c "import re;print(re.search(r'project\(Memoria VERSION ([0-9.]+)',open('CMakeLists.txt').read()).group(1))")
+          python scripts/package.py --platform ${{ matrix.platform }} --build build --version "$VER"
+
+      - name: Installer (Inno Setup)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          $ver = (Select-String -Path CMakeLists.txt -Pattern 'project\(Memoria VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+          & $iscc "/DAppVersion=$ver" "/DArtDir=..\build\Memoria_artefacts\Release" installer\memoria.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          python scripts/package.py --platform win --build build --checksums-only
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Memoria-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error
