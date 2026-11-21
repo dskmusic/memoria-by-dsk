@@ -125,6 +125,7 @@ private:
     Fdn room;
     float cacheRoom = -1;
     float dcX[2] {}, dcY[2] {};
+    float limG = 1.0f, limAtk = 0.05f, limRel = 0.0002f;      // output limiter
     Smooth masterS, bodyS, roomS, widthS;
     int idleTicks = 0;
 };

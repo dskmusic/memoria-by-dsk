@@ -50,6 +50,7 @@ void Engine::prepare (double sampleRate, int mb)
     maxBlock = juce::jmax (mb, 16);
     vbuf.assign ((size_t) maxBlock, 0.0f); mixL = bodyIn = mixR = vbuf;
     room.prepare (sr);
+    limAtk = 1.0f - std::exp (-1.0f / (0.0004f * (float) sr)); limRel = 1.0f - std::exp (-1.0f / (0.12f * (float) sr));
     for (auto* s : { &masterS, &bodyS, &roomS, &widthS }) s->setTime (0.05f, sr);
     // soundboard modes: a handful of broad wooden resonances, slightly different left/right
     static const float f[kModes] { 62, 94, 128, 171, 233, 312, 417, 560, 760, 1050 };
@@ -83,7 +84,7 @@ void Engine::reset (uint32_t s)
     for (auto& b : toneF) b.reset();
     cacheLp = cacheTone = cacheRoom = -1;
     dcX[0] = dcX[1] = dcY[0] = dcY[1] = 0;
-    idleTicks = 0;
+    idleTicks = 0; limG = 1.0f;
     for (auto& k : tele.keyLevel) k.store (0.0f);
     tele.voices.store (0);
     tele.pedal.store (0.0f);
@@ -545,6 +546,10 @@ void Engine::renderChunk (float* L, float* R, int n)
         // DC blocker + gentle protection against overs
         const float yl = l - dcX[0] + 0.9995f * dcY[0]; dcX[0] = l; dcY[0] = yl;
         const float yr = r - dcX[1] + 0.9995f * dcY[1]; dcX[1] = r; dcY[1] = yr;
+        // limiter: ceiling -1 dB, 0.4 ms attack, 120 ms release; the soft clip below is only a last safety net
+        const float pk = std::max (std::abs (yl), std::abs (yr)), tg = pk > 0.8913f ? 0.8913f / pk : 1.0f;
+        limG += (tg - limG) * (tg < limG ? limAtk : limRel);
+        yl *= limG; yr *= limG;
         L[t] = juce::jlimit (-1.0f, 1.0f, std::abs (yl) < 0.85f ? yl : std::copysign (0.85f + 0.15f * fastTanh ((std::abs (yl) - 0.85f) / 0.15f), yl));
         R[t] = juce::jlimit (-1.0f, 1.0f, std::abs (yr) < 0.85f ? yr : std::copysign (0.85f + 0.15f * fastTanh ((std::abs (yr) - 0.85f) / 0.15f), yr));
     }

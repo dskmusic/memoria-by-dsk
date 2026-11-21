@@ -24,6 +24,7 @@
 - Shader fix for Intel graphics (a function name clashed with a GLSL built-in: noise3).
 - The Hands never follow the DAW transport any more: they play only on the instrument's own PLAY (a loaded plugin is silent until notes arrive). Export the MIDI to use the music in a DAW.
 - The test chord when selecting a preset is off by default (Settings); the maximum level of every ambience (rain, wind, fireplace, birds) is half of before.
+- Output limiter (ceiling -1 dB) and an overall level about 3 dB lower (default Master -9 dB, factory presets re-levelled).
 - Strings view: 88 live strings, hammers, dampers and pedal in the Piano panel.
 - Click on the song map to jump to that bar while playing (in a DAW the song is aligned to the host position).
 - Composer v3: pre-chorus, hook repeats, bass approach notes, pushed chords, key lift in the last chorus, best-of-six takes by melodic quality.

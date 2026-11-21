@@ -87,7 +87,7 @@ std::vector<ParamDef> build()
     using namespace P;
     Builder b;
     b.group = "global";
-    b.add (master, "master", "Master", lin (-48, 12), -6, "dB");
+    b.add (master, "master", "Master", lin (-48, 12), -9, "dB");
     b.addInt (seed, "seed", "Seed", 1, 99999, 1);
     b.addChoice (piano, "piano", "Piano", pianoNames(), 0);
     b.addChoice (tuning, "tuning", "Tuning", { "440 Hz", "432 Hz" }, 0);

@@ -19,6 +19,6 @@ public:
     static bool validate (Preset& p, float* rmsDb = nullptr);            // renders a phrase; sets Master so every preset has the same loudness
     static Preset generate (const GenRequest& req, int maxAttempts = 6); // candidate + validation, retries with new sub-seeds
     static juce::StringArray deriveTags (const Preset& p);
-    static float targetRmsDb() { return -24.0f; }
+    static float targetRmsDb() { return -27.0f; }
 };
 }
