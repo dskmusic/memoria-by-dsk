@@ -377,7 +377,7 @@ void SettingsPage::paint (juce::Graphics& g)
     g.setColour (col::textDim);
     g.setFont (font (12.0f));
     g.setColour (col::textDim); g.setFont (font (11.5f));
-    g.drawFittedText (gpuLine, juce::Rectangle<int> (28, getHeight() - 120, 640, 40), juce::Justification::topLeft, 2);
+    g.drawFittedText (gpuLine, juce::Rectangle<int> (28, getHeight() - 150, 640, 90), juce::Justification::topLeft, 6);
     g.setColour (col::textDim); g.setFont (font (12.0f));
     g.drawFittedText (L ("Consejo: clic derecho en cualquier mando para asignarlo a tu controlador (MIDI Learn). El pedal de sustain (CC64) admite medio pedal.",
                          "Tip: right-click any knob to map it to your controller (MIDI Learn). The sustain pedal (CC64) supports half-pedaling."),

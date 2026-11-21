@@ -16,10 +16,15 @@ const char* roomShader = R"GLSL(
 uniform vec2 uRes;
 uniform float uTime, uMemory, uAge, uWorld, uEnergy, uHit, uPedal, uFlame, uIntimacy, uWarmth, uSpace;
 uniform float uKeys[88];
-#ifdef LITE
+#ifdef MINI
+const int MARCH = 40;
+const int FOGN = 1;
+#elif defined(LITE)
 const int MARCH = 56;
+const int FOGN = 6;
 #else
 const int MARCH = 90;
+const int FOGN = 16;
 #endif
 
 float hash12 (vec2 p) { vec3 p3 = fract (vec3 (p.xyx) * 0.1031); p3 += dot (p3, p3.yzx + 33.33); return fract ((p3.x + p3.y) * p3.z); }
@@ -122,8 +127,17 @@ vec2 map (vec3 p)
 
 vec3 calcNormal (vec3 p)
 {
-    vec2 e = vec2 (0.0015, -0.0015);
-    return normalize (e.xyy * map (p + e.xyy).x + e.yyx * map (p + e.yyx).x + e.yxy * map (p + e.yxy).x + e.xxx * map (p + e.xxx).x);
+#ifdef LITE
+    return normalize (cross (dFdx (p), dFdy (p)));
+#else
+    vec3 n = vec3 (0.0);
+    for (int i = 0; i < 4; i++)
+    {
+        vec3 e = i == 0 ? vec3 (1.0, -1.0, -1.0) : i == 1 ? vec3 (-1.0, -1.0, 1.0) : i == 2 ? vec3 (-1.0, 1.0, -1.0) : vec3 (1.0, 1.0, 1.0);
+        n += e * map (p + e * 0.0015).x;
+    }
+    return normalize (n);
+#endif
 }
 
 float softShadow (vec3 ro, vec3 rd, float tmax)
@@ -347,6 +361,7 @@ vec3 shadeHit (vec3 ro, vec3 rd, float t, float id)
     int wd = int (uWorld + 0.5);
     if (id > 19.5) return windowSky (p);
     vec3 n = calcNormal (p);
+    if (dot (n, rd) > 0.0) n = -n;
     vec3 alb; float rough, f0, bump;
     material (p, n, id, alb, rough, f0, bump);
     if (id > 7.5 && id < 8.5) n = normalize (n + vec3 (0.5 * cos (p.x * 34.0 + p.y * 1.5), 0.0, 0.0) * 0.4);
@@ -402,10 +417,13 @@ vec3 shadeHit (vec3 ro, vec3 rd, float t, float id)
 float fogLight (vec3 ro, vec3 rd, float tmax)
 {
     float acc = 0.0;
+#ifdef MINI
+    return 0.0;
+#endif
     float j = hash12 (gl_FragCoord.xy + fract (uTime) * 17.0);
-    for (int i = 0; i < 16; i++)
+    for (int i = 0; i < FOGN; i++)
     {
-        float t = (float (i) + j) / 16.0 * min (tmax, 8.0);
+        float t = (float (i) + j) / float (FOGN) * min (tmax, 8.0);
         vec3 q = ro + rd * t;
         float vis = windowLight (q);
         if (q.x < -3.45 || q.x > 3.55 || q.y < 0.0 || q.y > 3.2 || q.z < -2.95) continue;
@@ -413,7 +431,7 @@ float fogLight (vec3 ro, vec3 rd, float tmax)
         acc += vis * dust;
     }
     float ph = 0.35 + 1.4 * pow (max (dot (rd, -SUNL), 0.0), 3.0);
-    return acc / 16.0 * min (tmax, 8.0) * ph;
+    return acc / float (FOGN) * min (tmax, 8.0) * ph;
 }
 
 vec3 mote (vec3 ro, vec3 rd)
@@ -566,25 +584,25 @@ bool GpuRoom::init (juce::OpenGLContext& c)
     const juce::String renderer = juce::String ((const char*) glGetString (GL_VERSION)) + "  " + juce::String ((const char*) glGetString (GL_RENDERER));
     auto log = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("DSK Music").getChildFile ("Memoria").getChildFile ("gpu-log.txt");
     // two tiers: the full scene, then a lighter one (no soft shadows / ambient occlusion / dust) if the driver rejects or cannot link the first
-    for (int tier = 0; tier < 2 && prog == nullptr; ++tier)
+    for (int tier = gpuForceTier() >= 0 ? gpuForceTier() : 0; tier < 3 && prog == nullptr; ++tier)
     {
         auto p = std::make_unique<juce::OpenGLShaderProgram> (c);
-        const juce::String fs = (tier == 1 ? juce::String ("#define LITE 1\n") : juce::String()) + roomShader;
+        const juce::String fs = (tier == 1 ? juce::String ("#define LITE 1\n") : tier == 2 ? juce::String ("#define LITE 1\n#define MINI 1\n") : juce::String()) + roomShader;
         if (p->addVertexShader (juce::OpenGLHelpers::translateVertexShaderToV3 (vertexShader))
             && p->addFragmentShader (juce::OpenGLHelpers::translateFragmentShaderToV3 (fs))
             && p->link())
         {
             prog = std::move (p);
-            setGpuInfo (juce::String (tier == 0 ? "OK (full) - " : "OK (light) - ") + renderer);
+            setGpuInfo (juce::String (tier == 0 ? "OK (full) - " : tier == 1 ? "OK (light) - " : "OK (minimal) - ") + renderer);
             log.getParentDirectory().createDirectory();
-            log.replaceWithText ("Memoria GPU scene\nOpenGL: " + renderer + "\nTier: " + (tier == 0 ? "full" : "light") + "\n" + error);
+            log.replaceWithText ("Memoria GPU scene\nOpenGL: " + renderer + "\nTier: " + juce::String (tier) + "\n" + error);
         }
-        else error << (tier == 0 ? "full: " : "light: ") << p->getLastError() << "\n";
+        else error << (tier == 0 ? "full: " : tier == 1 ? "light: " : "minimal: ") << p->getLastError() << "\n";
     }
     if (prog == nullptr)
     {
         DBG (error);
-        setGpuInfo ("shader failed - " + renderer);
+        setGpuInfo ("shader failed - " + renderer + " - " + error.replaceCharacters ("\r\n", "  ").substring (0, 420));
         log.getParentDirectory().createDirectory();
         log.replaceWithText ("Memoria GPU scene\nOpenGL: " + renderer + "\n\n" + error);
         return false;

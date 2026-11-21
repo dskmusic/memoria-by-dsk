@@ -43,6 +43,7 @@ private:
 };
 
 // What happened when the shader scene was set up (shown in Settings, also written to Documents/DSK Music/Memoria/gpu-log.txt)
+inline int& gpuForceTier() { static int t = -1; return t; }   // tools: start at this shader tier (0 full, 1 light, 2 minimal)
 juce::String getGpuInfo();
 void setGpuInfo (const juce::String&);
 inline std::atomic<int>& gpuStatus() { static std::atomic<int> s { 0 }; return s; }   // 0 unknown, 1 ok, -1 failed

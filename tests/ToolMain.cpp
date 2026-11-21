@@ -221,6 +221,7 @@ int main (int argc, char** argv)
     {
         // MemoriaTool scene <dir>: the GPU room for review (several worlds and memory levels)
         const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "scene");
+        if (argc > 3) gx::ui::gpuForceTier() = juce::String (argv[3]).getIntValue();
         dir.createDirectory();
         struct C { const char* n; float mem, age; int world; } cs[] { { "golden_clean", 0.0f, 0.5f, 0 }, { "rain", 0.3f, 0.5f, 1 }, { "cafe", 0.2f, 0.5f, 2 }, { "fire_night", 0.5f, 0.6f, 3 }, { "dawn_old", 1.0f, 0.9f, 4 }, { "audience", 0.0f, 0.5f, 5 } };
         for (auto& c : cs)
@@ -234,7 +235,7 @@ int main (int argc, char** argv)
             std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
             if (os != nullptr) png.writeImageToStream (img, *os);
         }
-        std::puts (("scenes in " + dir.getFullPathName()).toRawUTF8());
+        std::puts (("scenes in " + dir.getFullPathName() + "   [" + gx::ui::getGpuInfo() + "]").toRawUTF8());
         return 0;
     }
     if (cmd == "audit")
