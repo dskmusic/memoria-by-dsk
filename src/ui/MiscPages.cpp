@@ -1,4 +1,5 @@
 #include "Pages.h"
+#include "../preset/Render.h"
 
 namespace gx::ui
 {
@@ -20,8 +21,9 @@ void Logo::drawMark (juce::Graphics& g, juce::Rectangle<float> r, float glow, fl
     const float kw = w / 3.0f, gap = h * 0.04f;
     if (glow > 0.01f)
     {
-        g.setColour (col::accent.withAlpha (0.16f * glow));
-        g.fillRoundedRectangle (juce::Rectangle<float> (w * 1.1f, h * 1.1f).withCentre (r.getCentre()), h * 0.2f);
+        const auto c = r.getCentre();
+        g.setGradientFill (juce::ColourGradient (col::accent.withAlpha (0.22f * glow), c.x, c.y, col::accent.withAlpha (0.0f), c.x + w * 0.75f, c.y, true));
+        g.fillEllipse (juce::Rectangle<float> (w * 1.5f, h * 1.5f).withCentre (c));
     }
     // two white keys + the black one between them; the right-hand key fades out
     juce::ColourGradient grad (juce::Colours::white, o.x, o.y, col::accent, o.x + w, o.y + h, false);
@@ -188,8 +190,19 @@ void AboutOverlay::resized()
 // ---------------------------------------------------------------- Export page
 ExportPage::ExportPage (Context& c) : Page (c)
 {
-    addAndMakeVisible (exportPreset);
-    addAndMakeVisible (importPreset);
+    const int mins[] { 1, 5, 10, 15, 30, 45, 60, 90, 120, 180 };
+    for (int m : mins) duration.addItem (juce::String (m) + " min", m);
+    duration.setSelectedId (10, juce::dontSendNotification);
+    format.addItemList ({ "WAV 24-bit", "FLAC 24-bit", "OGG Vorbis" }, 1);
+    format.setSelectedItemIndex (0, juce::dontSendNotification);
+    rate.addItem ("44.1 kHz", 44100);
+    rate.addItem ("48 kHz", 48000);
+    rate.setSelectedId (48000, juce::dontSendNotification);
+    for (auto* comp : std::initializer_list<juce::Component*> { &duration, &format, &rate, &exportAudio, &cancel, &exportPreset, &importPreset })
+        addAndMakeVisible (comp);
+    cancel.setEnabled (false);
+    exportAudio.onClick = [this] { start(); };
+    cancel.onClick = [this] { cancelFlag = true; };
     exportPreset.onClick = [this]
     {
         chooser = std::make_unique<juce::FileChooser> (L ("Exportar preset", "Export preset"), Library::defaultRoot().getChildFile (ctx.proc.currentMeta.name + ".memoria"), "*.memoria");
@@ -212,26 +225,103 @@ ExportPage::ExportPage (Context& c) : Page (c)
             if (ctx.toast) ctx.toast (juce::String (n) + L (" preset(s) importados a la biblioteca", " preset(s) imported into the library"));
         });
     };
+    status = L ("Las manos tocan solas con el sonido actual y lo guardan en un archivo largo: ideal para vídeos, estudio o dormir. Activa unas manos en la pestaña VIDA.",
+                "The hands play by themselves with the current sound and save it to a long file: ideal for videos, studying or sleeping. Turn the hands on in the LIFE tab.");
+}
+
+ExportPage::~ExportPage()
+{
+    cancelFlag = true;
+    if (worker.joinable()) worker.join();
+}
+
+void ExportPage::start()
+{
+    if (busy.load()) return;
+    if (ctx.proc.getParam (P::hands) < 0.5f) { if (ctx.toast) ctx.toast (L ("Activa las manos (pestaña VIDA) para exportar", "Turn the hands on (LIFE tab) to export")); return; }
+    const auto ext = exportFormatExtension (format.getSelectedItemIndex());
+    const auto name = ctx.proc.currentMeta.name.isNotEmpty() ? ctx.proc.currentMeta.name : juce::String ("Memoria");
+    const auto def = juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile (juce::File::createLegalFileName (name + " - " + juce::String (duration.getSelectedId()) + " min" + ext));
+    chooser = std::make_unique<juce::FileChooser> (L ("Guardar audio", "Save audio"), def, "*" + ext);
+    chooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting, [this, ext] (const juce::FileChooser& fc)
+    {
+        auto f = fc.getResult();
+        if (f == juce::File()) return;
+        target = f.withFileExtension (ext);
+        if (worker.joinable()) worker.join();
+        busy = true; done = false; cancelFlag = false; progress = 0;
+        exportAudio.setEnabled (false);
+        cancel.setEnabled (true);
+        startedAt = juce::Time::getMillisecondCounterHiRes() * 0.001;
+        const auto preset = Preset::capture (ctx.proc);
+        const int fmt = format.getSelectedItemIndex();
+        const double secs = duration.getSelectedId() * 60.0, sr = rate.getSelectedId();
+        worker = std::thread ([this, preset, fmt, secs, sr] { result = gx::exportAudio (preset, target, fmt, secs, sr, &progress, &cancelFlag); done = true; });
+        startTimerHz (10);
+    });
+}
+
+void ExportPage::timerCallback()
+{
+    if (done.load())
+    {
+        done = false; busy = false;
+        if (worker.joinable()) worker.join();
+        exportAudio.setEnabled (true); cancel.setEnabled (false);
+        stopTimer();
+        if (result.isEmpty())
+        {
+            status = L ("Listo: ", "Done: ") + target.getFullPathName();
+            if (ctx.toast) ctx.toast (L ("Audio exportado: ", "Audio exported: ") + target.getFileName());
+            target.revealToUser();
+        }
+        else status = result == "cancelled" ? L ("Exportación cancelada.", "Export cancelled.") : L ("Error: ", "Error: ") + result;
+    }
+    else if (busy.load())
+    {
+        const double el = juce::Time::getMillisecondCounterHiRes() * 0.001 - startedAt;
+        const float p = progress.load();
+        juce::String eta;
+        if (p > 0.02f) { const int left = (int) (el / p * (1.0 - p)); eta = "  -  " + L ("quedan ", "") + juce::String (left / 60) + ":" + juce::String (left % 60).paddedLeft ('0', 2) + L ("", " left"); }
+        status = L ("Renderizando… ", "Rendering… ") + juce::String ((int) (p * 100)) + " %" + eta;
+    }
+    repaint();
 }
 
 void ExportPage::paint (juce::Graphics& g)
 {
-    auto p = getLocalBounds().reduced (12).removeFromTop (150).toFloat();
-    drawPanel (g, p);
-    auto in = p.reduced (24, 14);
-    g.setColour (col::text);
-    g.setFont (techFont (16.0f));
-    g.drawText ("PRESETS", in.removeFromTop (24), juce::Justification::centredLeft);
+    auto r = getLocalBounds().reduced (12);
+    auto panel = [&] (int hgt, const juce::String& title)
+    {
+        auto p = r.removeFromTop (hgt).toFloat();
+        r.removeFromTop (10);
+        drawPanel (g, p);
+        auto in = p.reduced (24, 14);
+        g.setColour (col::text);
+        g.setFont (techFont (16.0f));
+        g.drawText (title, in.removeFromTop (24), juce::Justification::centredLeft);
+        return in;
+    };
+    auto in = panel (210, L ("EXPORTAR AUDIO", "EXPORT AUDIO"));
     g.setColour (col::textDim);
     g.setFont (font (12.5f));
-    g.drawFittedText (L ("Comparte tus recuerdos: guarda el sonido actual en un archivo .memoria o importa los de otras personas.",
-                         "Share your memories: save the current sound as a .memoria file or import other people's."),
-                      in.removeFromTop (36).toNearestInt(), juce::Justification::topLeft, 2);
+    g.drawFittedText (status, in.removeFromTop (44).toNearestInt(), juce::Justification::topLeft, 3);
+    const auto bar = in.removeFromBottom (14);
+    g.setColour (col::bgDeep); g.fillRoundedRectangle (bar, 4.0f);
+    g.setColour (col::accent); g.fillRoundedRectangle (bar.withWidth (bar.getWidth() * progress.load()), 4.0f);
+    panel (120, "PRESETS");
 }
 
 void ExportPage::resized()
 {
-    auto low = getLocalBounds().reduced (12).removeFromTop (150).reduced (24, 14).withTrimmedTop (70);
+    auto r = getLocalBounds().reduced (12);
+    auto in = r.removeFromTop (210).reduced (24, 14).withTrimmedTop (74);
+    auto row = in.removeFromTop (32);
+    duration.setBounds (row.removeFromLeft (130).reduced (2)); format.setBounds (row.removeFromLeft (150).reduced (2)); rate.setBounds (row.removeFromLeft (110).reduced (2));
+    row.removeFromLeft (10);
+    exportAudio.setBounds (row.removeFromLeft (170).reduced (2)); cancel.setBounds (row.removeFromLeft (110).reduced (2));
+    r.removeFromTop (10);
+    auto low = r.removeFromTop (120).reduced (24, 14).withTrimmedTop (30);
     exportPreset.setBounds (low.removeFromLeft (240).removeFromTop (32));
     low.removeFromLeft (10);
     importPreset.setBounds (low.removeFromLeft (220).removeFromTop (32));

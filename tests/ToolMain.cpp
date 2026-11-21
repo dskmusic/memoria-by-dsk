@@ -3,6 +3,8 @@
 #include "gen/Generator.h"
 #include <set>
 
+int runVideo (const juce::File& dir, bool trailer);   // Video.cpp
+
 // MemoriaTool test | piano <dir> | screenshot <dir> [en|es]
 //   piano: renders listening / analysis material (velocity sweep, scale, chords with pedal, staccato) as 24-bit WAV files.
 int main (int argc, char** argv)
@@ -75,6 +77,65 @@ int main (int argc, char** argv)
         out.replaceWithText (juce::JSON::toString (juce::var (bank), true));
         std::puts (("wrote " + juce::String (arr.size()) + " presets (" + juce::String (failed) + " failed) to " + out.getFullPathName()).toRawUTF8());
         return failed == 0 ? 0 : 1;
+    }
+    if (cmd == "hands")
+    {
+        // MemoriaTool hands <dir> [seconds]: every hands mode with a few factory-like sounds, for listening
+        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "hands-demo");
+        dir.createDirectory();
+        const double secs = argc > 3 ? juce::String (argv[3]).getDoubleValue() : 45.0;
+        const char* cats[] { "Lo-Fi", "Rainy", "Cinematic", "Lullaby" };
+        int k = 0;
+        for (int mode = 1; mode <= 4; ++mode)
+        {
+            gx::GenRequest rq; rq.category = cats[k++ % 4]; rq.seed = 77 + (uint32_t) mode;
+            auto p = gx::Generator::generate (rq);
+            p.params[(size_t) gx::P::hands] = (float) mode; p.params[(size_t) gx::P::handsTempo] = 78.0f;
+            const auto f = dir.getChildFile (gx::handsNames()[mode] + " - " + p.meta.name + ".wav");
+            const auto err = gx::exportAudio (p, f, gx::efWav, secs, 48000.0);
+            std::puts ((err.isEmpty() ? f.getFullPathName() : err).toRawUTF8());
+        }
+        return 0;
+    }
+    if (cmd == "video" || cmd == "trailer") return runVideo (juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "dist"), cmd == "trailer");
+    if (cmd == "icon")
+    {
+        // MemoriaTool icon <dir> : branding/memoria-icon.png (512), memoria-icon-small.png (128) and memoria.ico
+        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "branding");
+        dir.createDirectory();
+        auto make = [] (int size)
+        {
+            juce::Image img (juce::Image::ARGB, size, size, true);
+            juce::Graphics g (img);
+            const auto r = juce::Rectangle<float> ((float) size, (float) size).reduced (size * 0.03f);
+            g.setGradientFill (juce::ColourGradient (gx::ui::col::panelHi, r.getX(), r.getY(), gx::ui::col::bgDeep, r.getRight(), r.getBottom(), false));
+            g.fillRoundedRectangle (r, size * 0.2f);
+            g.setColour (gx::ui::col::accent.withAlpha (0.5f));
+            g.drawRoundedRectangle (r, size * 0.2f, juce::jmax (1.0f, size * 0.012f));
+            gx::ui::Logo::drawMark (g, r.reduced (size * 0.12f), 0.8f, 0.35f);
+            return img;
+        };
+        auto pngBytes = [] (const juce::Image& img) { juce::MemoryOutputStream m; juce::PNGImageFormat().writeImageToStream (img, m); return m.getMemoryBlock(); };
+        auto save = [&] (const juce::String& name, const juce::MemoryBlock& b) { const auto f = dir.getChildFile (name); f.deleteFile(); f.replaceWithData (b.getData(), b.getSize()); };
+        save ("memoria-icon.png", pngBytes (make (512)));
+        save ("memoria-icon-small.png", pngBytes (make (128)));
+        const int sizes[] { 256, 64, 48, 32, 16 };
+        juce::MemoryOutputStream ico;
+        ico.writeShort (0); ico.writeShort (1); ico.writeShort ((short) 5);
+        std::vector<juce::MemoryBlock> data;
+        for (int s : sizes) data.push_back (pngBytes (make (s)));
+        int offset = 6 + 16 * 5;
+        for (size_t i = 0; i < 5; ++i)
+        {
+            ico.writeByte ((char) (sizes[i] == 256 ? 0 : sizes[i])); ico.writeByte ((char) (sizes[i] == 256 ? 0 : sizes[i]));
+            ico.writeByte (0); ico.writeByte (0); ico.writeShort (1); ico.writeShort (32);
+            ico.writeInt ((int) data[i].getSize()); ico.writeInt (offset);
+            offset += (int) data[i].getSize();
+        }
+        for (auto& d : data) ico.write (d.getData(), d.getSize());
+        save ("memoria.ico", ico.getMemoryBlock());
+        std::puts (("icons written to " + dir.getFullPathName()).toRawUTF8());
+        return 0;
     }
     if (cmd == "screenshot")
     {

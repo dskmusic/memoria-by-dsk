@@ -86,8 +86,10 @@ public:
     explicit LifePage (Context& c);
     void resized() override;
     void paint (juce::Graphics&) override;
+    void tick (const Frame&) override;
 private:
-    AutoPanel macros, life;
+    AutoPanel macros, life, hands;
+    juce::TextButton play { "PLAY" };
 };
 
 // Help: a short, friendly guide (both languages).
@@ -152,17 +154,28 @@ private:
     std::unique_ptr<juce::FileChooser> chooser;
 };
 
-// Preset file import / export (long audio export returns with the generative hands).
-class ExportPage : public Page
+// Long audio export (the hands play) + preset file import / export.
+class ExportPage : public Page, private juce::Timer
 {
 public:
     explicit ExportPage (Context& c);
+    ~ExportPage() override;
     void resized() override;
     void paint (juce::Graphics&) override;
-    bool isBusy() const { return false; }
+    bool isBusy() const { return busy.load(); }
 private:
+    void timerCallback() override;
+    void start();
+    juce::ComboBox duration, format, rate;
+    juce::TextButton exportAudio { L ("Exportar audio…", "Export audio…") }, cancel { L ("Cancelar", "Cancel") };
     juce::TextButton exportPreset { L ("Exportar preset .memoria", "Export .memoria preset") }, importPreset { L ("Importar preset o banco", "Import preset or bank") };
     std::unique_ptr<juce::FileChooser> chooser;
+    std::thread worker;
+    std::atomic<bool> busy { false }, cancelFlag { false }, done { false };
+    std::atomic<float> progress { 0 };
+    juce::String result, status;
+    juce::File target;
+    double startedAt = 0;
 };
 
 class SettingsPage : public Page

@@ -25,8 +25,8 @@ void FrameSource::update (Frame& f, double dt)
         const int i0 = juce::jlimit (1, 1023, (int) (lo / binHz)), i1 = juce::jlimit (i0 + 1, 1024, (int) std::ceil (hi / binHz));
         float m = 0;
         for (int i = i0; i < i1; ++i) m = juce::jmax (m, fftBuf[(size_t) i]);
-        const float db = juce::Decibels::gainToDecibels (m / 24.0f, -90.0f);
-        f.spectrum[(size_t) b] = juce::jlimit (0.0f, 1.0f, (db + 70.0f) / 60.0f);
+        const float db = juce::Decibels::gainToDecibels (m / 400.0f, -90.0f);
+        f.spectrum[(size_t) b] = juce::jlimit (0.0f, 1.0f, (db + 75.0f) / 70.0f);
     }
     auto& t = proc.telemetry();
     for (int k = 0; k < 128; ++k) { f.keyLevel[(size_t) k] = t.keyLevel[(size_t) k].load(); f.keyHit[(size_t) k] = t.keyHit[(size_t) k].load(); }

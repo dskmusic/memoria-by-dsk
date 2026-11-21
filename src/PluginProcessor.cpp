@@ -79,7 +79,7 @@ void MemoriaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         for (size_t i = 0; i < raw.size(); ++i) snapshot[i] = raw[i]->load (std::memory_order_relaxed);
 
     gx::HostInfo hi;
-    hi.internalPlay = true;
+    hi.internalPlay = playRequested.load();
     if (auto* ph = getPlayHead())
         if (auto pos = ph->getPosition())
         {

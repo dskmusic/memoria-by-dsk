@@ -1,44 +1,37 @@
 # Memoria by DSK
 
-**An endless soundscape generator — a landscape of sound that never repeats.**
+**A piano with a soul: a physically modelled piano wrapped in layers of memory.**
 
-Free VST3 / AU / Standalone instrument by [DSK Music](https://www.dskmusic.com/memoria/) for ambient, film scoring and meditation.
+Free VST3 / AU / Standalone instrument by [DSK Music](https://www.dskmusic.com/memoria/) for lo-fi and chill beats, emotional piano,
+film scoring, studying and relaxing.
+
 **[Download](#download)** · [Product page](https://www.dskmusic.com/memoria/) · [Latest release](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
-Press **Play** and six layers — a mutating drone, a pad, a granular texture, shimmer, wind and bells — drift in and out on
-their own, while harmony, light and space evolve slowly for minutes and hours without ever looping.
 
-![Memoria landscape](docs/screenshots/landscape.png)
+No samples: every string, hammer and the soundboard are computed in real time, so the piano breathes with how you play.
+On top of it live the things that turn a piano into a *memory*: the room, worn tape, vinyl dust, creaking wood, the rain on the
+window. One slider, **Memory**, takes you from a crisp, present studio piano to a tape found in an attic.
+
+![Memoria](docs/screenshots/piano.png)
 
 ## Features
 
-- **Living landscape engine:** seven self-playing layers - Drone, Pad, Texture, Shimmer, Wind, Bells and Bass. Each has Level,
-  Presence (how much of the time it is there), Tone and Character; slow, never-repeating modulation decides when it appears.
-- **Rich sound:** Spectral Mutation drone, PWM + saw analog pad with ensemble chorus and an 80s filter bloom, granular clouds tuned to
-  octaves and fifths, pitch-shifted shimmer, a chord-following sub bass, melodic bell phrases, and a new hall reverb with pre-delay.
-- **Harmony that moves:** 12 scales, any key, from open fifths to 7th and 9th chords, real chord progressions (I-IV-V-vi, cinematic i-VI-III-VII) with smooth voice-leading,
-  or **chords locked to your DAW tempo** (every 1-16 bars).
-- **Four big macros:** Evolution, Density, Light (night to midday) and Space (room to endless cathedral), plus a click-free **Freeze**.
-- **Play / Stop** that also follows your DAW. Evolution comes from a **seed** and the timeline position: DAW bounces match playback,
-  and the same seed always gives the same journey.
-- **Six animated landscapes** that react to every layer: Valley, Starfield, Underwater, Neon, Ocean and Aurora - with
-  **full-screen mode**, keyboard shortcuts and a text-free **relax mode**.
-- **14 moods, 292 factory presets:** Cinematic, Ambient, Meditation, Dark, Sci-Fi, Ethereal, Oceanic, Nostalgia, Epic, Forest,
-  Desert, Sleep and the melodic **Fairytale** and **Film Score**, with a composed **Melody** layer (music box, celesta or soft
-  flute themes that repeat, answer and resolve over the chords). The generator renders several candidates, checks them and keeps the most alive one.
-- **Long audio export:** 1 minute to 3 hours in WAV, FLAC or OGG. **Landscape video export:** an MP4 with the animated landscape and
-  its sound, ready for YouTube (uses the free ffmpeg; Memoria finds it or helps you install it).
-- **Sleep mode** and session timer, **432 Hz** tuning, **noise generator** (pink, brown, white, ocean waves, vinyl).
-- **8 quick memories** with smooth 2-second crossfades, preset browser with tags and favourites, A/B, undo/redo, MIDI learn,
-  and every preset change is click-free.
-- Resizable and maximisable, **English / Español** interface (automatic or manual) with a friendly built-in **Help** page.
-
-| | |
-|---|---|
-| ![Neon Rain](docs/screenshots/landscape-neon.png) | ![Starfield](docs/screenshots/landscape-starfield.png) |
-| ![Underwater](docs/screenshots/landscape-underwater.png) | ![Valley](docs/screenshots/landscape-valley.png) |
-| ![Ocean](docs/screenshots/landscape-ocean.png) | ![Aurora](docs/screenshots/landscape-aurora.png) |
-| ![Sound](docs/screenshots/sound.png) | ![Generator](docs/screenshots/generator.png) |
-| ![Presets](docs/screenshots/presets.png) | ![Export](docs/screenshots/export.png) |
+- **Physically modelled piano (no sample library):** every partial is a decaying resonator with real string inharmonicity,
+  2-3 detuned strings per note (beating), the piano's double decay, hammer felt that gets brighter with velocity,
+  strike-position comb, dampers, soundboard modes and sympathetic resonance. The sustain pedal (CC64) is continuous: half pedal works.
+- **Six instruments:** concert grand, upright, felt piano, honky-tonk, toy piano and celesta.
+- **Memory macro** plus Warmth, Intimacy (close mic to far), Time (how aged the piano is) and Space.
+- **Layers of life:** wooden sounds (bench, key action, pedal, dampers), tape (wow and flutter, saturation, dull highs, hiss, dropouts),
+  vinyl (crackle, rumble, needle pop) and a distant world: rain, cafe, fireplace, dawn birds, audience. Five rooms: living room, church, studio, wooden cabin, empty concert hall.
+- **Hands:** a generative pianist for people who do not play - arpeggios, chords with voice-leading, emotional phrases or everything at once,
+  in 8 scales and any key, locked to your DAW tempo and transport (or an internal clock).
+- **300 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy. A rule-based generator
+  validates and level-matches every preset; press *Surprise me* for a new one.
+- **A room that ages with the sound:** a cinematic scene - window light, floating dust, rain on the glass, a candle - that turns sepia, grainy
+  and scratched as you turn Memory up.
+- **Long audio export:** the hands play for 1 minute to 3 hours to WAV, FLAC or OGG.
+- Click-free preset changes, A/B, undo/redo, MIDI learn, preset browser with tags and favourites, resizable interface, **English / Español**
+  (automatic or manual) and a built-in Help page.
+- Deterministic: the offline bounce is identical to what you heard, at any host block size.
 
 ## Download
 
@@ -52,20 +45,20 @@ their own, while harmony, light and space evolve slowly for minutes and hours wi
 
 All files and release notes: [latest release](https://github.com/dskmusic/memoria-by-dsk/releases/latest) · checksums: [SHA256SUMS.txt](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/SHA256SUMS.txt)
 
-> The binaries are not code-signed. **Windows:** if SmartScreen appears, click *More info* → *Run anyway*.
-> **macOS:** if the installer "can't be opened" or is "damaged", right-click it → *Open*, or run `xattr -dr com.apple.quarantine <file>` in Terminal.
+The binaries are not code-signed. **Windows:** SmartScreen may appear, click *More info* → *Run anyway*.
+**macOS:** if the installer "can't be opened" or is "damaged", right-click it → *Open*, or run `xattr -dr com.apple.quarantine <file>` in Terminal.
 
 ### Install
 
-- **Windows installer:** installs the VST3 to `C:\Program Files\Common Files\VST3` and the Standalone app.
-- **macOS installer:** installs VST3, AU and the Standalone app. Rescan plugins in your DAW (Logic: AU Manager).
+- **Windows installer:** installs the VST3 in `C:\Program Files\Common Files\VST3` and the Standalone app.
+  **macOS installer:** installs VST3, AU and the Standalone app. Rescan plugins in your DAW (Logic: AU Manager).
 - **Manual:** copy `Memoria by DSK.vst3` to your VST3 folder (`~/.vst3` on Linux).
 
 ### Quick start
 
-1. Load **Memoria** as an instrument and press **Play** (in the plugin, or your DAW's transport).
-2. Turn **Evolution**, **Density**, **Light** and **Space**, pick a landscape, or press **GENERATE** on the Generator page.
-3. Long render for videos or meditation: **Export** page → duration → WAV, FLAC or OGG.
+1. Load **Memoria** as an instrument and play it with a MIDI keyboard (pedal included), or press **Play** on the LIFE tab to let the **Hands** play.
+2. Pick a preset (PRESETS tab) and slide **Memory** from *present* to *memory*.
+3. Shape the piano (Tone, Hammer, Sustain, Dampers, Detune...) and the room, or press **Surprise me**.
 
 Presets and settings are stored in `Documents/DSK Music/Memoria/`.
 
@@ -78,12 +71,9 @@ Requirements: CMake 3.22+, a C++20 compiler (Visual Studio 2022, Xcode 15 or GCC
 build_local.bat Release             # Windows
 ```
 
-The tool `MemoriaTool` runs the unit tests (`MemoriaTool test`), renders presets and regenerates the factory bank.
+The `MemoriaTool` command line tool (built alongside) runs the tests (`test`), generates the factory bank (`factory`),
+renders listening material (`piano`, `hands`) and the screenshots, demo video and trailer (`screenshot`, `video`, `trailer`).
 
 ## License
 
-GNU GPL v3 (see [LICENSE](LICENSE)). Built with [JUCE](https://juce.com) (GPLv3) and the VST3 SDK (MIT).
-The Orbitron font is under the SIL Open Font License (see `licenses/`).
-Parts of the engine (Spectral Mutation, FDN reverb, shimmer) come from [Genesix by DSK](https://github.com/dskmusic/genesix-by-dsk).
-
-Spanish: [README.es.md](README.es.md)
+GPLv3 - see [LICENSE](LICENSE) and [licenses/](licenses/). Built with [JUCE](https://juce.com) and the Orbitron font (OFL).

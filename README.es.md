@@ -1,41 +1,37 @@
 # Memoria by DSK
 
-**Generador de atmósferas infinitas: un paisaje sonoro que nunca se repite.**
+**Un piano con alma: un piano modelado físicamente envuelto en capas de recuerdo.**
 
-Instrumento gratuito VST3 / AU / Standalone de [DSK Music](https://www.dskmusic.com/memoria/) para ambient, cine y meditación.
-**[Descarga](#descarga)** · [Página del producto](https://www.dskmusic.com/memoria/) · [Última versión](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
-Pulsa **Play** y seis capas (un drone que muta, un pad, una textura granular, shimmer, viento y campanas) entran y salen solas,
-mientras la armonía, la luz y el espacio evolucionan despacio durante minutos u horas sin repetirse nunca.
+Instrumento gratuito VST3 / AU / Standalone de [DSK Music](https://www.dskmusic.com/memoria/) para lo-fi y chill beats, piano emocional,
+bandas sonoras, estudiar y relajarse.
 
-![Paisaje de Memoria](docs/screenshots/landscape.png)
+**[Descargar](#descarga)** · [Página del producto](https://www.dskmusic.com/memoria/) · [Última versión](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
 
-## Funciones
+Sin muestras: cada cuerda, cada martillo y la caja de resonancia se calculan en tiempo real, así que el piano respira con tu forma de tocar.
+Encima viven las cosas que convierten un piano en un *recuerdo*: la habitación, la cinta desgastada, el polvo del vinilo, la madera que cruje,
+la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano de estudio nítido y presente a una cinta encontrada en un desván.
 
-- **Motor de paisaje vivo:** siete capas que tocan solas: Drone, Pad, Textura, Shimmer, Viento, Campanas y Bajo. Cada una tiene Nivel,
-  Presencia (cuánto tiempo está presente), Tono y Carácter; una modulación lenta que nunca se repite decide cuándo aparece.
-- **Sonido rico:** drone Spectral Mutation, pad analógico PWM + sierra con chorus de ensemble y apertura del filtro de los 80, nubes
-  granulares afinadas a octavas y quintas, shimmer, bajo que sigue el acorde, frases de campanas y una nueva reverb tipo hall con pre-delay.
-- **Armonía en movimiento:** 12 escalas, cualquier tonalidad, de quintas abiertas a acordes de 7ª y 9ª, progresiones reales (I-IV-V-vi, i-VI-III-VII de cine) con conducción de voces suave
-  o **sincronizados al tempo de tu DAW** (cada 1-16 compases).
-- **Cuatro macros grandes:** Evolución, Densidad, Luz (de noche a mediodía) y Espacio (de una sala a una catedral infinita), y **Congelar** sin chasquidos.
-- **Play / Stop** que también sigue a tu DAW. La evolución sale de una **semilla** y de la posición en la línea de tiempo: lo que exportas
-  suena igual que lo que oíste, y la misma semilla siempre da el mismo viaje.
-- **Seis paisajes animados** que reaccionan a cada capa: Valle, Campo estelar, Bajo el agua, Neón, Océano y Aurora, con **pantalla completa**,
-  atajos de teclado y **modo relax** sin textos.
-- **14 estados de ánimo, 292 presets de fábrica:** Cine, Ambient, Meditación, Oscuro, Sci-Fi, Etéreo, Océano, Nostalgia, Épico, Bosque,
-  Desierto, Dormir y los melódicos **Cuento** y **Banda sonora**, con una capa de **Melodía** compuesta (temas de caja de música, celesta
-  o flauta suave que se repiten, se responden y resuelven sobre los acordes). El generador prueba varios candidatos, los comprueba y se queda con el más vivo.
-- **Exportación de audio largo:** de 1 minuto a 3 horas en WAV, FLAC u OGG. **Vídeo del paisaje:** un MP4 con el paisaje animado y su sonido,
-  listo para YouTube (usa ffmpeg, gratuito; Memoria lo encuentra o te ayuda a instalarlo).
-- **Modo Dormir** y temporizador, afinación a **432 Hz**, **generador de ruido** (rosa, marrón, blanco, olas, vinilo).
-- **8 memorias rápidas** con fundido de 2 segundos, navegador de presets con etiquetas y favoritos, A/B, deshacer/rehacer, MIDI learn,
-  y cambios de preset sin chasquidos.
-- Ventana escalable y maximizable, interfaz en **inglés y español** (automática o manual) con una página de **Ayuda** clara y amena.
+![Memoria](docs/screenshots-es/piano.png)
 
-| | |
-|---|---|
-| ![Neón](docs/screenshots/landscape-neon.png) | ![Bajo el agua](docs/screenshots/landscape-underwater.png) |
-| ![Océano](docs/screenshots/landscape-ocean.png) | ![Aurora](docs/screenshots/landscape-aurora.png) |
+## Características
+
+- **Piano modelado físicamente (sin librería de muestras):** cada parcial es un resonador con decaimiento e inharmonicidad real de cuerda,
+  2-3 cuerdas desafinadas por nota (batidos), el doble decaimiento del piano, fieltro del martillo que brilla más con la velocidad,
+  posición de golpe, apagadores, modos de la caja y resonancia simpática. El pedal de sustain (CC64) es continuo: el medio pedal funciona.
+- **Seis instrumentos:** cola de concierto, vertical, piano de fieltro, honky-tonk, piano de juguete y celesta.
+- **Macro Memoria** más Calidez, Intimidad (micro cerca o lejos), Tiempo (cuánto ha envejecido el piano) y Espacio.
+- **Capas de vida:** sonidos de madera (banco, mecanismo, pedal, apagadores), cinta (wow y flutter, saturación, pérdida de agudos, ruido, dropouts),
+  vinilo (crackle, rumble, pop de la aguja) y un mundo lejano: lluvia, cafetería, chimenea, pájaros al amanecer, público. Cinco salas: salón, iglesia, estudio, cabaña de madera y sala de conciertos vacía.
+- **Manos:** un pianista generativo para quien no toca: arpegios, acordes con voice-leading, frases emocionales o todo a la vez,
+  en 8 escalas y cualquier tonalidad, sincronizado con el tempo y el transporte de tu DAW (o un reloj interno).
+- **300 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy. Un generador por reglas
+  valida e iguala el nivel de cada preset; pulsa *Sorpréndeme* para uno nuevo.
+- **Una habitación que envejece con el sonido:** una escena cinematográfica (luz de ventana, polvo flotando, lluvia en el cristal, una vela) que se vuelve
+  sepia, con grano y rayas de película al subir Memoria.
+- **Exportación de audio largo:** las manos tocan de 1 minuto a 3 horas en WAV, FLAC u OGG.
+- Cambios de preset sin clics, A/B, deshacer/rehacer, MIDI learn, navegador de presets con etiquetas y favoritos, interfaz redimensionable, **English / Español**
+  (automático o manual) y página de Ayuda integrada.
+- Determinista: la exportación desde el DAW es idéntica a lo que oíste, con cualquier tamaño de bloque.
 
 ## Descarga
 
@@ -47,24 +43,37 @@ mientras la armonía, la luz y el espacio evolucionan despacio durante minutos u
 | **macOS** 11+ (Universal: Apple Silicon + Intel) | [Instalador (.pkg)](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/Memoria-by-DSK-macos-universal-installer.pkg) | [VST3](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/Memoria-by-DSK-macos-universal-vst3.zip) · [AU](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/Memoria-by-DSK-macos-universal-au.zip) · [Standalone](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/Memoria-by-DSK-macos-universal-standalone.zip) |
 | **Linux** x86_64 | [VST3 (tar.gz)](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/Memoria-by-DSK-linux-x64-vst3.tar.gz) | [Standalone (tar.gz)](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/Memoria-by-DSK-linux-x64-standalone.tar.gz) |
 
-Todos los archivos y notas: [última versión](https://github.com/dskmusic/memoria-by-dsk/releases/latest) · checksums: [SHA256SUMS.txt](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/SHA256SUMS.txt)
+Todos los archivos y notas: [última versión](https://github.com/dskmusic/memoria-by-dsk/releases/latest) · sumas de verificación: [SHA256SUMS.txt](https://github.com/dskmusic/memoria-by-dsk/releases/latest/download/SHA256SUMS.txt)
 
-> Los binarios no están firmados. **Windows:** si aparece SmartScreen, pulsa *Más información* → *Ejecutar de todas formas*.
-> **macOS:** si dice que no se puede abrir o que está dañado, haz clic derecho → *Abrir*, o ejecuta `xattr -dr com.apple.quarantine <archivo>` en Terminal.
+Los binarios no están firmados. **Windows:** puede aparecer SmartScreen, pulsa *Más información* → *Ejecutar de todos modos*.
+**macOS:** si el instalador "no se puede abrir" o "está dañado", clic derecho → *Abrir*, o ejecuta `xattr -dr com.apple.quarantine <archivo>` en Terminal.
+
+### Instalación
+
+- **Instalador de Windows:** instala el VST3 en `C:\Program Files\Common Files\VST3` y la app Standalone.
+  **Instalador de macOS:** instala VST3, AU y la app Standalone. Reescanea plugins en tu DAW (Logic: AU Manager).
+- **Manual:** copia `Memoria by DSK.vst3` a tu carpeta VST3 (`~/.vst3` en Linux).
 
 ### Primeros pasos
 
-1. Carga **Memoria** como instrumento y pulsa **Play** (en el plugin o en el transporte de tu DAW).
-2. Gira **Evolución**, **Densidad**, **Luz** y **Espacio**, elige un paisaje o pulsa **GENERAR** en la página Generador.
-3. Render largo para vídeos o meditación: página **Exportar** → duración → WAV, FLAC u OGG.
+1. Carga **Memoria** como instrumento y tócalo con un teclado MIDI (pedal incluido), o pulsa **Play** en la pestaña VIDA para que toquen las **Manos**.
+2. Elige un preset (pestaña PRESETS) y desliza **Memoria** de *presente* a *recuerdo*.
+3. Moldea el piano (Tone, Hammer, Sustain, Dampers, Detune...) y la sala, o pulsa **Sorpréndeme**.
 
-Los presets y ajustes se guardan en `Documentos/DSK Music/Memoria/`.
+Los presets y ajustes se guardan en `Documents/DSK Music/Memoria/`.
 
-## Compilar
+## Compilar desde el código
 
-Ver la sección *Build from source* del [README en inglés](README.md).
+Requisitos: CMake 3.22+, compilador C++20 (Visual Studio 2022, Xcode 15 o GCC 11+), Ninja. JUCE 8 se descarga solo.
+
+```bash
+./build_local.sh Release            # macOS / Linux
+build_local.bat Release             # Windows
+```
+
+La herramienta de línea de comandos `MemoriaTool` (se compila a la vez) ejecuta los tests (`test`), genera el banco de fábrica (`factory`),
+renderiza material de escucha (`piano`, `hands`) y las capturas, el vídeo demo y el tráiler (`screenshot`, `video`, `trailer`).
 
 ## Licencia
 
-GNU GPL v3 (ver [LICENSE](LICENSE)). Hecho con JUCE (GPLv3) y el VST3 SDK (MIT). Fuente Orbitron con licencia SIL OFL.
-Partes del motor (Spectral Mutation, reverb FDN, shimmer) vienen de [Genesix by DSK](https://github.com/dskmusic/genesix-by-dsk).
+GPLv3 - ver [LICENSE](LICENSE) y [licenses/](licenses/). Construido con [JUCE](https://juce.com) y la fuente Orbitron (OFL).

@@ -247,6 +247,45 @@ static void testStress()
     check (secs < 5.0, "CPU: faster than 2x realtime even at full overload");
 }
 
+static juce::AudioBuffer<float> renderHands (const gx::Preset& p, double secs, int bs)
+{
+    juce::AudioBuffer<float> out (2, (int) (secs * 48000.0));
+    out.clear();
+    juce::MidiBuffer none;
+    gx::renderMidi (p, none, out, 48000.0, bs, nullptr, true);
+    return out;
+}
+
+static void testHands()
+{
+    std::puts ("[hands]");
+    gx::Preset base;
+    for (int m = 1; m < gx::handsNames().size(); ++m)
+    {
+        auto p = base; setParam (p, "hands", (float) m); setParam (p, "hands_tempo", 96.0f);
+        const auto a = renderHands (p, 20.0, 512);
+        const float d = rmsDb (a, 2.0, 20.0);
+        std::puts (("    " + gx::handsNames()[m] + ": " + juce::String (d, 1) + " dB, peak " + juce::String (analyse (a).peak, 2)).toRawUTF8());
+        check (analyse (a).finite && analyse (a).peak < 1.0f, gx::handsNames()[m] + ": bounded");
+        check (d > -45.0f, gx::handsNames()[m] + ": plays");
+        const auto b = renderHands (p, 20.0, 77);
+        bool same = true;
+        for (int i = 0; i < a.getNumSamples() && same; ++i) same = a.getSample (0, i) == b.getSample (0, i);
+        check (same, gx::handsNames()[m] + ": identical at any block size");
+    }
+    // all keys / scales / rates stay valid
+    int bad = 0;
+    for (int key = 0; key < 12; key += 5)
+        for (int sc = 0; sc < gx::handsScaleNames().size(); ++sc)
+            for (int rt = 0; rt < 3; ++rt)
+            {
+                auto p = base; setParam (p, "hands", 4.0f); setParam (p, "hands_key", (float) key); setParam (p, "hands_scale", (float) sc); setParam (p, "hands_rate", (float) rt);
+                const auto a = renderHands (p, 8.0, 512);
+                if (! analyse (a).finite || analyse (a).peak >= 1.0f || rmsDb (a, 1.0, 8.0) < -50.0f) ++bad;
+            }
+    check (bad == 0, "every key / scale / rate combination plays and stays bounded (" + juce::String (bad) + " bad)");
+}
+
 static void testGenerator()
 {
     std::puts ("[generator]");
@@ -335,6 +374,7 @@ int runAll()
     testStress();
     testLife();
     testGenerator();
+    testHands();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

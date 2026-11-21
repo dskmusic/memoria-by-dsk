@@ -74,6 +74,7 @@ void Engine::reset (uint32_t s)
     tickLeft = kTick; counter = 0;
     room.clear();
     life.reset (seed);
+    hands.reset (0.0); wasRunning = handsRunning = false; beatClock = 0;
     pedalWasDown = false;
     for (auto& m : modeL) m.reset();
     for (auto& m : modeR) m.reset();
@@ -297,8 +298,52 @@ void Engine::handle (const juce::MidiMessage& m)
 }
 
 // once per absolute tick: pedal and dampers, culling of dead components, telemetry
+void Engine::startStopHands (const HostInfo& host)
+{
+    const bool hostRun = host.hostPlaying;
+    const bool run = (hostRun || host.internalPlay) && (int) p (P::hands) != hmOff;
+    bpm = hostRun && host.bpm > 20.0 ? host.bpm : (double) p (P::handsTempo);
+    if (run && ! wasRunning)
+    {
+        beatClock = hostRun && host.hasPpq ? host.ppq : 0.0;
+        hands.reset (beatClock);
+    }
+    else if (! run && wasRunning)
+    {
+        handEvs.clear(); hands.allOff (handEvs);
+        for (auto& e : handEvs) noteOff (e.note);
+        setPedal (0.0f);
+    }
+    else if (run && hostRun && host.hasPpq && std::abs (host.ppq - beatClock) > 0.08)
+    {
+        handEvs.clear(); hands.allOff (handEvs);
+        for (auto& e : handEvs) noteOff (e.note);
+        beatClock = host.ppq;
+        hands.reset (beatClock);
+    }
+    wasRunning = handsRunning = run;
+    tele.handsOn.store (run);
+}
+
+void Engine::tickHands()
+{
+    if (! handsRunning) return;
+    beatClock += (double) kTick * bpm / (60.0 * sr);
+    HandsCfg c;
+    c.mode = (int) p (P::hands); c.key = (int) p (P::handsKey); c.scale = (int) p (P::handsScale); c.rate = (int) p (P::handsRate);
+    c.density = p (P::handsDensity); c.softness = p (P::handsSoft); c.pedal = p (P::handsPedal) > 0.5f; c.seed = seed;
+    hands.configure (c);
+    handEvs.clear();
+    bool pd = false, pc = false;
+    hands.advance (beatClock, handEvs, pd, pc);
+    for (auto& e : handEvs) { if (e.on) noteOn (e.note, (float) e.vel / 127.0f); else noteOff (e.note); }
+    if (pc) setPedal (pd ? 1.0f : 0.0f);
+    tele.chordRoot.store (hands.currentChordRoot());
+}
+
 void Engine::tick()
 {
+    tickHands();
     life.tick();
     pedalNow += (pedalTarget - pedalNow) * (pedalTarget > pedalNow ? 0.35f : 0.12f);
     if (std::abs (pedalTarget - pedalNow) < 1.0e-4f) pedalNow = pedalTarget;
@@ -486,9 +531,10 @@ void Engine::applyMacros (const float* raw)
     life.setLevels (lifeLv);
 }
 
-void Engine::process (float* L, float* R, int n, const juce::MidiBuffer& midi, const float* params, const HostInfo&)
+void Engine::process (float* L, float* R, int n, const juce::MidiBuffer& midi, const float* params, const HostInfo& host)
 {
     applyMacros (params);
+    startStopHands (host);
     a4 = p (P::tuning) > 0.5f ? 432.0f : 440.0f;
     widthS.v = p (P::width);
     if (masterS.v < 0.0f) { masterS.v = dbToGain (p (P::master)); bodyS.v = p (P::body); roomS.v = p (P::room); }

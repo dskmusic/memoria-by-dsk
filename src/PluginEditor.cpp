@@ -250,5 +250,6 @@ bool MemoriaEditor::keyPressed (const juce::KeyPress& k)
     const auto mods = k.getModifiers();
     if (mods.isCommandDown() && k.getKeyCode() == 'Z' && ! mods.isShiftDown()) { undo.performUndo(); refreshAll(); return true; }
     if (mods.isCommandDown() && (k.getKeyCode() == 'Y' || (k.getKeyCode() == 'Z' && mods.isShiftDown()))) { undo.performRedo(); refreshAll(); return true; }
+    if (k.getKeyCode() == juce::KeyPress::spaceKey && ! mods.isAnyModifierKeyDown() && proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone) { proc.setPlaying (! proc.isPlayingInternal()); return true; }
     return false;
 }

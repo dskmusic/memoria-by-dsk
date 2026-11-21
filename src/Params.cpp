@@ -25,6 +25,22 @@ const juce::StringArray& worldNames()
     return n;
 }
 
+const juce::StringArray& handsNames()
+{
+    static const juce::StringArray n { "Off", "Arpeggios", "Chords", "Phrases", "Full" };
+    return n;
+}
+const juce::StringArray& handsScaleNames()
+{
+    static const juce::StringArray n { "Major", "Minor", "Dorian", "Lydian", "Minor Pentatonic", "Major Pentatonic", "Mixolydian", "Harmonic Minor" };
+    return n;
+}
+const juce::StringArray& keyNames()
+{
+    static const juce::StringArray n { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+    return n;
+}
+
 namespace
 {
 struct Builder
@@ -41,6 +57,11 @@ struct Builder
     {
         add (idx, id, name, lin ((float) lo, (float) hi, 1.0f), (float) def, unit);
         defs[(size_t) idx].kind = pkInt;
+    }
+    void addBool (int idx, juce::String id, juce::String name, bool def)
+    {
+        add (idx, id, name, lin (0, 1, 1), def ? 1.0f : 0.0f);
+        defs[(size_t) idx].kind = pkBool;
     }
     void addChoice (int idx, juce::String id, juce::String name, juce::StringArray choices, int def)
     {
@@ -86,6 +107,15 @@ std::vector<ParamDef> build()
     b.add (wood, "wood", "Wood", lin (0, 1), 0.0f);
     b.addChoice (world, "world", "World", worldNames(), 0);
     b.add (worldLevel, "world_level", "World Level", lin (0, 1), 0.5f);
+    b.group = "hands";
+    b.addChoice (hands, "hands", "Hands", handsNames(), 0);
+    b.addChoice (handsKey, "hands_key", "Key", keyNames(), 9);
+    b.addChoice (handsScale, "hands_scale", "Scale", handsScaleNames(), 1);
+    b.addChoice (handsRate, "hands_rate", "Rate", { "1/4", "1/8", "1/16" }, 1);
+    b.add (handsDensity, "hands_density", "Density", lin (0, 1), 0.6f);
+    b.add (handsTempo, "hands_tempo", "Tempo", lin (40, 140, 1), 72, "bpm");
+    b.add (handsSoft, "hands_soft", "Softness", lin (0, 1), 0.5f);
+    b.addBool (handsPedal, "hands_pedal", "Pedal", true);
     return b.defs;
 }
 } // namespace

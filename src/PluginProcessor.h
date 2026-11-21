@@ -45,6 +45,8 @@ public:
 
     // A whole new sound is about to be applied: the audio dips (60 ms), switches, and comes back (200 ms) - no clicks.
     void beginPresetSwitch() { switchRequested.store (true); }
+    void setPlaying (bool b) { playRequested.store (b); }
+    bool isPlayingInternal() const { return playRequested.load(); }
     bool isHostPlaying() const { return hostPlaying.load(); }
     // plays a short test chord once the (click-free) preset switch has finished
     void previewChord() { previewRequested.store (true); }
@@ -66,7 +68,7 @@ private:
     std::vector<std::atomic<float>*> raw;
     std::vector<juce::RangedAudioParameter*> paramPtrs;
     std::vector<float> snapshot;
-    std::atomic<bool> hostPlaying { false }, switchRequested { false }, previewRequested { false };
+    std::atomic<bool> playRequested { false }, hostPlaying { false }, switchRequested { false }, previewRequested { false };
     int previewOffLeft = 0;
     bool standaloneStateSkipped = false;
     enum class Duck { None, Out, In } duck = Duck::None;
