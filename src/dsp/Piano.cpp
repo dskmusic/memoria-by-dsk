@@ -45,6 +45,7 @@ int numPianoTypes() { return (int) (sizeof (kModels) / sizeof (kModels[0])); }
 void Engine::prepare (double sampleRate, int mb)
 {
     sr = sampleRate;
+    life.prepare (sr);
     maxBlock = juce::jmax (mb, 16);
     vbuf.assign ((size_t) maxBlock, 0.0f); mixL = bodyIn = mixR = vbuf;
     room.prepare (sr);
@@ -72,6 +73,8 @@ void Engine::reset (uint32_t s)
     pedalTarget = pedalNow = 0;
     tickLeft = kTick; counter = 0;
     room.clear();
+    life.reset (seed);
+    pedalWasDown = false;
     for (auto& m : modeL) m.reset();
     for (auto& m : modeR) m.reset();
     for (auto& b : lpF) b.reset();
@@ -250,6 +253,7 @@ void Engine::noteOn (int note, float vel)
 {
     note = juce::jlimit (0, 127, note);
     keyDown[(size_t) note] = true;
+    life.noteOn (note, vel);
     tele.keyHit[(size_t) note].store (vel);
     tele.hitCounter.fetch_add (1);
     auto& v = voices[(size_t) allocVoice()];
@@ -269,7 +273,7 @@ void Engine::noteOn (int note, float vel)
 void Engine::noteOff (int note)
 {
     keyDown[(size_t) juce::jlimit (0, 127, note)] = false;
-    for (auto& v : voices) if (v.active && v.note == note) v.held = false;
+    for (auto& v : voices) if (v.active && v.note == note && v.held) { v.held = false; life.noteOff (note, v.vel); }
 }
 
 void Engine::setPedal (float v)
@@ -277,6 +281,7 @@ void Engine::setPedal (float v)
     const float x = juce::jlimit (0.0f, 1.0f, v);
     const float u = juce::jlimit (0.0f, 1.0f, (x - 0.08f) / 0.52f);   // the dampers are fully off the strings at ~60 % of the travel
     pedalTarget = u * u * (3.0f - 2.0f * u);
+    if ((x > 0.5f) != pedalWasDown) { pedalWasDown = x > 0.5f; life.pedal (pedalWasDown); }
 }
 
 void Engine::handle (const juce::MidiMessage& m)
@@ -294,6 +299,7 @@ void Engine::handle (const juce::MidiMessage& m)
 // once per absolute tick: pedal and dampers, culling of dead components, telemetry
 void Engine::tick()
 {
+    life.tick();
     pedalNow += (pedalTarget - pedalNow) * (pedalTarget > pedalNow ? 0.35f : 0.12f);
     if (std::abs (pedalTarget - pedalNow) < 1.0e-4f) pedalNow = pedalTarget;
     const float damperTau = 0.020f + 0.055f * (1.0f - p (P::damper)) ;           // how fast the felt comes down
@@ -406,12 +412,22 @@ void Engine::renderChunk (float* L, float* R, int n)
     const float toneDb = (p (P::tone) - 0.5f) * 7.0f;
     if (std::abs (toneDb - cacheTone) > 0.01f) { cacheTone = toneDb; for (auto& b : toneF) b.shelf (sr, 3500.0, toneDb, true); }
     const float rs = p (P::roomSize);
-    if (std::abs (rs - cacheRoom) > 0.002f) { cacheRoom = rs; room.set (0.12f + 0.8f * rs, 0.45f, 0.8f); }
+    const int rt = juce::jlimit (0, 4, (int) p (P::roomType));
+    const float rKey = rs + (float) rt * 10.0f;
+    if (std::abs (rKey - cacheRoom) > 0.002f)
+    {
+        cacheRoom = rKey;
+        //                                      living church studio cabin hall
+        static const float size[] { 0.10f, 0.75f, 0.06f, 0.14f, 0.95f }, damp[] { 0.55f, 0.35f, 0.7f, 0.25f, 0.4f }, rtS[] { 0.8f, 1.1f, 0.6f, 0.9f, 1.0f };
+        room.set (size[rt] + 0.25f * (rs - 0.5f) * (1.0f - 0.3f * size[rt]), damp[rt], rtS[rt]);
+    }
     for (int t = 0; t < n; ++t)
     {
         const float bAmt = bodyS.step (bodyAmt), rMix = roomS.step (roomAmt), mg = masterS.step (master);
         const float dryL = mixL[(size_t) t], dryR = mixR[(size_t) t];
-        const float in = 0.5f * (dryL + dryR);
+        float wl = dryL, wr = dryR;
+        life.wood (wl, wr);
+        const float in = 0.5f * (wl + wr);
         float bl = 0, br = 0;
         for (int i = 0; i < kModes; ++i)
         {
@@ -419,11 +435,13 @@ void Engine::renderChunk (float* L, float* R, int n)
             modeL[i].tick (in, bp, hp); bl += bp * modeG[i];
             modeR[i].tick (in, bp, hp); br += bp * modeG[i];
         }
-        float l = dryL + bl * bAmt * 0.6f, r = dryR + br * bAmt * 0.6f;
+        float l = wl + bl * bAmt * 0.6f, r = wr + br * bAmt * 0.6f;
         l = toneF[0].tick (lpF[0].tick (l)); r = toneF[1].tick (lpF[1].tick (r));
-        float wl = 0, wr = 0;
-        room.process (l, r, wl, wr);
-        l += wl * rMix * 0.5f; r += wr * rMix * 0.5f;
+        float rl = 0, rr = 0;
+        room.process (l, r, rl, rr);
+        l += rl * rMix * 0.5f; r += rr * rMix * 0.5f;
+        life.tape (l, r);
+        life.world (l, r);
         l *= mg; r *= mg;
         // DC blocker + gentle protection against overs
         const float yl = l - dcX[0] + 0.9995f * dcY[0]; dcX[0] = l; dcY[0] = yl;
@@ -433,9 +451,44 @@ void Engine::renderChunk (float* L, float* R, int n)
     }
 }
 
+void Engine::applyMacros (const float* raw)
+{
+    using namespace P;
+    for (int i = 0; i < numParams; ++i) eff[(size_t) i] = raw[i];
+    auto add = [&] (int i, float d, float lo = 0.0f, float hi = 1.0f) { eff[(size_t) i] = juce::jlimit (lo, hi, eff[(size_t) i] + d); };
+    const float m = raw[memory], w = raw[warmth], in = raw[intimacy], t = raw[time], s = raw[spaceMacro] - 0.5f;
+    // Memory: from a present studio piano (0) to a tape found in an attic (1): everything moves together, musically
+    add (tape, 0.95f * m * (0.45f + 0.55f * t));
+    add (vinyl, 0.55f * m * m * (0.3f + 0.7f * t));
+    add (P::room, 0.22f * m);
+    add (tone, -0.32f * m - 0.18f * t * m);
+    add (detune, 0.30f * m + 0.45f * t);
+    add (sustain, -0.12f * m);
+    add (body, 0.15f * m);
+    add (wood, 0.35f * m * t);
+    // Warmth: darker, rounder, more wood
+    add (tone, -0.28f * w);
+    add (hammer, -0.25f * w);
+    add (body, 0.3f * w);
+    // Intimacy: close microphone (dry, detailed, mechanical noise) .. far (room, soft)
+    add (P::room, -0.35f * (in - 0.5f) * 2.0f * 0.5f);
+    add (body, 0.25f * (in - 0.5f));
+    add (tone, 0.12f * (in - 0.5f));
+    add (wood, 0.5f * (in - 0.5f) * (raw[wood] > 0.01f || m > 0.01f ? 1.0f : 0.0f));
+    // Time: how much the piano has aged
+    add (stretch, 0.2f * (t - 0.5f));
+    add (damper, -0.3f * (t - 0.5f));
+    // Space: bigger and wetter room
+    add (P::room, 0.5f * s);
+    add (roomSize, 0.5f * s);
+    lifeLv.tape = eff[tape]; lifeLv.vinyl = eff[vinyl]; lifeLv.wood = eff[wood];
+    lifeLv.world = eff[worldLevel]; lifeLv.worldType = (int) eff[world]; lifeLv.intimacy = in;
+    life.setLevels (lifeLv);
+}
+
 void Engine::process (float* L, float* R, int n, const juce::MidiBuffer& midi, const float* params, const HostInfo&)
 {
-    par = params;
+    applyMacros (params);
     a4 = p (P::tuning) > 0.5f ? 432.0f : 440.0f;
     widthS.v = p (P::width);
     if (masterS.v < 0.0f) { masterS.v = dbToGain (p (P::master)); bodyS.v = p (P::body); roomS.v = p (P::room); }

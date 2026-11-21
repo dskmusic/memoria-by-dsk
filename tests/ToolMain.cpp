@@ -58,8 +58,8 @@ int main (int argc, char** argv)
         ed->setSize (1280, 800);
         juce::AudioBuffer<float> buf (2, 512);
         juce::MidiBuffer midi;
-        const char* names[] { "piano", "presets", "export", "settings", "help" };
-        for (int page = 0; page < 5; ++page)
+        const char* names[] { "piano", "life", "presets", "export", "settings", "help" };
+        for (int page = 0; page < 6; ++page)
         {
             ed->showPage (page);
             for (int f = 0; f < 90; ++f)

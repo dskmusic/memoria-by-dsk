@@ -13,6 +13,8 @@ namespace P
         master, seed, piano, tuning,
         tone, hammer, sustain, damper, detune, stretch, dynamics,   // the piano itself
         body, resonance, width, room, roomSize,                     // soundboard, sympathetic strings, stereo, room
+        memory, warmth, intimacy, time, spaceMacro,                 // macros
+        roomType, tape, vinyl, wood, world, worldLevel,             // layers of life
         numParams
     };
 }
@@ -34,4 +36,6 @@ const std::vector<ParamDef>& paramDefs();
 int paramIndex (const juce::String& id);                     // -1 if unknown
 juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 const juce::StringArray& pianoNames();
+const juce::StringArray& roomNames();
+const juce::StringArray& worldNames();
 }

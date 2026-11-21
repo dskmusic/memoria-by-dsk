@@ -14,6 +14,17 @@ const juce::StringArray& pianoNames()
     return n;
 }
 
+const juce::StringArray& roomNames()
+{
+    static const juce::StringArray n { "Living Room", "Church", "Studio", "Wooden Cabin", "Empty Concert Hall" };
+    return n;
+}
+const juce::StringArray& worldNames()
+{
+    static const juce::StringArray n { "Off", "Rain", "Cafe", "Fireplace", "Dawn Birds", "Distant Audience" };
+    return n;
+}
+
 namespace
 {
 struct Builder
@@ -62,6 +73,19 @@ std::vector<ParamDef> build()
     b.add (width, "width", "Width", lin (0, 1.5f), 1.0f);
     b.add (room, "room", "Room", lin (0, 1), 0.25f);
     b.add (roomSize, "room_size", "Room Size", lin (0, 1), 0.4f);
+    b.addChoice (roomType, "room_type", "Room Type", roomNames(), 0);
+    b.group = "macro";
+    b.add (memory, "memory", "Memory", lin (0, 1), 0.0f);
+    b.add (warmth, "warmth", "Warmth", lin (0, 1), 0.0f);
+    b.add (intimacy, "intimacy", "Intimacy", lin (0, 1), 0.5f);
+    b.add (time, "time", "Time", lin (0, 1), 0.5f);
+    b.add (spaceMacro, "space_macro", "Space", lin (0, 1), 0.5f);
+    b.group = "life";
+    b.add (tape, "tape", "Tape", lin (0, 1), 0.0f);
+    b.add (vinyl, "vinyl", "Vinyl", lin (0, 1), 0.0f);
+    b.add (wood, "wood", "Wood", lin (0, 1), 0.0f);
+    b.addChoice (world, "world", "World", worldNames(), 0);
+    b.add (worldLevel, "world_level", "World Level", lin (0, 1), 0.5f);
     return b.defs;
 }
 } // namespace

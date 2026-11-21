@@ -49,6 +49,7 @@ private:
     Root root;
     std::unique_ptr<gx::ui::Header> header;
     std::unique_ptr<gx::ui::PianoPage> pianoPage;
+    std::unique_ptr<gx::ui::LifePage> lifePage;
     std::unique_ptr<gx::ui::PresetsPage> presets;
     std::unique_ptr<gx::ui::ExportPage> exportPage;
     std::unique_ptr<gx::ui::HelpPage> helpPage;

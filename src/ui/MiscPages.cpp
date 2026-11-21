@@ -74,8 +74,8 @@ void Logo::paint (juce::Graphics& g)
 Header::Header (Context& c, std::function<void (int)> onTab) : ctx (c), tabCb (std::move (onTab))
 {
     addAndMakeVisible (logo);
-    const juce::String names[] { "PIANO", "PRESETS", L ("EXPORTAR", "EXPORT"), L ("AJUSTES", "SETTINGS"), L ("AYUDA", "HELP") };
-    for (int i = 0; i < 5; ++i)
+    const juce::String names[] { "PIANO", L ("VIDA", "LIFE"), "PRESETS", L ("EXPORTAR", "EXPORT"), L ("AJUSTES", "SETTINGS"), L ("AYUDA", "HELP") };
+    for (int i = 0; i < 6; ++i)
     {
         auto* b = tabs.add (new juce::TextButton (names[i]));
         b->setClickingTogglesState (false);
@@ -133,7 +133,7 @@ void Header::resized()
     r.removeFromBottom (2);
     logo.setBounds (r.removeFromLeft (232));
     r.removeFromLeft (8);
-    auto tabArea = r.removeFromLeft (440);
+    auto tabArea = r.removeFromLeft (520);
     const int tw = tabArea.getWidth() / tabs.size();
     for (auto* t : tabs) t->setBounds (tabArea.removeFromLeft (tw).reduced (2, 8));
     r.removeFromLeft (8);

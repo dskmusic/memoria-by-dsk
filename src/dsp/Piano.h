@@ -2,6 +2,7 @@
 #include "Common.h"
 #include "Filters.h"
 #include "Space.h"
+#include "Life.h"
 
 // Memoria piano engine: modal synthesis, no samples.
 // Every string partial is a decaying complex resonator (inharmonic frequency, two decay rates = the piano's
@@ -76,12 +77,16 @@ private:
     void excite (Voice& v, int note, float vel, bool restrike);
     void exciteGhosts (int note, float vel);
     void setRates (Voice& v);
-    float p (int i) const { return par[i]; }
+    float p (int i) const { return eff[(size_t) i]; }
+    void applyMacros (const float* raw);
     int allocVoice();
 
     double sr = 48000.0;
     int maxBlock = 512;
-    const float* par = nullptr;
+    std::array<float, 64> eff {};          // parameters after the macros (Memory, Warmth, Intimacy, Time, Space)
+    Life life;
+    LifeLevels lifeLv;
+    bool pedalWasDown = false;
     uint32_t seed = 1;
     int tickLeft = kTick;
     uint64_t counter = 0;

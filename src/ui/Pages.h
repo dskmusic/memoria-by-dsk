@@ -75,6 +75,17 @@ private:
     AutoPanel global, piano, space;
 };
 
+// Life page: the Memory macro and the layers of life (tape, vinyl, wood, world).
+class LifePage : public Page
+{
+public:
+    explicit LifePage (Context& c);
+    void resized() override;
+    void paint (juce::Graphics&) override;
+private:
+    AutoPanel macros, life;
+};
+
 // Help: a short, friendly guide (both languages).
 class HelpPage : public Page
 {

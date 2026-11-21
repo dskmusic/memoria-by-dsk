@@ -242,6 +242,47 @@ static void testStress()
     check (secs < 5.0, "CPU: faster than 2x realtime even at full overload");
 }
 
+static void testLife()
+{
+    std::puts ("[life]");
+    gx::Preset clean;
+    Song s;
+    for (int i = 0; i < 10; ++i) s.note (0.2 + i * 0.5, 0.8, 55 + (i * 4) % 20, 70);
+    s.pedal (0.0, 127); s.pedal (4.0, 0);
+    const auto a = render (clean, s, 7.0);
+    auto mem = clean; setParam (mem, "memory", 1.0f);
+    const auto b = render (mem, s, 7.0);
+    const float ca = centroidHz (a, 1.0), cb = centroidHz (b, 1.0);
+    std::puts (("    Memory 0 -> 1: centroid " + juce::String (ca, 0) + " -> " + juce::String (cb, 0) + " Hz, level " + juce::String (rmsDb (a, 0.5, 4.5), 1) + " -> " + juce::String (rmsDb (b, 0.5, 4.5), 1) + " dB").toRawUTF8());
+    double diff = 0, ref = 0; for (int i = 0; i < a.getNumSamples(); ++i) { const double d = a.getSample (0, i) - b.getSample (0, i); diff += d * d; ref += (double) a.getSample (0, i) * a.getSample (0, i); }
+    check (diff > 0.2 * ref, "Memory transforms the sound");
+    check (analyse (b).finite && analyse (b).peak < 1.0f, "Memory at 100 % is clean and bounded");
+    check (std::abs (rmsDb (a, 0.5, 4.5) - rmsDb (b, 0.5, 4.5)) < 6.0f, "Memory keeps the level similar");
+    for (int w = 1; w < gx::worldNames().size(); ++w)
+    {
+        auto q = clean; setParam (q, "world", (float) w); setParam (q, "world_level", 0.8f);
+        Song none;
+        const auto r = render (q, none, 6.0);
+        const float d = rmsDb (r, 1.0, 6.0);
+        std::puts (("    world " + gx::worldNames()[w] + ": " + juce::String (d, 1) + " dB").toRawUTF8());
+        check (analyse (r).finite && analyse (r).peak < 0.5f, "world " + gx::worldNames()[w] + " bounded");
+        if (w != 4) check (d > -70.0f, "world " + gx::worldNames()[w] + " audible");
+    }
+    // every layer at maximum: finite, no clicks, identical for any block size
+    auto full = clean;
+    for (const char* id : { "memory", "tape", "vinyl", "wood", "warmth", "time" }) setParam (full, id, 1.0f);
+    setParam (full, "world", 1.0f); setParam (full, "world_level", 1.0f);
+    for (int rt = 0; rt < 5; ++rt)
+    {
+        setParam (full, "room_type", (float) rt);
+        const auto x = render (full, s, 7.0), y = render (full, s, 7.0, 48000.0, 77);
+        bool same = true;
+        for (int i = 0; i < x.getNumSamples() && same; ++i) same = x.getSample (0, i) == y.getSample (0, i) && x.getSample (1, i) == y.getSample (1, i);
+        check (analyse (x).finite && analyse (x).peak < 1.0f, "all layers max, room " + gx::roomNames()[rt] + ": bounded");
+        check (same, "all layers max, room " + gx::roomNames()[rt] + ": identical at any block size");
+    }
+}
+
 int runAll()
 {
     testParams();
@@ -249,6 +290,7 @@ int runAll()
     testDeterminism();
     testClicks();
     testStress();
+    testLife();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

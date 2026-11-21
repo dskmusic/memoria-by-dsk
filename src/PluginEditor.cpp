@@ -73,12 +73,13 @@ void MemoriaEditor::buildUi()
 {
     header = std::make_unique<gx::ui::Header> (ctx, [this] (int t) { showPage (t); });
     pianoPage = std::make_unique<gx::ui::PianoPage> (ctx);
+    lifePage = std::make_unique<gx::ui::LifePage> (ctx);
     presets = std::make_unique<gx::ui::PresetsPage> (ctx);
     exportPage = std::make_unique<gx::ui::ExportPage> (ctx);
     helpPage = std::make_unique<gx::ui::HelpPage> (ctx);
     settingsPage = std::make_unique<gx::ui::SettingsPage> (ctx, [this] (float s) { setUiScale (s); }, [this] { about->setVisible (true); about->toFront (false); });
     about = std::make_unique<gx::ui::AboutOverlay>();
-    pages = { pianoPage.get(), presets.get(), exportPage.get(), settingsPage.get(), helpPage.get() };
+    pages = { pianoPage.get(), lifePage.get(), presets.get(), exportPage.get(), settingsPage.get(), helpPage.get() };
     root.addAndMakeVisible (*header);
     for (auto* pg : pages) root.addChildComponent (pg);
     root.addChildComponent (*about);
@@ -100,7 +101,7 @@ void MemoriaEditor::rebuildUi()
     gx::uiEnglish() = settings.messageLanguage() == "en";
     const int page = currentPage;
     pages.clear();
-    header.reset(); pianoPage.reset(); presets.reset(); exportPage.reset(); helpPage.reset(); settingsPage.reset(); about.reset();
+    header.reset(); pianoPage.reset(); lifePage.reset(); presets.reset(); exportPage.reset(); helpPage.reset(); settingsPage.reset(); about.reset();
     buildUi();
     resized();
     header->setPresetName (proc.currentMeta.name);
