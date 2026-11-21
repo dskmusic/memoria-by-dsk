@@ -6,7 +6,8 @@ namespace gx::ui
 // Everything the room shader needs for one frame.
 struct RoomUniforms
 {
-    float time = 0, memory = 0, age = 0.5f, world = 0, energy = 0, hit = 0, pedal = 0, flame = 1, intimacy = 0.5f, warmth = 0, space = 0.5f;
+    float time = 0, memory = 0, age = 0.5f, world = 0, energy = 0, hit = 0, pedal = 0, flame = 1, intimacy = 0.5f, warmth = 0, space = 0.5f, scale = 1.0f;
+    float keys[88] {};      // how much each key (A0 .. C8) is down / ringing
 };
 
 // The room scene as a GLSL fragment shader: window light with volumetric dust, glass with rain, a glossy grand piano,

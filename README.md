@@ -25,12 +25,15 @@ window. One slider, **Memory**, takes you from a crisp, present studio piano to 
 - **Hands: a generative composer for people who do not play.** It writes whole songs - intro, verses, choruses, bridge, outro - with functional
   harmony (7ths, 9ths, sus chords, dominants, cadences), motifs that develop, hook-driven choruses, accompaniment patterns and an expressive performance
   (dynamics, rolled chords, rubato, pedalling). Six styles (Lo-Fi Chill, Cinematic, Romantic, Minimal, Lullaby waltz, Power Ballad), 8 scales, any key,
-  16 to 128 bars, locked to your DAW tempo and transport. **New variation** and **Random song** (with locks) make a new one in a click.
+  16 to 128 bars, locked to your DAW tempo and transport. **New variation** and **Random song** (with locks) make a new one in a click. Click anywhere on the song map to jump there while it plays.
   **Export the song:** drag it as a MIDI file (or as a rendered WAV) straight into your DAW, or save it as .mid / .wav.
 - **300 factory presets** in 10 categories: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert and Toy.
   **Random sound** generates a new piano + room + layers + macros in any category, with locks for each section, validated and level-matched.
-- **A room that ages with the sound:** a cinematic GPU-shader scene - window light with volumetric dust, rain on the glass, a glossy upright piano, a candle -
-  that turns sepia, grainy and scratched as you turn Memory up. It follows the weather you choose (rain, cafe, fireplace, dawn, audience). Falls back to a CPU scene if your graphics card cannot run it.
+- **A cinematic 3D room, rendered live on your graphics card:** a real 3D scene (ray-marched, soft shadows, ambient occlusion, lacquer and floor reflections,
+  volumetric light shafts with floating dust, rain on the glass, a flickering candle, film ageing). The keys of the piano go down with the notes that sound.
+  It follows the weather you choose (rain, cafe, fireplace, dawn, audience) and ages with Memory (sepia, grain, scratches, light leaks).
+  Three quality levels in Settings; a CPU scene is used if your graphics card cannot run it.
+- **The inside of the piano, live:** 88 strings that glow and vibrate, hammers that strike with the real velocity, dampers and pedal.
 - **Long audio export:** the hands play for 1 minute to 3 hours to WAV, FLAC or OGG.
 - Click-free preset changes, A/B, undo/redo, MIDI learn, preset browser with tags and favourites, resizable interface, **English / Español**
   (automatic or manual) and a built-in Help page.

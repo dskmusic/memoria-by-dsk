@@ -351,12 +351,15 @@ SettingsPage::SettingsPage (Context& c, std::function<void (float)> setScale, st
     gpuToggle.setEnabled (gpuStatus().load() >= 0);
     gpuToggle.setTooltip (L ("La habitación con shaders en la tarjeta gráfica. Desactívalo si tu equipo va justo.", "The room rendered with shaders on the graphics card. Turn it off on a slow computer."));
     gpuToggle.onClick = [this] { ctx.settings.setGpu (gpuToggle.getToggleState()); if (ctx.languageChanged) ctx.languageChanged(); };
+    qualityBox.addItemList ({ L ("Calidad de escena: baja", "Scene quality: low"), L ("Calidad de escena: media", "Scene quality: medium"), L ("Calidad de escena: alta", "Scene quality: high") }, 1);
+    qualityBox.setSelectedItemIndex (ctx.settings.gpuQuality(), juce::dontSendNotification);
+    qualityBox.onChange = [this] { ctx.settings.setGpuQuality (qualityBox.getSelectedItemIndex()); if (ctx.languageChanged) ctx.languageChanged(); };
     preview.setToggleState (ctx.settings.previewOnSelect(), juce::dontSendNotification);
     preview.onClick = [this] { ctx.settings.setPreviewOnSelect (preview.getToggleState()); };
     openFolder.onClick = [] { Library::defaultRoot().startAsProcess(); };
     clearLearn.onClick = [this] { ctx.proc.clearMidiLearn(); if (ctx.toast) ctx.toast (L ("Asignaciones MIDI Learn borradas", "MIDI Learn assignments cleared")); };
     aboutBtn.onClick = std::move (showAbout);
-    for (auto* comp : std::initializer_list<juce::Component*> { &scaleBox, &animBox, &langBox, &gpuToggle, &preview, &openFolder, &clearLearn, &aboutBtn })
+    for (auto* comp : std::initializer_list<juce::Component*> { &scaleBox, &animBox, &langBox, &gpuToggle, &qualityBox, &preview, &openFolder, &clearLearn, &aboutBtn })
         addAndMakeVisible (comp);
 }
 
@@ -385,6 +388,7 @@ void SettingsPage::resized()
     animBox.setBounds (row().withWidth (220));
     langBox.setBounds (row().withWidth (260));
     gpuToggle.setBounds (rows.removeFromTop (40).reduced (0, 8));
+    qualityBox.setBounds (rows.removeFromTop (40).reduced (0, 6).withWidth (280));
     preview.setBounds (rows.removeFromTop (40).reduced (0, 8));
     rows.removeFromTop (60);
     auto b = rows.removeFromTop (34);

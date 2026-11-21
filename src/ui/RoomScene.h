@@ -15,6 +15,7 @@ public:
     // GPU shader scene when the system supports it; the CPU scene below is the fallback
     void setGpu (bool on);
     bool gpuWanted = true;
+    int quality = 1;        // 0 low, 1 medium, 2 high (render scale of the shader scene)
     bool gpuActive() const { return glOk.load(); }
     RoomUniforms uniforms() const;
     void setExternalBackground (const juce::Image& i) { external = i; }   // screenshots / video: the GPU picture rendered offscreen

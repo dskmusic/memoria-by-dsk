@@ -15,8 +15,9 @@ inline int imod (int a, int b) { return ((a % b) + b) % b; }
 struct Chord { int deg = 0, ext = 0; };   // ext: 0 triad, 1 seventh, 2 ninth, 3 sus2, 4 sus4
 struct Mot { double beat, dur; int step; };
 
-const int kBankA[6][4] { { 0, 5, 3, 4 }, { 0, 3, 4, 0 }, { 0, 5, 2, 6 }, { 5, 3, 0, 4 }, { 0, 2, 5, 4 }, { 0, 4, 5, 3 } };
-const int kBankB[5][4] { { 3, 4, 0, 5 }, { 5, 4, 3, 0 }, { 3, 0, 4, 5 }, { 0, 4, 5, 3 }, { 5, 3, 4, 0 } };
+const int kBankA[8][4] { { 0, 5, 3, 4 }, { 0, 3, 4, 0 }, { 5, 3, 0, 4 }, { 0, 4, 5, 3 }, { 0, 5, 2, 6 }, { 0, 2, 5, 4 }, { 5, 4, 3, 4 }, { 0, 3, 5, 4 } };
+const int kBankB[6][4] { { 3, 4, 0, 5 }, { 5, 4, 3, 0 }, { 3, 0, 4, 5 }, { 0, 4, 5, 3 }, { 5, 3, 4, 0 }, { 0, 4, 5, 3 } };
+const int kBankP[4][4] { { 1, 3, 4, 4 }, { 3, 4, 5, 4 }, { 5, 3, 4, 4 }, { 1, 4, 3, 4 } };
 const int kBankC[4][4] { { 1, 4, 0, 5 }, { 5, 2, 3, 4 }, { 3, 5, 1, 4 }, { 2, 5, 3, 4 } };
 
 struct Composer
@@ -24,7 +25,7 @@ struct Composer
     ComposeCfg c;
     Score& out;
     Rng rng;
-    int bpb = 4, key = 0, scaleIdx = 1;
+    int bpb = 4, key = 0, scaleIdx = 1, modShift = 0;
     const int* sc = kScales[1];
     const int* mask = nullptr;
     float expr = 0.6f, dens = 0.6f;
@@ -42,7 +43,7 @@ struct Composer
         msBeat = c.bpm / 60000.0;
     }
 
-    int midi (int deg) const { return 60 + (key > 6 ? key - 12 : key) + sc[imod (deg, 7)] + 12 * fdiv (deg, 7); }
+    int midi (int deg) const { return 60 + (key > 6 ? key - 12 : key) + modShift + sc[imod (deg, 7)] + 12 * fdiv (deg, 7); }
     float uni() { return rng.uni(); }
     bool chance (float p) { return rng.uni() < p; }
     int pick (int n) { return (int) (rng.next() % (uint32_t) n); }
@@ -72,13 +73,13 @@ struct Composer
         if (outro) d += 0.04 * expr * (double) (globalBar % 8) * pos;
         return d;
     }
-    void add (double start, double len, int note, int vel, float jitterMs = 6.0f, double extra = 0.0)
+    void add (double start, double len, int note, int vel, float jitterMs = 6.0f, double extra = 0.0, bool mel = false)
     {
         if (note < 21 || note > 108) return;
         NoteEv n;
         n.start = std::max (0.0, start + extra + humanBeats (jitterMs));
         n.len = std::max (0.06, len);
-        n.note = note;
+        n.note = note; n.voice = mel ? 1 : 0;
         n.vel = juce::jlimit (1, 127, vel + (int) ((uni() - 0.5f) * 8.0f * expr));
         out.notes.push_back (n);
     }
@@ -94,15 +95,11 @@ struct Composer
         else
         {
             push ('I', 4);
-            int remain = total - 8, k = 0, mid = (total / 16);
-            bool bridge = false;
-            while (remain >= 8)
-            {
-                if (! bridge && k == std::max (3, mid * 2 - 1) && remain >= 16) { push ('C', 8); bridge = true; }
-                else push ((k % 2 == 0) ? 'A' : 'B', 8);
-                remain -= 8; ++k;
-            }
-            if (remain >= 4) push ('B', remain);
+            int remain = total - 8;
+            static const char seqT[] { 'A', 'P', 'B', 'A', 'P', 'B', 'C', 'B', 'A', 'P', 'B', 'B' };
+            static const int seqL[] { 8, 4, 8, 8, 4, 8, 8, 8, 8, 4, 8, 8 };
+            for (int i = 0; i < 12 && remain >= seqL[i]; ++i) { push (seqT[i], seqL[i]); remain -= seqL[i]; }
+            if (remain > 0) { if (! s.empty()) s.back().bars += remain; }
             push ('O', 4);
         }
         int at = 0;
@@ -115,10 +112,11 @@ struct Composer
     {
         std::vector<std::array<Chord, 2>> h ((size_t) sec.bars);
         split.assign ((size_t) sec.bars, false);
-        int p = 0; const int (*bank)[4] = kBankA; int nb = 6;
-        if (sec.type == 'B') { bank = kBankB; nb = 5; }
+        int p = 0; const int (*bank)[4] = kBankA; int nb = 8;
+        if (sec.type == 'B') { bank = kBankB; nb = 6; }
+        else if (sec.type == 'P') { bank = kBankP; nb = 4; }
         else if (sec.type == 'C') { bank = kBankC; nb = 4; }
-        p = (int) ((c.seed * 7u + (uint32_t) sec.start * 13u + (sec.type == 'A' ? 0u : sec.type == 'B' ? 5u : 9u)) % (uint32_t) nb);
+        p = (int) ((c.seed * 7u + (uint32_t) sec.start * 13u + (sec.type == 'A' ? 0u : sec.type == 'B' ? 5u : sec.type == 'P' ? 3u : 9u)) % (uint32_t) nb);
         if (sec.type == 'A' || sec.type == 'I' || sec.type == 'O') p = (int) (c.seed % (uint32_t) nb);       // verses share one progression
         for (int b = 0; b < sec.bars; ++b)
         {
@@ -135,6 +133,7 @@ struct Composer
             const int last = sec.bars - 1;
             if (sec.type == 'A') { h[(size_t) last][0] = { 4, 0 }; if (sec.bars >= 8) h[(size_t) (last - 1)][0] = { chance (0.5f) ? 3 : 1, 0 }; }
             else if (sec.type == 'B') { h[(size_t) last][0] = { finalSection ? 0 : 0, chance (0.4f) ? 2 : 0 }; if (sec.bars >= 8) h[(size_t) (last - 1)][0] = { 4, 0 }; }
+            else if (sec.type == 'P') { h[(size_t) last][0] = { 4, chance (0.4f) ? 4 : 0 }; }
             else if (sec.type == 'C') { h[(size_t) last][0] = { 4, 0 }; if (sec.bars >= 8) h[(size_t) (last - 1)][0] = { 3, 0 }; }
             else if (sec.type == 'O') { h[(size_t) last][0] = { 0, chance (0.6f) ? 2 : 0 }; if (sec.bars >= 2) h[(size_t) (last - 1)][0] = { chance (0.5f) ? 3 : 4, 0 }; }
             else if (sec.type == 'I') { h[(size_t) last][0] = { 4, 0 }; }
@@ -174,7 +173,7 @@ struct Composer
         return (int) (60.0f + (energy - 0.55f) * 95.0f * contrast + (float) bonus);
     }
 
-    void accompany (int globalBar, const Sec& sec, int barInSec, const Chord& ch, double t0, double t1, float energy, bool secEnd)
+    void accompany (int globalBar, const Sec& sec, int barInSec, const Chord& ch, double t0, double t1, float energy, bool secEnd, int nextDeg = -1)
     {
         // t0..t1 = part of the bar (in beats) this chord rules
         const Arp a = arpOf (ch);
@@ -255,8 +254,17 @@ struct Composer
                 for (int i : { 3, 4, 6 }) note (0.0, 1.9, a.n[i], v - 5, 12.0f);
                 for (int i : { 3, 4, 6 }) note (2.0, 1.8, a.n[i], v - 9, 8.0f);
                 note (2.0, 1.8, a.n[1], v - 3, 3.0f);
-                if (e > 0.5f && chance (0.5f)) note (3.5, 0.5, a.n[2], v - 8);
                 break;
+            }
+        }
+        // bass movement: an approach note into the next chord, and a pushed (anticipated) chord in the choruses
+        if (nextDeg >= 0 && nextDeg != ch.deg && t1 >= bpb - 1.0e-6 && bpb == 4 && ! sparse && c.style != ssMinimal && c.style != ssLullaby && chance (0.30f + 0.45f * dens))
+        {
+            note (bpb - 0.5, 0.45, bassOf (nextDeg + (chance (0.5f) ? -1 : 1)), v - 8, 4.0f);
+            if ((sec.type == 'B' || sec.type == 'P') && (c.style == ssBallad || c.style == ssLofi || c.style == ssCinematic) && chance (0.55f))
+            {
+                const Arp na = arpOf ({ nextDeg, 0 });
+                for (int i : { 3, 4, 6 }) note (bpb - 0.5, 0.7, na.n[i], v - 6, 5.0f);
             }
         }
     }
@@ -328,10 +336,10 @@ struct Composer
             const bool secEnd = bis >= sec.bars - 1;
             const double start = (double) gb * bpb + inBar * slow;
             const int vel = velOf (energy, 7 + (strong ? 3 : 0) + (int) (5.0f * std::sin (6.28f * (float) i / (float) m.size() * 0.5f)));
-            add (start, dur * 0.97, midi (deg), vel, 9.0f, rubato (gb, inBar, secEnd, sec.type == 'O') + 0.01 * expr);
-            if (dbl != 0) add (start, dur * 0.97, midi (deg + dbl), vel - 14, 9.0f, rubato (gb, inBar, secEnd, sec.type == 'O'));
+            add (start, dur * 0.97, midi (deg), vel + 4, 9.0f, rubato (gb, inBar, secEnd, sec.type == 'O') + 0.01 * expr, true);
+            if (dbl != 0) add (start, dur * 0.97, midi (deg + dbl), vel - 12, 9.0f, rubato (gb, inBar, secEnd, sec.type == 'O'), true);
             if (expr > 0.45f && n.dur >= 2.0 && chance (0.3f) && c.style != ssMinimal)              // grace note before a long note
-                add (start - 0.14, 0.12, midi (deg + 1), vel - 14, 2.0f, 0.0);
+                add (start - 0.14, 0.12, midi (deg + 1), vel - 14, 2.0f, 0.0, true);
         }
         return deg;
     }
@@ -345,6 +353,7 @@ struct Composer
             return;
         }
         const int lo = sec.type == 'B' ? 7 : 4, hi = sec.type == 'B' ? 19 : 16;
+        const bool pre = sec.type == 'P';
         const int centre = (c.style == ssLullaby ? 11 : 9) + (sec.type == 'B' ? 2 : 0);
         const int dbl = (sec.type == 'B' && (c.style == ssCinematic || c.style == ssBallad || c.style == ssRomantic)) ? -7 : 0;
         const double slow = sec.type == 'O' ? 1.5 : 1.0;
@@ -356,11 +365,12 @@ struct Composer
             const int barIn = u * 2;
             const std::vector<Mot>* m = &motA;
             int shift = 0; bool variant = false, longEnd = false;
-            if (sec.type == 'B') { m = &hook; shift = (u % 4 == 2) ? 2 : (u % 4 == 1 ? 0 : 0); variant = (u % 4 == 1); longEnd = (u % 4 == 3); }
+            if (sec.type == 'B') { m = &hook; shift = (u % 4 == 2) ? 2 : 0; variant = false; longEnd = (u % 4 == 3); }
+            else if (pre) { shift = u; variant = false; longEnd = false; }
             else if (sec.type == 'C') { m = &neu; shift = -(u % 4 == 0 ? 0 : u % 4); longEnd = (u % 4 == 3); }
             else if (sec.type == 'O') { shift = -(u % 2); longEnd = (u == units - 1); }
             else { shift = (u % 4 == 2) ? 1 : 0; variant = (u % 4 == 1); longEnd = (u % 4 == 3); }
-            if (u % 4 == 3 || (sec.type == 'O' && u == units - 1))
+            if ((u % 4 == 3 && ! pre) || (sec.type == 'O' && u == units - 1))
             {
                 // cadence unit: a slower answer ending on a stable note
                 static const std::vector<Mot> cad { { 0, 1.5, 0 }, { 1.5, 0.5, -1 }, { 2, 2, -1 } };
@@ -375,6 +385,11 @@ struct Composer
             if (cur > hi - 1) cur -= 3;
             if (cur < lo + 1) cur += 3;
             if (sec.type == 'B' && u == 2) cur = std::min (hi, centre + 5);      // the peak of the chorus
+            if (pre && u == units - 1 && bpb == 4)                                 // pick-up into the chorus
+            {
+                const double at = (double) (globalBar0 + sec.bars - 1) * bpb;
+                add (at + 2.5, 0.45, midi (centre + 2), energy * 80.0f, 6.0f, 0.0, true); add (at + 3.0, 0.45, midi (centre + 3), energy * 85.0f, 6.0f, 0.0, true); add (at + 3.5, 0.45, midi (centre + 4), energy * 92.0f, 6.0f, 0.0, true);
+            }
         }
     }
 
@@ -403,20 +418,22 @@ struct Composer
             const auto& sec = secs[si];
             out.sections.push_back ({ sec.type, sec.start, sec.bars });
             bool fin = si + 2 >= secs.size();
+            modShift = (sec.type == 'B' && si + 2 >= secs.size() && totalBars >= 48 && c.style != ssLullaby) ? 2 : 0;   // the last chorus lifts a tone
             std::vector<bool> split;
             const auto h = harmony (sec, fin, split);
             for (int b = 0; b < sec.bars; ++b)
             {
                 const int gb = sec.start + b;
                 const float prog = (float) b / (float) std::max (1, sec.bars - 1);
-                float e = sec.type == 'I' ? 0.28f + 0.1f * prog : sec.type == 'A' ? 0.50f + 0.05f * prog : sec.type == 'B' ? 0.82f + 0.08f * prog
+                float e = sec.type == 'I' ? 0.28f + 0.1f * prog : sec.type == 'A' ? 0.50f + 0.05f * prog : sec.type == 'P' ? 0.55f + 0.30f * prog : sec.type == 'B' ? 0.82f + 0.08f * prog
                         : sec.type == 'C' ? 0.52f + 0.35f * prog : 0.36f - 0.2f * prog;
                 if (c.style == ssLofi) e *= 0.85f; if (c.style == ssLullaby) e *= 0.8f;
                 const bool secEnd = b == sec.bars - 1;
                 if (c.mode != 3)
                 {
-                    if (split[(size_t) b]) { accompany (gb, sec, b, h[(size_t) b][0], 0, bpb / 2.0, e, secEnd); accompany (gb, sec, b, h[(size_t) b][1], bpb / 2.0, bpb, e, secEnd); }
-                    else accompany (gb, sec, b, h[(size_t) b][0], 0, bpb, e, secEnd);
+                    const int nd = b + 1 < sec.bars ? h[(size_t) b + 1][0].deg : -1;
+                    if (split[(size_t) b]) { accompany (gb, sec, b, h[(size_t) b][0], 0, bpb / 2.0, e, secEnd); accompany (gb, sec, b, h[(size_t) b][1], bpb / 2.0, bpb, e, secEnd, nd); }
+                    else accompany (gb, sec, b, h[(size_t) b][0], 0, bpb, e, secEnd, nd);
                     // final chord: a rolled chord held under the pedal
                     if (sec.type == 'O' && secEnd)
                     {
@@ -428,7 +445,7 @@ struct Composer
             }
             if (c.mode != 2)
             {
-                float en = sec.type == 'I' ? 0.3f : sec.type == 'A' ? 0.52f : sec.type == 'B' ? 0.86f : sec.type == 'C' ? 0.68f : 0.34f;
+                float en = sec.type == 'I' ? 0.3f : sec.type == 'A' ? 0.52f : sec.type == 'P' ? 0.66f : sec.type == 'B' ? 0.86f : sec.type == 'C' ? 0.68f : 0.34f;
                 if (c.style == ssLofi) en *= 0.9f;
                 melody (sec, sec.start, h, en, motifKind, motA, hook);
             }
@@ -442,9 +459,52 @@ struct Composer
 };
 }
 
+// how "song-like" the melody is: stepwise motion, repeated rhythmic cells, a singable amount of notes per bar
+static float quality (const Score& sc)
+{
+    std::vector<const NoteEv*> mel;
+    for (auto& n : sc.notes) if (n.voice == 1 && n.vel > 20) mel.push_back (&n);
+    if (mel.size() < 8) return -100.0f;
+    double leap = 0; int big = 0;
+    for (size_t i = 1; i < mel.size(); ++i) { const int d = std::abs (mel[i]->note - mel[i - 1]->note); if (d < 12 && mel[i]->start - mel[i - 1]->start > 0.02) { leap += d; if (d > 7) ++big; } }
+    const double mean = leap / (double) (mel.size() - 1);
+    // rhythmic cells per bar: how many bars repeat the onset pattern of one, two or four bars earlier
+    const int bars = sc.bars;
+    std::vector<uint32_t> mask ((size_t) bars, 0u);
+    std::vector<int> count ((size_t) bars, 0);
+    for (auto* n : mel)
+    {
+        const int b = (int) (n->start / sc.beatsPerBar);
+        if (b >= 0 && b < bars) { const int slot = (int) std::floor ((n->start - b * sc.beatsPerBar) * 2.0 + 0.5); mask[(size_t) b] |= 1u << juce::jlimit (0, 15, slot); ++count[(size_t) b]; }
+    }
+    int rep = 0, withNotes = 0, busy = 0;
+    for (int b = 0; b < bars; ++b)
+    {
+        if (mask[(size_t) b] == 0) continue;
+        ++withNotes;
+        if ((b >= 1 && mask[(size_t) b] == mask[(size_t) b - 1]) || (b >= 2 && mask[(size_t) b] == mask[(size_t) b - 2]) || (b >= 4 && mask[(size_t) b] == mask[(size_t) b - 4])) ++rep;
+        if (count[(size_t) b] > 11) ++busy;
+    }
+    const double repRatio = withNotes > 0 ? (double) rep / withNotes : 0.0;
+    const double presence = (double) withNotes / bars;
+    return (float) (3.0 * std::min (repRatio, 0.7) - std::abs (mean - 2.6) * 0.5 - 0.15 * big / std::max (1.0, (double) mel.size() / 8.0) - 1.5 * busy / std::max (1, withNotes) + 1.0 * std::min (presence, 0.7));
+}
+
 void compose (const ComposeCfg& cfg, Score& out)
 {
-    Composer c (cfg, out);
-    c.run();
+    // several takes, the most song-like one is kept (deterministic: the takes come from sub-seeds)
+    Score best; float bestQ = -1.0e9f;
+    for (int i = 0; i < 6; ++i)
+    {
+        ComposeCfg c2 = cfg;
+        c2.seed = cfg.seed * 2246822519u + (uint32_t) i * 3266489917u + 374761393u;
+        Score s;
+        Composer c (c2, s);
+        c.run();
+        const float q = cfg.mode == 2 ? 0.0f : quality (s);
+        if (q > bestQ) { bestQ = q; best = std::move (s); }
+        if (cfg.mode == 2) break;
+    }
+    out = std::move (best);
 }
 }

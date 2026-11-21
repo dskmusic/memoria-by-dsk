@@ -77,7 +77,8 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> memoryAtt;
     HandsPanel hands;
     SoundGenPanel gen;
-    AutoPanel global, piano, macros, life, space;
+    PianoPanel global;
+    AutoPanel piano, macros, life, space;
 };
 
 // Help: a short, friendly guide (both languages).
@@ -174,6 +175,7 @@ public:
     void paint (juce::Graphics&) override;
 private:
     juce::ComboBox scaleBox, animBox, langBox;
+    juce::ComboBox qualityBox;
     juce::ToggleButton gpuToggle { L ("Escena en alta calidad (tarjeta gráfica)", "High-quality scene (graphics card)") };
     juce::ToggleButton preview { L ("Al elegir un preset, tocar una nota de prueba", "Play a test chord when a preset is selected") };
     juce::TextButton openFolder { L ("Abrir carpeta de presets", "Open presets folder") }, clearLearn { L ("Borrar asignaciones MIDI Learn", "Clear MIDI Learn assignments") }, aboutBtn { L ("Acerca de Memoria", "About Memoria") };

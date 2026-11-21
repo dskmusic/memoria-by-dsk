@@ -15,6 +15,7 @@ struct Frame
     float energy = 0;                        // smoothed rms, drives "aliveness"
     // engine state
     std::array<float, 128> keyLevel {}, keyHit {};
+    std::array<int, 128> keyStamp {};
     float pedal = 0;
     int voices = 0, hitCounter = 0;
     float memory = 0, timeAge = 0.5f, intimacy = 0.5f, warmth = 0, space = 0.5f;

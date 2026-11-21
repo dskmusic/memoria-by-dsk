@@ -31,6 +31,7 @@ struct Telemetry
     std::atomic<float> pedal { 0 };                    // sustain pedal 0..1
     std::atomic<int> voices { 0 }, hitCounter { 0 }, chordRoot { 0 }, songBar { 0 }, songBars { 0 };
     std::atomic<bool> handsOn { false };
+    std::array<std::atomic<int>, 128> keyStamp {};     // hitCounter value of the last hammer strike of each key
 };
 
 struct PianoModel
@@ -54,6 +55,7 @@ public:
     void process (float* L, float* R, int n, const juce::MidiBuffer& midi, const float* params, const HostInfo& host);
     Telemetry tele;
     double getSampleRate() const { return sr; }
+    void requestSeek (float bar) { seekReq.store (bar); }
 
 private:
     struct Comp { float re = 0, im = 0, c = 1, s = 0, sig = 0, dsig = 0, rc = 1, rs = 0; };
@@ -95,6 +97,8 @@ private:
     int songIndex = 0;
     uint32_t cfgHash = 0;
     ComposeCfg cfgNow;
+    std::atomic<float> seekReq { -1.0f };               // bar to jump to (UI), -1 none
+    float resumeBar = 0;
     void composeSong();
     void releaseHands();
     double beatClock = 0, bpm = 72;

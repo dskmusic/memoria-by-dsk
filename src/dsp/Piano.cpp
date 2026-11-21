@@ -146,7 +146,7 @@ void Engine::excite (Voice& v, int note, float vel, bool restrike)
     // hammer: felt hardness (spectral cut-off) rises steeply with velocity
     const float ampDb = (vel - 1.0f) * (18.0f + 36.0f * dyn);
     const float ampLin = std::pow (10.0f, ampDb * 0.05f);
-    const float fc = 450.0f * std::exp2 (vel * 3.7f) * m.fcMul * std::exp2 ((tone - 0.5f) * 2.4f) * std::exp2 ((0.5f - hammer) * 2.0f);
+    const float fc = 450.0f * std::exp2 (vel * 3.7f) * m.fcMul * std::exp2 ((tone - 0.5f) * 4.2f) * std::exp2 ((0.5f - hammer) * 3.2f);
     const float x0 = m.x0 * (0.93f + 0.14f * hashUni (seed, (uint32_t) note, 7));
 
     int K = bar ? m.numRatios : 60;
@@ -168,6 +168,7 @@ void Engine::excite (Voice& v, int note, float vel, bool restrike)
             a = comb * std::pow ((float) k, -m.slope) * std::pow (1.0f + (fk / fc) * (fk / fc), -0.8f);
         }
         a /= 1.0f + (70.0f / fk) * (70.0f / fk);      // the soundboard does not radiate the very low end
+        a *= std::pow (fk * 0.001f + 0.08f, (tone - 0.5f) * 1.3f);      // Tone tilts the whole spectrum, at any velocity
         parts[(size_t) np++] = { fk, a };
         sumSq += a * a;
     }
@@ -257,7 +258,7 @@ void Engine::noteOn (int note, float vel)
     keyDown[(size_t) note] = true;
     life.noteOn (note, vel);
     tele.keyHit[(size_t) note].store (vel);
-    tele.hitCounter.fetch_add (1);
+    tele.keyStamp[(size_t) note].store (tele.hitCounter.fetch_add (1) + 1);
     auto& v = voices[(size_t) allocVoice()];
     const int slot = (int) (&v - voices.data());
     (void) slot;
@@ -324,13 +325,18 @@ void Engine::startStopHands (const HostInfo& host)
     bpm = hostRun && host.bpm > 20.0 ? host.bpm : (double) p (P::handsTempo);
     auto begin = [&] (double at)
     {
-        beatClock = at; songStart = at; songIndex = 0; noteIdx = pedIdx = 0;
+        beatClock = at; songIndex = 0; noteIdx = pedIdx = 0;
         pendOffs.clear(); composeSong();
+        songStart = at - (double) resumeBar * score.beatsPerBar;
+        noteIdx = (size_t) (std::lower_bound (score.notes.begin(), score.notes.end(), (double) resumeBar * score.beatsPerBar, [] (const NoteEv& n, double v) { return n.start < v; }) - score.notes.begin());
+        pedIdx = (size_t) (std::lower_bound (score.pedal.begin(), score.pedal.end(), (double) resumeBar * score.beatsPerBar, [] (const PedEv& n, double v) { return n.beat < v; }) - score.pedal.begin());
+        resumeBar = 0;
         cfgHash = 0;
     };
     if (run && ! wasRunning) begin (hostRun && host.hasPpq ? host.ppq : 0.0);
     else if (! run && wasRunning) releaseHands();
     else if (run && hostRun && host.hasPpq && std::abs (host.ppq - beatClock) > 0.08) { releaseHands(); begin (host.ppq); }
+    if (! run) { const float r = seekReq.exchange (-1.0f); if (r >= 0.0f) resumeBar = r; }
     wasRunning = handsRunning = run;
     tele.handsOn.store (run);
 }
@@ -339,6 +345,16 @@ void Engine::tickHands()
 {
     if (! handsRunning) return;
     beatClock += (double) kTick * bpm / (60.0 * sr);
+    if (const float want = seekReq.exchange (-1.0f); want >= 0.0f)
+    {
+        // jump: the song is shifted so that this bar sounds now (also when synced to a DAW: it lines up with the host position)
+        for (auto& o : pendOffs) noteOff (o.note);
+        pendOffs.clear(); setPedal (0.0f);
+        const double target = (double) want * score.beatsPerBar;
+        songStart = beatClock - target;
+        noteIdx = (size_t) (std::lower_bound (score.notes.begin(), score.notes.end(), target, [] (const NoteEv& n, double v) { return n.start < v; }) - score.notes.begin());
+        pedIdx = (size_t) (std::lower_bound (score.pedal.begin(), score.pedal.end(), target, [] (const PedEv& n, double v) { return n.beat < v; }) - score.pedal.begin());
+    }
     // any change of the song parameters rewrites the song from the current position (a new seed starts a new song)
     uint32_t h = 17;
     for (int i : { (int) P::hands, (int) P::handsKey, (int) P::handsScale, (int) P::handsStyle, (int) P::handsBars, (int) P::handsSeed, (int) P::handsPedal })
@@ -488,9 +504,9 @@ void Engine::renderChunk (float* L, float* R, int n)
     // soundboard modes + felt low-pass + room + master
     const auto& m = pianoModel ((int) p (P::piano));
     const float bodyAmt = p (P::body) * m.bodyMul, roomAmt = p (P::room), master = dbToGain (p (P::master));
-    const float lpTarget = juce::jlimit (1500.0f, 20000.0f, m.lpHz * std::exp2 ((p (P::tone) - 0.5f) * 1.2f));
+    const float lpTarget = juce::jlimit (1500.0f, 20000.0f, m.lpHz * std::exp2 ((p (P::tone) - 0.5f) * 2.4f));
     if (std::abs (lpTarget - cacheLp) > 1.0f) { cacheLp = lpTarget; for (auto& b : lpF) b.lowpass (sr, lpTarget, 0.62); }
-    const float toneDb = (p (P::tone) - 0.5f) * 7.0f;
+    const float toneDb = (p (P::tone) - 0.5f) * 12.0f;
     if (std::abs (toneDb - cacheTone) > 0.01f) { cacheTone = toneDb; for (auto& b : toneF) b.shelf (sr, 3500.0, toneDb, true); }
     const float rs = p (P::roomSize);
     const int rt = juce::jlimit (0, 4, (int) p (P::roomType));
@@ -516,7 +532,7 @@ void Engine::renderChunk (float* L, float* R, int n)
             modeL[i].tick (in, bp, hp); bl += bp * modeG[i];
             modeR[i].tick (in, bp, hp); br += bp * modeG[i];
         }
-        float l = wl + bl * bAmt * 0.6f, r = wr + br * bAmt * 0.6f;
+        float l = wl + bl * bAmt * 0.9f, r = wr + br * bAmt * 0.9f;
         l = toneF[0].tick (lpF[0].tick (l)); r = toneF[1].tick (lpF[1].tick (r));
         float rl = 0, rr = 0;
         room.process (l, r, rl, rr);

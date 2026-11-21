@@ -18,6 +18,7 @@ void Life::prepare (double s)
 {
     sr = s;
     dl[0].init ((int) (sr * 0.05)); dl[1].init ((int) (sr * 0.05));
+    smear.init ((int) (sr * 0.12));
     for (auto* x : { &tapeS, &vinylS, &worldS }) x->setTime (0.08f, sr);
     for (auto& b : crackHp) b.highpass (sr, 1500.0);
     reset (seed);
@@ -33,6 +34,7 @@ void Life::reset (uint32_t s)
     for (int c = 0; c < 2; ++c) { rbp[c] = rrum[c] = rrum2[c] = 0; for (auto& x : rk[c]) x = 0; }
     gust = gustTarget = 1; gustCount = 0;
     for (auto& k : talk) k = Talker();
+    smear.clear();
     babLp[0] = babLp[1] = 0;
     wowPh = 0; flPh = 0.3f; drift = driftTarget = 0; dropG = dropTarget = 1; dropLeft = 0;
     for (auto& b : tapeLp) b.reset();
@@ -160,33 +162,54 @@ void Life::tape (float& l, float& r)
 
 void Life::murmur (float& l, float& r, float level, float dark, int talkers)
 {
+    // distant conversation: breathy and voiced vowels gliding through two formants, in phrases of 3-9 syllables with pauses between them
+    const int var = juce::jlimit (0, 2, crowdVariant());
+    const float voicedMix = var == 0 ? 0.0f : 0.55f;
     float sl = 0, sr_ = 0;
     for (int t = 0; t < talkers; ++t)
     {
         auto& k = talk[(size_t) t];
         if (--k.left <= 0)
         {
-            // a new syllable: loudness, vowel (two formants) and a little pitch drift
-            k.left = (int) ((0.11f + 0.26f * rng.uni()) * (float) sr);
-            k.envT = rng.uni() < 0.38f ? 0.0f : 0.25f + 0.75f * rng.uni();
-            if (k.f0 < 90.0f || k.f0 > 260.0f || k.pl == 0.7f) { k.f0 = 95.0f + 150.0f * rng.uni(); const float u = rng.uni(); k.pl = std::cos (u * 1.5708f); k.pr = std::sin (u * 1.5708f); }
-            k.f0 += (rng.uni() - 0.5f) * 14.0f;
-            const float f1 = 320.0f + 480.0f * rng.uni(), f2 = 900.0f + 1400.0f * rng.uni();
-            k.s1.set (std::tan (kPi * f1 * dark / (float) sr), 1.0f / 6.0f);
-            k.s2.set (std::tan (kPi * f2 * dark / (float) sr), 1.0f / 7.0f);
+            if (k.phrase <= 0) { k.phrase = 3 + (int) (rng.next() % 7); k.left = (int) ((0.4f + 2.2f * rng.uni()) * (float) sr); k.envT = 0.0f;
+                                 k.pitchT = 95.0f + 150.0f * rng.uni(); const float u = rng.uni(); k.pl = std::cos (u * 1.5708f); k.pr = std::sin (u * 1.5708f); }
+            else
+            {
+                --k.phrase;
+                k.left = (int) ((0.09f + 0.14f * rng.uni()) * (float) sr);
+                k.envT = rng.uni() < 0.12f ? 0.0f : 0.35f + 0.65f * rng.uni();
+                k.f1t = 300.0f + 520.0f * rng.uni(); k.f2t = 850.0f + 1500.0f * rng.uni();
+                k.pitchT *= 1.0f + (rng.uni() - 0.5f) * 0.16f;                           // intonation
+            }
         }
-        k.env += (k.envT - k.env) * 0.0016f;
-        k.ph += k.f0 / (float) sr; if (k.ph > 1.0f) k.ph -= 1.0f;
+        k.env += (k.envT - k.env) * 0.0011f;
+        k.f0 += (k.pitchT - k.f0) * 0.0008f;
+        k.f1 += (k.f1t - k.f1) * 0.0007f; k.f2 += (k.f2t - k.f2) * 0.0007f;
+        if ((++k.coef & 31) == 0)
+        {
+            k.s1.set (std::tan (kPi * juce::jmin (k.f1 * dark, 9000.0f) / (float) sr), 1.0f / 4.5f);
+            k.s2.set (std::tan (kPi * juce::jmin (k.f2 * dark, 9000.0f) / (float) sr), 1.0f / 5.5f);
+        }
         if (k.env < 1.0e-3f) continue;
-        const float x = (2.0f * k.ph - 1.0f) + 0.35f * rng.bi();
+        k.vib += 5.2f / (float) sr; if (k.vib > 1.0f) k.vib -= 1.0f;
+        k.ph += k.f0 * (1.0f + 0.012f * fastSin (k.vib)) / (float) sr; if (k.ph > 1.0f) k.ph -= 1.0f;
+        const float voiced = fastSin (k.ph) + 0.5f * fastSin (2.0f * k.ph) + 0.3f * fastSin (3.0f * k.ph) + 0.15f * fastSin (4.0f * k.ph);
+        const float x = voicedMix * voiced + (1.0f - 0.5f * voicedMix) * rng.bi() * 0.9f;
         float bp1, hp1, bp2, hp2;
         k.s1.tick (x, bp1, hp1); k.s2.tick (x, bp2, hp2);
-        const float v = (bp1 + 0.6f * bp2) * k.env;
+        const float v = (bp1 + 0.5f * bp2) * k.env;
         sl += v * k.pl; sr_ += v * k.pr;
     }
-    const float g = level * 0.05f / std::sqrt ((float) talkers);
-    babLp[0] += (0.20f * dark) * (sl * g - babLp[0]);
-    babLp[1] += (0.20f * dark) * (sr_ * g - babLp[1]);
+    float g = level * 0.06f / std::sqrt ((float) talkers);
+    float ml = sl * g, mr = sr_ * g;
+    if (var == 2 || dark < 1.0f)       // far away: the voices arrive smeared by the room
+    {
+        smear.push (0.5f * (ml + mr));
+        const float d = 0.45f * smear.read (0.021f * (float) sr) + 0.35f * smear.read (0.037f * (float) sr) + 0.28f * smear.read (0.061f * (float) sr) + 0.2f * smear.read (0.089f * (float) sr);
+        ml = 0.45f * ml + d; mr = 0.45f * mr + d * 0.92f;
+    }
+    babLp[0] += (0.22f * dark) * (ml - babLp[0]);
+    babLp[1] += (0.22f * dark) * (mr - babLp[1]);
     l += babLp[0]; r += babLp[1];
 }
 

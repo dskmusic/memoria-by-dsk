@@ -14,7 +14,11 @@ juce::File findFfmpeg()
     return {};
 }
 
-struct Caption { juce::String en, es; double t0 = 0, t1 = 0; bool big = false; };
+struct Caption
+{
+    juce::String en, es; double t0 = 0, t1 = 0; bool big = false;
+    Caption (const char* e, const char* s, double a, double b, bool bg = false) : en (juce::String::fromUTF8 (e)), es (juce::String::fromUTF8 (s)), t0 (a), t1 (b), big (bg) {}
+};
 
 void drawCaptions (juce::Image& img, const std::vector<Caption>& caps, double t)
 {
@@ -139,13 +143,13 @@ int runVideo (const juce::File& dir, bool trailer)
         // 70 s: one sound, one scene; MEMORY goes from a present studio piano to an attic tape, the world outside changes slowly
         const double len = 70.0;
         std::vector<Caption> caps {
-            { "MEMORIA", "Un piano con alma  -  A piano with a soul", 1.0, 7.0, true },
+            { "MEMORIA", "A piano with a soul  ·  Un piano con alma", 1.0, 7.0, true },
             { "A physically modelled piano. No samples.", "Un piano modelado físicamente. Sin muestras.", 8.0, 15.0 },
             { "Turn up MEMORY...", "Sube MEMORIA...", 17.0, 24.0 },
             { "Tape, vinyl, wood and a room that remembers", "Cinta, vinilo, madera y una habitación con recuerdos", 28.0, 36.0 },
             { "Rain on the window", "Lluvia en la ventana", 38.0, 45.0 },
-            { "The hands play by themselves, in time with your DAW", "Las manos tocan solas, al ritmo de tu DAW", 48.0, 56.0 },
-            { "MEMORIA by DSK", "Gratis · VST3 / AU / Standalone  ·  dskmusic.com", 62.0, 69.0, true } };
+            { "The hands compose and play, in time with your DAW", "Las manos componen y tocan, al ritmo de tu DAW", 48.0, 56.0 },
+            { "MEMORIA by DSK", "Free · VST3 / AU / Standalone · dskmusic.com  ·  Gratis", 62.0, 69.0, true } };
         Setter setter = [] (MemoriaProcessor& p, double t)
         {
             if (t < 0.02) prepareSound (p, 0, 1, 76.0f, 31);
@@ -159,7 +163,7 @@ int runVideo (const juce::File& dir, bool trailer)
         return makeVideo (dir, "Memoria-demo", len, setter, caps);
     }
     std::vector<Caption> caps {
-        { "MEMORIA", "by DSK  -  coming soon", 0.5, 6.0, true },
+        { "MEMORIA", "by DSK  ·  coming soon  ·  próximamente", 0.5, 6.0, true },
         { "A piano with a soul", "Un piano con alma", 6.5, 11.0 },
         { "Free. VST3 / AU / Standalone.", "Gratis. VST3 / AU / Standalone.", 11.5, 17.0 },
         { "MEMORIA", "dskmusic.com", 17.5, 22.0, true } };

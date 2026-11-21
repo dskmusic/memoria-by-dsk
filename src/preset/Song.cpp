@@ -26,7 +26,7 @@ bool writeMidi (const Score& s, double bpm, const juce::File& file)
     conductor.addEvent (juce::MidiMessage::timeSignatureMetaEvent (s.beatsPerBar, 4), 0);
     conductor.addEvent (juce::MidiMessage::textMetaEvent (3, "Memoria by DSK"), 0);
     for (auto& sec : s.sections)
-        conductor.addEvent (juce::MidiMessage::textMetaEvent (6, juce::String (sec.type == 'I' ? "Intro" : sec.type == 'A' ? "Verse" : sec.type == 'B' ? "Chorus" : sec.type == 'C' ? "Bridge" : "Outro")),
+        conductor.addEvent (juce::MidiMessage::textMetaEvent (6, juce::String (sec.type == 'I' ? "Intro" : sec.type == 'A' ? "Verse" : sec.type == 'P' ? "Pre-chorus" : sec.type == 'B' ? "Chorus" : sec.type == 'C' ? "Bridge" : "Outro")),
                             (double) sec.startBar * s.beatsPerBar * ppq);
     track.addEvent (juce::MidiMessage::textMetaEvent (3, "Piano"), 0);
     track.addEvent (juce::MidiMessage::programChange (1, 0), 0);

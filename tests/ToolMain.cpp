@@ -176,7 +176,7 @@ int main (int argc, char** argv)
         struct C { const char* n; float mem, age; int world; } cs[] { { "golden_clean", 0.0f, 0.5f, 0 }, { "rain", 0.3f, 0.5f, 1 }, { "cafe", 0.2f, 0.5f, 2 }, { "fire_night", 0.5f, 0.6f, 3 }, { "dawn_old", 1.0f, 0.9f, 4 }, { "audience", 0.0f, 0.5f, 5 } };
         for (auto& c : cs)
         {
-            gx::ui::RoomUniforms u; u.time = 12.3f; u.memory = c.mem; u.age = c.age; u.world = (float) c.world; u.energy = 0.3f; u.pedal = 1.0f;
+            gx::ui::RoomUniforms u; u.time = 12.3f; u.memory = c.mem; u.age = c.age; u.world = (float) c.world; u.energy = 0.3f; u.pedal = 1.0f; u.scale = 1.0f; for (int k : { 27, 31, 34, 39 }) u.keys[k] = 0.9f;
             auto img = gx::ui::OffscreenRoom::get().render (u, 1056, 660);
             if (img.isNull()) { std::puts ("GPU render failed"); return 1; }
             juce::PNGImageFormat png;
@@ -186,6 +186,33 @@ int main (int argc, char** argv)
             if (os != nullptr) png.writeImageToStream (img, *os);
         }
         std::puts (("scenes in " + dir.getFullPathName()).toRawUTF8());
+        return 0;
+    }
+    if (cmd == "cafe")
+    {
+        // MemoriaTool cafe <dir>: three versions each of the cafe and the distant audience, alone and with a piano
+        const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "cafe");
+        dir.createDirectory();
+        const char* vn[] { "A_whisper", "B_voiced", "C_far" };
+        for (int world : { 2, 5 })
+            for (int v = 0; v < 3; ++v)
+            {
+                gx::crowdVariant() = v;
+                gx::Preset p; gxtest::setParam (p, "world", (float) world); gxtest::setParam (p, "world_level", 0.8f);
+                juce::MidiBuffer none;
+                juce::AudioBuffer<float> a (2, 48000 * 20);
+                a.clear(); gx::renderMidi (p, none, a, 48000.0, 512);
+                const juce::String base = juce::String (world == 2 ? "cafe_" : "audience_") + vn[v];
+                gxtest::writeWav (a, dir.getChildFile (base + "_alone.wav"));
+                gxtest::Song s; s.pedal (0.0, 127);
+                const int ch[3][3] { { 45, 57, 64 }, { 41, 53, 60 }, { 43, 55, 62 } };
+                for (int c = 0; c < 3; ++c) for (int n : ch[c]) s.note (0.5 + c * 7.0, 6.5, n + 12 * (c % 2), 62);
+                for (int i = 0; i < 10; ++i) s.note (1.0 + i * 2.0, 1.7, 72 + (i * 5) % 9, 70);
+                juce::AudioBuffer<float> b (2, 48000 * 24);
+                b.clear(); gx::renderMidi (p, s.buf, b, 48000.0, 512);
+                gxtest::writeWav (b, dir.getChildFile (base + "_with_piano.wav"));
+                std::puts ((base + ": " + juce::String (gxtest::rmsDb (a, 2.0, 20.0), 1) + " dB").toRawUTF8());
+            }
         return 0;
     }
     if (cmd == "screenshot")

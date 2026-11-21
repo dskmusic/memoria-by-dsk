@@ -107,7 +107,22 @@ Preset Generator::candidate (const GenRequest& req)
     set (P::time, draw (rng, a->time)); set (P::spaceMacro, draw (rng, a->space));
     set (P::tape, draw (rng, a->tape) * 0.5f); set (P::vinyl, draw (rng, a->vinyl) * 0.5f); set (P::wood, draw (rng, a->wood));
     set (P::world, (float) v.world); set (P::worldLevel, draw (rng, a->worldLevel));
-    // celesta / toy: no stretched strings, keep the bars clean
+    // every category has its own signature sound: instrument, brightness, room, character (so presets do not blur into one another)
+    {
+        auto between = [&] (int idx, float lo, float hi) { set (idx, lo + (hi - lo) * rng.uni()); };
+        auto choose = [&] (int idx, std::initializer_list<int> v) { set (idx, (float) *(v.begin() + rng.next() % v.size())); };
+        const juce::String cn = a->cat;
+        if (cn == "Lo-Fi") { choose (P::piano, { 1, 1, 0 }); between (P::tone, 0.15f, 0.42f); between (P::hammer, 0.2f, 0.5f); between (P::detune, 0.55f, 0.95f); between (P::body, 0.55f, 0.9f); choose (P::roomType, { 0, 3 }); between (P::room, 0.1f, 0.3f); }
+        else if (cn == "Felt") { set (P::piano, 2.0f); between (P::tone, 0.05f, 0.3f); between (P::hammer, 0.0f, 0.25f); between (P::sustain, 0.25f, 0.5f); between (P::room, 0.05f, 0.22f); between (P::intimacy, 0.75f, 1.0f); }
+        else if (cn == "Cinematic") { set (P::piano, 0.0f); between (P::tone, 0.5f, 0.78f); between (P::hammer, 0.5f, 0.8f); between (P::sustain, 0.65f, 0.95f); choose (P::roomType, { 1, 4, 4 }); between (P::room, 0.5f, 0.85f); between (P::roomSize, 0.6f, 0.95f); }
+        else if (cn == "Rainy") { choose (P::piano, { 0, 1 }); between (P::tone, 0.25f, 0.5f); between (P::sustain, 0.5f, 0.75f); choose (P::roomType, { 0, 3 }); set (P::world, 1.0f); between (P::worldLevel, 0.45f, 0.9f); }
+        else if (cn == "Vintage") { choose (P::piano, { 3, 3, 1 }); between (P::detune, 0.75f, 1.0f); between (P::hammer, 0.55f, 0.9f); between (P::tone, 0.4f, 0.7f); between (P::sustain, 0.25f, 0.45f); between (P::body, 0.7f, 1.0f); choose (P::roomType, { 0, 3 }); }
+        else if (cn == "Church") { set (P::piano, 0.0f); set (P::roomType, 1.0f); between (P::room, 0.7f, 1.0f); between (P::roomSize, 0.75f, 1.0f); between (P::sustain, 0.7f, 0.95f); between (P::tone, 0.35f, 0.62f); between (P::intimacy, 0.0f, 0.3f); }
+        else if (cn == "Lullaby") { choose (P::piano, { 5, 5, 4 }); between (P::tone, 0.6f, 0.9f); between (P::hammer, 0.25f, 0.5f); between (P::room, 0.2f, 0.4f); }
+        else if (cn == "Study") { choose (P::piano, { 0, 2 }); between (P::tone, 0.3f, 0.5f); between (P::hammer, 0.2f, 0.45f); between (P::room, 0.08f, 0.25f); between (P::memory, 0.15f, 0.45f); }
+        else if (cn == "Concert") { set (P::piano, 0.0f); between (P::tone, 0.58f, 0.88f); between (P::hammer, 0.62f, 0.92f); between (P::sustain, 0.6f, 0.9f); set (P::roomType, 4.0f); between (P::room, 0.3f, 0.5f); between (P::memory, 0.0f, 0.06f); between (P::intimacy, 0.2f, 0.5f); }
+        else if (cn == "Toy") { choose (P::piano, { 4, 4, 5 }); between (P::tone, 0.6f, 0.92f); between (P::hammer, 0.45f, 0.75f); between (P::detune, 0.2f, 0.5f); }
+    }
     p.meta.category = a->cat; p.meta.subcategory = v.name;
     const juce::String name = juce::String (a->adj[rng.next() % a->adj.size()]) + " " + a->noun[rng.next() % a->noun.size()];
     p.meta.name = name;

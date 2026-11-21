@@ -3,14 +3,14 @@
 namespace gx::ui
 {
 PianoPage::PianoPage (Context& c)
-    : Page (c), hands (c), gen (c),
-      global (c, L ("Piano", "Piano"), "global", 0, { P::seed }),
+    : Page (c), hands (c), gen (c), global (c),
       piano (c, L ("Mecánica y cuerdas", "Action & strings"), "piano"),
       macros (c, L ("Macros: el recuerdo", "Macros: the memory"), "macro"),
       life (c, L ("Capas de vida", "Layers of life"), "life"),
       space (c, L ("Caja y sala", "Body & room"), "space")
 {
     scene.gpuWanted = c.settings.gpu();
+    scene.quality = c.settings.gpuQuality();
     piano.accent = col::accent;
     macros.accent = col::accent;
     life.accent = col::accent2;
@@ -48,7 +48,7 @@ void PianoPage::resized()
     r.removeFromTop (8);
     const int gap = 6, n = 6;
     const int w = (r.getWidth() - gap * (n - 1));
-    const int ws[n] { w * 19 / 100, w * 19 / 100, w * 16 / 100, w * 15 / 100, w * 16 / 100, 0 };
+    const int ws[n] { w * 33 / 100, w * 17 / 100, w * 13 / 100, w * 13 / 100, w * 13 / 100, 0 };
     global.setBounds (r.removeFromLeft (ws[0])); r.removeFromLeft (gap);
     piano.setBounds (r.removeFromLeft (ws[1])); r.removeFromLeft (gap);
     macros.setBounds (r.removeFromLeft (ws[2])); r.removeFromLeft (gap);

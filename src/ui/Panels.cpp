@@ -33,6 +33,119 @@ void DragTile::mouseDrag (const juce::MouseEvent& e)
     juce::DragAndDropContainer::performExternalDragDropOfFiles ({ f.getFullPathName() }, false, this, [this] { started = false; });
 }
 
+// ================================================================ StringsView
+StringsView::StringsView() { setInterceptsMouseClicks (false, false); }
+
+void StringsView::tick (const Frame& f)
+{
+    phase += 1.0f / 30.0f;
+    pedal = f.pedal;
+    for (int k = 21; k <= 108; ++k)
+    {
+        level[(size_t) k] += (f.keyLevel[(size_t) k] - level[(size_t) k]) * (f.keyLevel[(size_t) k] > level[(size_t) k] ? 0.7f : 0.12f);
+        if (f.keyStamp[(size_t) k] != stamp[(size_t) k])
+        {
+            if (! first) { hammer[(size_t) k] = 1.0f; hammerVel[(size_t) k] = juce::jlimit (0.2f, 1.0f, f.keyHit[(size_t) k]); }
+            stamp[(size_t) k] = f.keyStamp[(size_t) k];
+        }
+        hammer[(size_t) k] *= 0.72f;
+    }
+    first = false;
+    repaint();
+}
+
+void StringsView::paint (juce::Graphics& g)
+{
+    auto r = getLocalBounds().toFloat();
+    // cast-iron plate
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2a2118), r.getX(), r.getY(), juce::Colour (0xff120e0a), r.getRight(), r.getBottom(), false));
+    g.fillRoundedRectangle (r, 6.0f);
+    g.setColour (juce::Colour (0xff5a4630).withAlpha (0.5f));
+    g.drawRoundedRectangle (r.reduced (0.5f), 6.0f, 1.0f);
+    const auto in = r.reduced (10.0f, 12.0f);
+    const float bottom = in.getBottom() - 18.0f, top = in.getY() + 8.0f;
+    // tuning pins and the bridge
+    for (int k = 0; k < 88; ++k)
+    {
+        const float t = (float) k / 87.0f, x = in.getX() + in.getWidth() * t;
+        const float yTop = top + (bottom - top) * (0.05f + 0.42f * std::pow (t, 0.85f));
+        g.setColour (juce::Colour (0xff8a7552).withAlpha (0.55f));
+        g.fillEllipse (x - 1.3f, yTop - 5.0f, 2.6f, 2.6f);
+    }
+    juce::Path bridge;
+    for (int k = 0; k < 88; ++k)
+    {
+        const float t = (float) k / 87.0f, x = in.getX() + in.getWidth() * t, y = bottom - 8.0f - 10.0f * std::sin (t * 3.0f);
+        if (k == 0) bridge.startNewSubPath (x, y); else bridge.lineTo (x, y);
+    }
+    g.setColour (juce::Colour (0xff6b563a).withAlpha (0.7f));
+    g.strokePath (bridge, juce::PathStrokeType (2.5f));
+    const bool dampersUp = pedal > 0.5f;
+    for (int k = 0; k < 88; ++k)
+    {
+        const int note = 21 + k;
+        const float t = (float) k / 87.0f, x = in.getX() + in.getWidth() * t;
+        const float yTop = top + (bottom - top) * (0.05f + 0.42f * std::pow (t, 0.85f));
+        const float yBot = bottom - 8.0f - 10.0f * std::sin (t * 3.0f);
+        const float lv = juce::jlimit (0.0f, 1.0f, level[(size_t) note]);
+        const int nStr = note < 30 ? 1 : note < 46 ? 2 : 3;
+        const float wob = lv * 1.4f * std::sin (phase * (6.0f + (float) k * 0.25f) + (float) k);
+        const auto c = juce::Colour (0xff9c8a64).interpolatedWith (col::accent, lv).brighter (lv * 0.6f);
+        for (int s = 0; s < nStr; ++s)
+        {
+            const float dx = ((float) s - (float) (nStr - 1) * 0.5f) * 1.35f;
+            juce::Path p;
+            p.startNewSubPath (x + dx, yTop);
+            p.quadraticTo (x + dx + wob, (yTop + yBot) * 0.5f, x + dx, yBot);
+            if (lv > 0.03f) { g.setColour (col::accent.withAlpha (0.18f * lv)); g.strokePath (p, juce::PathStrokeType (4.0f)); }
+            g.setColour (c.withAlpha (0.55f + 0.45f * lv));
+            g.strokePath (p, juce::PathStrokeType (note < 40 ? 1.8f : note < 60 ? 1.3f : 0.9f));
+        }
+        // damper: a felt block on the strings, lifted off while the key is down or the pedal is
+        const bool lifted = dampersUp || lv > 0.02f;
+        g.setColour (juce::Colour (lifted ? 0xff3a2a22 : 0xff7a2f34).withAlpha (lifted ? 0.45f : 0.9f));
+        g.fillRect (x - 1.9f, yTop + (yBot - yTop) * 0.22f + (lifted ? -7.0f : 0.0f), 3.8f, 4.0f);
+        // hammer: rests below the strings, flies up and strikes
+        const float h = hammer[(size_t) note];
+        const float hy = yBot + 7.0f - h * 11.0f;
+        g.setColour (juce::Colour (0xffe9dcc0).withAlpha (0.55f + 0.4f * h));
+        g.fillRoundedRectangle (x - 1.7f, hy, 3.4f, 6.0f, 1.5f);
+        if (h > 0.25f) { g.setColour (juce::Colours::white.withAlpha (0.8f * h * hammerVel[(size_t) note])); g.fillEllipse (x - 5.0f * h, yBot - 5.0f * h, 10.0f * h, 10.0f * h); }
+    }
+    // octave labels
+    g.setColour (col::textDim); g.setFont (font (9.0f));
+    for (int note = 24; note <= 108; note += 12)
+    {
+        const float t = (float) (note - 21) / 87.0f;
+        g.drawText ("C" + juce::String (note / 12 - 1), juce::Rectangle<float> (in.getX() + in.getWidth() * t - 10.0f, in.getBottom() - 12.0f, 20.0f, 11.0f), juce::Justification::centred);
+    }
+    // pedals
+    for (int i = 0; i < 3; ++i)
+    {
+        const auto pr = juce::Rectangle<float> (r.getRight() - 54.0f + (float) i * 16.0f, r.getBottom() - 16.0f, 11.0f, 7.0f);
+        const bool on = i == 2 && pedal > 0.3f;
+        g.setColour (on ? col::accent : juce::Colour (0xff6b563a)); g.fillRoundedRectangle (pr, 2.0f);
+    }
+}
+
+// ================================================================ PianoPanel
+PianoPanel::PianoPanel (Context& c) : Section (c, L ("Piano", "Piano"), "global"), piano (c, P::piano), tuning (c, P::tuning), master (c, P::master)
+{
+    accent = col::accent;
+    for (auto* comp : std::initializer_list<juce::Component*> { &piano, &tuning, &master, &strings }) addAndMakeVisible (comp);
+}
+
+void PianoPanel::resized()
+{
+    auto r = content();
+    auto left = r.removeFromLeft (112);
+    piano.setBounds (left.removeFromTop (26)); left.removeFromTop (6);
+    tuning.setBounds (left.removeFromTop (26)); left.removeFromTop (10);
+    master.setBounds (left.removeFromTop (80).withSizeKeepingCentre (70, 80));
+    r.removeFromLeft (8);
+    strings.setBounds (r);
+}
+
 // ================================================================ HandsPanel
 HandsPanel::HandsPanel (Context& c)
     : Section (c, L ("MANOS: tocan solas", "HANDS: they play by themselves"), "hands"),
@@ -187,6 +300,18 @@ void HandsPanel::randomise (bool all)
     set (P::handsExpress, 0.5f + 0.4f * r.nextFloat());
 }
 
+void HandsPanel::seekTo (const juce::MouseEvent& e)
+{
+    if (score.bars <= 0 || mapArea.isEmpty()) return;
+    const float bar = juce::jlimit (0.0f, (float) score.bars - 0.01f, (float) std::floor ((float) (e.x - mapArea.getX()) / (float) mapArea.getWidth() * (float) score.bars));
+    markerBar = bar;
+    ctx.proc.seekSong (bar);
+    repaint (mapArea);
+}
+
+void HandsPanel::mouseDown (const juce::MouseEvent& e) { if (mapArea.contains (e.getPosition())) seekTo (e); else Section::mouseDown (e); }
+void HandsPanel::mouseDrag (const juce::MouseEvent& e) { if (mapArea.contains (e.getPosition()) || e.mouseWasDraggedSinceMouseDown()) { if (e.getMouseDownPosition().x >= mapArea.getX() && mapArea.contains (e.getMouseDownPosition())) seekTo (e); } }
+
 void HandsPanel::tick (const Frame& f)
 {
     const bool on = ctx.proc.isPlayingInternal();
@@ -203,12 +328,12 @@ void HandsPanel::tick (const Frame& f)
     else if (wavState.load() == 2) { wavTile.busy = false; wavTile.ready = true; wavTile.text = L ("Arrastra el WAV", "Drag the WAV"); wavTile.sub = L ("listo para tu DAW", "ready for your DAW"); }
     else { wavTile.busy = false; wavTile.ready = false; wavTile.text = L ("Preparar WAV", "Prepare WAV"); wavTile.sub = L ("clic y luego arrastra", "click, then drag"); }
     const double secs = score.totalBeats * 60.0 / juce::jmax (30.0, (double) ctx.proc.getParam (P::handsTempo));
-    static const char* en[] { "Intro", "Verse", "Chorus", "Bridge", "Outro" };
+    static const char* en[] { "Intro", "Verse", "Chorus", "Bridge", "Outro", "Pre-chorus" };
     juce::String sec;
     if (running)
         for (auto& s : score.sections)
             if (songBar >= s.startBar && songBar < s.startBar + s.bars)
-            { const int k = s.type == 'I' ? 0 : s.type == 'A' ? 1 : s.type == 'B' ? 2 : s.type == 'C' ? 3 : 4; sec = en[k]; }
+            { const int k = s.type == 'I' ? 0 : s.type == 'A' ? 1 : s.type == 'B' ? 2 : s.type == 'C' ? 3 : s.type == 'P' ? 5 : 4; sec = en[k]; }
     status.setText (running ? L ("Compás ", "Bar ") + juce::String (songBar + 1) + " / " + juce::String (score.bars) + "   " + sec
                             : L ("Duración: ", "Length: ") + juce::String ((int) secs / 60) + ":" + juce::String ((int) secs % 60).paddedLeft ('0', 2) + L ("   ·   pulsa PLAY", "   ·   press PLAY"),
                     juce::dontSendNotification);
@@ -227,13 +352,13 @@ void HandsPanel::paint (juce::Graphics& g)
     for (auto& s : score.sections)
     {
         const float x0 = r.getX() + r.getWidth() * (float) s.startBar / (float) score.bars, w = r.getWidth() * (float) s.bars / (float) score.bars;
-        const auto c = s.type == 'B' ? col::accent : s.type == 'C' ? col::accent2 : s.type == 'A' ? col::accent3 : col::textDim;
+        const auto c = s.type == 'B' ? col::accent : s.type == 'C' ? col::accent2 : (s.type == 'A' || s.type == 'P') ? col::accent3 : col::textDim;
         g.setColour (c.withAlpha (running ? 0.30f : 0.2f));
         g.fillRect (juce::Rectangle<float> (x0, bandR.getY(), w, labelH).reduced (1.0f, 0.0f));
         g.setColour (c.withAlpha (0.07f));
         g.fillRect (juce::Rectangle<float> (x0, roll.getY() - 2.0f, w, roll.getHeight() + 4.0f).reduced (1.0f, 0.0f));
         g.setColour (juce::Colours::white.withAlpha (0.85f)); g.setFont (font (9.5f, true));
-        if (w > 30.0f) g.drawText (s.type == 'I' ? "INTRO" : s.type == 'A' ? L ("ESTROFA", "VERSE") : s.type == 'B' ? L ("ESTRIBILLO", "CHORUS") : s.type == 'C' ? L ("PUENTE", "BRIDGE") : "OUTRO", juce::Rectangle<float> (x0, bandR.getY(), w, labelH), juce::Justification::centred);
+        if (w > 30.0f) g.drawText (s.type == 'I' ? "INTRO" : s.type == 'A' ? L ("ESTROFA", "VERSE") : s.type == 'P' ? L ("PRE", "PRE") : s.type == 'B' ? L ("ESTRIBILLO", "CHORUS") : s.type == 'C' ? L ("PUENTE", "BRIDGE") : "OUTRO", juce::Rectangle<float> (x0, bandR.getY(), w, labelH), juce::Justification::centred);
     }
     int lo = 127, hi = 0;
     for (auto& n : score.notes) { lo = juce::jmin (lo, n.note); hi = juce::jmax (hi, n.note); }
@@ -249,6 +374,11 @@ void HandsPanel::paint (juce::Graphics& g)
     {
         const float x = r.getX() + r.getWidth() * (float) songBar / (float) score.bars;
         g.setColour (juce::Colours::white.withAlpha (0.9f)); g.fillRect (x - 1.0f, r.getY(), 2.0f, r.getHeight());
+    }
+    else if (markerBar >= 0.0f)
+    {
+        const float x = r.getX() + r.getWidth() * markerBar / (float) score.bars;
+        g.setColour (col::accent.withAlpha (0.9f)); g.fillRect (x - 1.0f, r.getY(), 2.0f, r.getHeight());
     }
 }
 
@@ -281,6 +411,7 @@ void HandsPanel::resized()
     status.setBounds (r.removeFromTop (20));
     r.removeFromTop (2);
     mapArea = r.withTrimmedBottom (8);
+    mapArea.setHeight (juce::jmax (30, mapArea.getHeight()));
     const int w = (ex.getWidth() - 3 * 8) / 4;
     midiTile.setBounds (ex.removeFromLeft (w)); ex.removeFromLeft (8);
     saveMidi.setBounds (ex.removeFromLeft (w).reduced (0, 6)); ex.removeFromLeft (8);

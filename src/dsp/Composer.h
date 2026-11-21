@@ -10,7 +10,7 @@
 //   * performance: dynamics by section and phrase, accents, humanised timing, rolled chords, rubato, pedal changes
 namespace gx
 {
-struct NoteEv { double start = 0, len = 0; int note = 60, vel = 64; };
+struct NoteEv { double start = 0, len = 0; int note = 60, vel = 64, voice = 0; };   // voice 1 = melody
 struct PedEv { double beat = 0; int val = 0; };
 struct SectionInfo { char type = 'A'; int startBar = 0, bars = 0; };   // I intro, A verse, B chorus, C bridge, O outro
 

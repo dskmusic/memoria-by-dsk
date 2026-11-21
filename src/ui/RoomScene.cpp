@@ -174,6 +174,8 @@ RoomUniforms RoomScene::uniforms() const
 {
     RoomUniforms u;
     u.time = (float) f.time; u.memory = f.memory; u.age = f.timeAge; u.world = (float) f.worldType; u.energy = f.energy;
+    u.scale = quality == 0 ? 0.5f : quality == 1 ? 0.75f : 1.0f;
+    for (int i = 0; i < 88; ++i) u.keys[i] = juce::jlimit (0.0f, 1.0f, f.keyLevel[(size_t) (21 + i)] * 3.0f);
     u.hit = hitEnv; u.pedal = f.pedal; u.flame = flame; u.intimacy = f.intimacy; u.warmth = f.warmth; u.space = f.space;
     return u;
 }

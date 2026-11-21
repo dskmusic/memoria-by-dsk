@@ -25,13 +25,15 @@ la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano d
 - **Manos: un compositor generativo para quien no toca.** Escribe canciones enteras - intro, estrofas, estribillos, puente y final - con armonía funcional
   (séptimas, novenas, acordes sus, dominantes, cadencias), motivos que se desarrollan, estribillos con gancho, patrones de acompañamiento y una interpretación expresiva
   (dinámica, acordes arpegiados, rubato, pedal). Seis estilos (Lo-Fi Chill, Cinematic, Romantic, Minimal, vals de cuna y Power Ballad), 8 escalas, cualquier tono,
-  de 16 a 128 compases, sincronizado con el tempo y el transporte de tu DAW. **Nueva variación** y **Canción al azar** (con bloqueos) crean otra con un clic.
+  de 16 a 128 compases, sincronizado con el tempo y el transporte de tu DAW. **Nueva variación** y **Canción al azar** (con bloqueos) crean otra con un clic. Pulsa en cualquier punto del mapa de la canción para saltar ahí mientras suena.
   **Exporta la canción:** arrástrala como archivo MIDI (o como WAV renderizado) directamente a tu DAW, o guárdala como .mid / .wav.
 - **300 presets de fábrica** en 10 categorías: Lo-Fi, Felt, Cinematic, Rainy, Vintage, Church, Lullaby, Study, Concert y Toy.
   **Sonido al azar** genera un piano + sala + capas + macros nuevos en cualquier categoría, con bloqueos por sección, validado y con el nivel igualado.
-- **Una habitación que envejece con el sonido:** una escena cinematográfica con shaders en la tarjeta gráfica - luz de ventana con polvo volumétrico, lluvia en el cristal,
-  un piano vertical lacado, una vela - que se vuelve sepia, con grano y rayas de película al subir Memoria. Sigue el ambiente que elijas (lluvia, cafetería, chimenea, amanecer, público).
-  Si tu tarjeta gráfica no puede, usa una escena por CPU.
+- **Una habitación 3D cinematográfica, renderizada en directo en tu tarjeta gráfica:** una escena 3D real (raymarching, sombras suaves, oclusión ambiental, reflejos en el lacado y el suelo,
+  rayos de luz volumétricos con polvo, lluvia en el cristal, una vela que parpadea, envejecimiento de película). Las teclas del piano se hunden con las notas que suenan.
+  Sigue el ambiente que elijas (lluvia, cafetería, chimenea, amanecer, público) y envejece con Memoria (sepia, grano, rayas, destellos).
+  Tres niveles de calidad en Ajustes; si tu tarjeta no puede, usa una escena por CPU.
+- **El interior del piano, en vivo:** 88 cuerdas que brillan y vibran, martillos que golpean con la velocidad real, apagadores y pedal.
 - **Exportación de audio largo:** las manos tocan de 1 minuto a 3 horas en WAV, FLAC u OGG.
 - Cambios de preset sin clics, A/B, deshacer/rehacer, MIDI learn, navegador de presets con etiquetas y favoritos, interfaz redimensionable, **English / Español**
   (automático o manual) y página de Ayuda integrada.

@@ -386,6 +386,56 @@ static void testLife()
     }
 }
 
+static void testPresetSwitch()
+{
+    std::puts ("[preset switching through the real processor]");
+#if GXT_BIN
+    int size = 0;
+    const char* data = BinaryData::getNamedResource ("factory_memoriabank", size);
+    if (data == nullptr) return;
+    const juce::var bank = juce::JSON::parse (juce::String::fromUTF8 (data, size));
+    auto* arr = bank.getProperty ("presets", {}).getArray();
+    if (arr == nullptr || arr->size() < 50) return;
+    MemoriaProcessor proc;
+    proc.prepareToPlay (48000.0, 512);
+    juce::AudioBuffer<float> blk (2, 512);
+    auto run = [&] (int blocks, bool notes)
+    {
+        juce::AudioBuffer<float> all (2, blocks * 512);
+        juce::MidiBuffer midi;
+        for (int b = 0; b < blocks; ++b)
+        {
+            midi.clear();
+            if (notes && b == 0) { midi.addEvent (juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100), 0); midi.addEvent (juce::MidiMessage::noteOn (1, 64, (juce::uint8) 100), 0); }
+            blk.clear();
+            proc.processBlock (blk, midi);
+            for (int c = 0; c < 2; ++c) all.copyFrom (c, b * 512, blk, c, 0, 512);
+        }
+        return all;
+    };
+    float lo = 1.0e9f, hi = 0; int mismatches = 0;
+    for (int k = 0; k < 10; ++k)
+    {
+        const auto pr = gx::Preset::fromVar ((*arr)[k * (arr->size() / 10)]);
+        pr.applyTo (proc);
+        run (60, false);                                    // let the click-free switch finish
+        const auto got = run (90, true);
+        Song s; s.note (0.0, 1.0, 60, 100); s.note (0.0, 1.0, 64, 100);
+        const auto want = render (pr, s, 90.0 * 512.0 / 48000.0);
+        const float cg = centroidHz (got, 0.1), cw = centroidHz (want, 0.1);
+        bool paramsOk = true;
+        for (int i = 0; i < gx::P::numParams; ++i) paramsOk &= std::abs (proc.getParam (i) - pr.params[(size_t) i]) < 1.0e-3f * juce::jmax (1.0f, std::abs (pr.params[(size_t) i]));
+        std::puts (("    " + pr.meta.name + ": piano " + juce::String ((int) pr.params[(size_t) gx::P::piano]) + ", memory " + juce::String (pr.params[(size_t) gx::P::memory], 2)
+                    + " | plugin centroid " + juce::String (cg, 0) + " Hz, direct " + juce::String (cw, 0) + " Hz, rms " + juce::String (rmsDb (got, 0.1, 0.9), 1) + " dB | params applied: " + (paramsOk ? "yes" : "NO")).toRawUTF8());
+        const bool noisy = pr.params[(size_t) gx::P::world] > 0.5f || pr.params[(size_t) gx::P::tape] > 0.15f || pr.params[(size_t) gx::P::vinyl] > 0.15f || pr.params[(size_t) gx::P::memory] > 0.4f;
+        if ((! noisy && std::abs (cg - cw) > 0.25f * cw) || ! paramsOk) ++mismatches;
+        lo = juce::jmin (lo, cg); hi = juce::jmax (hi, cg);
+    }
+    check (mismatches == 0, "the plugin plays what the preset says (" + juce::String (mismatches) + " mismatches)");
+    check (hi > lo * 1.3f, "presets sound different from each other (centroid spread " + juce::String (lo, 0) + " - " + juce::String (hi, 0) + " Hz)");
+#endif
+}
+
 int runAll()
 {
     testParams();
@@ -396,6 +446,7 @@ int runAll()
     testLife();
     testGenerator();
     testHands();
+    testPresetSwitch();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

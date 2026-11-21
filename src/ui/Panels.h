@@ -23,6 +23,33 @@ private:
     bool started = false;
 };
 
+// The inside of the piano, live: 88 strings (1 / 2 / 3 per note) that glow and vibrate with each note, hammers that strike with the
+// real velocity, dampers that lift while a key is down or the pedal is, and the pedal.
+class StringsView : public juce::Component, public Animated
+{
+public:
+    StringsView();
+    void tick (const Frame&) override;
+    void paint (juce::Graphics&) override;
+private:
+    std::array<float, 128> level {}, hammer {}, hammerVel {};
+    std::array<int, 128> stamp {};
+    float pedal = 0, phase = 0;
+    bool first = true;
+};
+
+// PIANO: instrument, tuning, master and the strings view.
+class PianoPanel : public Section
+{
+public:
+    explicit PianoPanel (Context& c);
+    void resized() override;
+private:
+    ParamCombo piano, tuning;
+    ParamKnob master;
+    StringsView strings;
+};
+
 // HANDS: the generative pianist. Play, song parameters, regenerate (new variation / randomise unlocked parameters),
 // song map with playhead, and export (MIDI / WAV, as files or dragged into the DAW).
 class HandsPanel : public Section, public Animated
@@ -33,8 +60,12 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
     void tick (const Frame&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
 
 private:
+    void seekTo (const juce::MouseEvent&);
+    float markerBar = -1;
     void refreshScore();
     void randomise (bool all);
     juce::File midiFile();

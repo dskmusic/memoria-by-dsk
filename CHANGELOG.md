@@ -12,7 +12,12 @@
   locked to the DAW tempo and transport or an internal clock; New variation, Random song with locks; export as MIDI or WAV (drag into the DAW or save).
 - Random sound generator with section locks.
 - One-page interface: room scene, Memory slider, Hands, sound generator and every control.
-- GPU shader room scene (volumetric light and dust, rain on glass, glossy piano, candle, film ageing) with a CPU fallback.
+- GPU shader room: a real 3D ray-marched scene (soft shadows, AO, reflections, volumetric light with dust, rain on glass, candle, film ageing), piano keys that go down with the notes, three quality levels, CPU fallback.
+- Strings view: 88 live strings, hammers, dampers and pedal in the Piano panel.
+- Click on the song map to jump to that bar while playing (in a DAW the song is aligned to the host position).
+- Composer v3: pre-chorus, hook repeats, bass approach notes, pushed chords, key lift in the last chorus, best-of-six takes by melodic quality.
+- Presets: each category has its own signature sound (instrument, brightness, room, character); Tone / Hammer / Body have a much wider effect.
+- Video captions: UTF-8 fixed (Spanish accents), English first then Spanish.
 - Rain, cafe (voices, cups, steam), fireplace, birds and audience ambiences rebuilt and level-capped.
 - Room scene (window light, dust, rain, candle) that ages with Memory.
 - Rule-based preset generator with offline validation and level matching; 300 factory presets in 10 categories; Surprise me button.

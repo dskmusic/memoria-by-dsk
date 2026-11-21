@@ -11,6 +11,8 @@ namespace gx
 {
 // 0 drizzle, 1 steady, 2 heavy (only used to compare versions while tuning)
 inline int& rainVariant() { static int v = 1; return v; }
+// 0 whispered murmur, 1 voiced + breath, 2 voiced and far away (only used to compare versions while tuning)
+inline int& crowdVariant() { static int v = 1; return v; }
 
 struct LifeLevels
 {
@@ -68,8 +70,14 @@ private:
     float rk[2][3] {}, rbp[2] {}, rrum[2] {}, rrum2[2] {}, gust = 1, gustTarget = 1, roof = 0;
     int gustCount = 0;
     // cafe / audience: a handful of voices (sawtooth through two moving formants, gated at syllable rate)
-    struct Talker { float ph = 0, f0 = 150, env = 0, envT = 0, pl = 0.7f, pr = 0.7f; int left = 0; Svf s1, s2; };
+    struct Talker
+    {
+        float ph = 0, f0 = 150, env = 0, envT = 0, pl = 0.7f, pr = 0.7f, f1 = 500, f2 = 1500, f1t = 500, f2t = 1500, vib = 0, pitchT = 150;
+        int left = 0, phrase = 0, coef = 0;
+        Svf s1, s2;
+    };
     std::array<Talker, 10> talk;
+    DelayLine smear;
     float babLp[2] {}, espresso = 0;
     Smooth tapeS, vinylS, worldS;
 };
