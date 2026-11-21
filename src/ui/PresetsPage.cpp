@@ -198,7 +198,7 @@ void PresetsPage::loadRow (int row)
     const auto& m = ctx.library.all()[(size_t) idx];
     info.setText (m.name + "\n" + m.category + " / " + m.subcategory + L ("\nAutor: ", "\nAuthor: ") + m.author + "\nTags: " + m.tags.joinIntoString (", ")
                   + L ("\nUsos: ", "\nUses: ") + juce::String (m.uses) + "\n\n" + localisedNotes (m.notes), juce::dontSendNotification);
-    if (ctx.settings.previewOnSelect() && ! ctx.proc.isHostPlaying()) ctx.proc.setPlaying (true);
+    if (ctx.settings.previewOnSelect() && ! ctx.proc.isHostPlaying()) ctx.proc.previewChord();
 }
 
 void PresetsPage::selectedRowsChanged (int row) { if (! syncingSelection) loadRow (row); }

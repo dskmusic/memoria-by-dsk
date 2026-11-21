@@ -3,8 +3,6 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "ui/Pages.h"
 
-namespace gx::ui { class GeneratorPage; }
-
 // Library shared by every plugin instance in the process (one index.json writer).
 struct LibraryHolder
 {
@@ -28,10 +26,7 @@ public:
     void setUiScale (float s);
     void toast (const juce::String& msg);
     void advanceFrames (double dt);   // used by the screenshot tool
-    gx::ui::GeneratorPage& generatorPage() { return *generator; }
     void rebuildUi();                 // language switch (also exercised by MemoriaTool screenshot)
-    void openFullscreen();
-    void closeFullscreen();
     void videoFrame() { stopTimer(); timerCallback(); } // MemoriaTool video: one UI frame on the virtual clock
 
 private:
@@ -53,15 +48,12 @@ private:
     gx::ui::Context ctx;
     Root root;
     std::unique_ptr<gx::ui::Header> header;
-    std::unique_ptr<gx::ui::LandscapePage> landscapePage;
-    std::unique_ptr<gx::ui::SoundPage> soundPage;
-    std::unique_ptr<gx::ui::GeneratorPage> generator;
+    std::unique_ptr<gx::ui::PianoPage> pianoPage;
     std::unique_ptr<gx::ui::PresetsPage> presets;
     std::unique_ptr<gx::ui::ExportPage> exportPage;
     std::unique_ptr<gx::ui::HelpPage> helpPage;
     std::unique_ptr<gx::ui::SettingsPage> settingsPage;
     std::unique_ptr<gx::ui::AboutOverlay> about;
-    std::unique_ptr<gx::ui::FullscreenView> fullscreenView;
     juce::MidiKeyboardComponent keyboard;
     juce::Label toastLabel;
     std::unique_ptr<juce::TooltipWindow> tooltips;

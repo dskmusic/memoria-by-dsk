@@ -1,7 +1,9 @@
 // Memoria unit tests (run with: MemoriaTool test)
 #include "Tests.h"
 #include <juce_audio_formats/juce_audio_formats.h>
+#include <juce_dsp/juce_dsp.h>
 #include <set>
+#include <chrono>
 
 namespace gxtest
 {
@@ -48,15 +50,66 @@ void setParam (gx::Preset& p, const juce::String& id, float plain)
     if (i >= 0) p.params[(size_t) i] = gx::paramDefs()[(size_t) i].range.snapToLegalValue (plain);
 }
 
-juce::AudioBuffer<float> render (const gx::Preset& p, double seconds, double sr, int bs)
+juce::AudioBuffer<float> render (const gx::Preset& p, const Song& s, double seconds, double sr, int bs)
 {
     juce::AudioBuffer<float> out (2, (int) (seconds * sr));
     out.clear();
-    gx::renderPreset (p, out, sr, bs);
+    gx::renderMidi (p, s.buf, out, sr, bs);
     return out;
 }
 
-static float db (float x) { return 20.0f * std::log10 (juce::jmax (1.0e-9f, x)); }
+float rmsDb (const juce::AudioBuffer<float>& b, double t0, double t1, double sr)
+{
+    const int a = juce::jlimit (0, b.getNumSamples(), (int) (t0 * sr)), e = juce::jlimit (a, b.getNumSamples(), (int) (t1 * sr));
+    return juce::Decibels::gainToDecibels (analyse (b, a, e - a).rms, -120.0f);
+}
+
+float centroidHz (const juce::AudioBuffer<float>& b, double t0, double sr)
+{
+    constexpr int N = 4096;
+    juce::dsp::FFT fft (12);
+    std::vector<float> d (2 * N, 0.0f);
+    const int a = juce::jlimit (0, juce::jmax (0, b.getNumSamples() - N), (int) (t0 * sr));
+    for (int i = 0; i < N; ++i)
+        d[(size_t) i] = 0.5f * (b.getSample (0, a + i) + b.getSample (1, a + i)) * (0.5f - 0.5f * std::cos (juce::MathConstants<float>::twoPi * (float) i / N));
+    fft.performFrequencyOnlyForwardTransform (d.data());
+    double num = 0, den = 0;
+    for (int i = 1; i < N / 2; ++i) { const double f = i * sr / N; num += f * d[(size_t) i]; den += d[(size_t) i]; }
+    return den > 0 ? (float) (num / den) : 0.0f;
+}
+
+// a click = a sample whose second difference towers over the recent history, outside the first 8 ms after every note-on
+int countClicks (const juce::AudioBuffer<float>& b, const std::vector<double>& onsets, double sr)
+{
+    int clicks = 0;
+    const int n = b.getNumSamples();
+    for (int c = 0; c < b.getNumChannels(); ++c)
+    {
+        const float* x = b.getReadPointer (c);
+        double hist = 1.0e-5;
+        for (int i = 2; i < n; ++i)
+        {
+            const double d2 = std::abs ((double) x[i] - 2.0 * x[i - 1] + x[i - 2]);
+            bool skip = false;
+            for (double o : onsets) if ((double) i / sr >= o && (double) i / sr < o + 0.008) { skip = true; break; }
+            if (! skip && d2 > 14.0 * hist && d2 > 4.0e-4) { ++clicks; if (clicks < 8) std::printf ("      click ch%d at %.4f s (d2 %.5f, hist %.6f)\n", c, (double) i / sr, d2, hist); }
+            hist = juce::jmax (1.0e-5, hist * 0.999 + d2 * 0.001, d2 * 0.01);
+        }
+    }
+    return clicks;
+}
+
+void writeWav (const juce::AudioBuffer<float>& b, const juce::File& f, double sr)
+{
+    f.deleteFile();
+    juce::WavAudioFormat wav;
+    std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
+    if (os == nullptr) return;
+    if (auto w = wav.createWriterFor (os, juce::AudioFormatWriterOptions().withSampleRate (sr).withNumChannels (2).withBitsPerSample (24)))
+        w->writeFromAudioSampleBuffer (b, 0, b.getNumSamples());
+}
+
+std::vector<std::function<void()>>& extraTests() { static std::vector<std::function<void()>> v; return v; }
 
 static void testParams()
 {
@@ -74,305 +127,130 @@ static void testParams()
     }
     check (ok, "indices, defaults inside ranges, lookup");
     check ((int) ids.size() == gx::P::numParams, "unique ids");
-    for (int s = 0; s < gx::scaleNames().size(); ++s) check (! gx::scaleSteps (s).empty() && gx::scaleSteps (s)[0] == 0, "scale " + gx::scaleNames()[s]);
+    check (gx::pianoNames().size() == gx::numPianoTypes(), "piano names match models");
 }
 
-static void testRender()
+static void testSound()
 {
-    std::puts ("[render]");
-    const double sr = 48000;
+    std::puts ("[sound]");
     gx::Preset p;
-    auto b = render (p, 30.0, sr);
-    const auto all = analyse (b);
-    const auto late = analyse (b, (int) (10 * sr));
-    std::printf ("    default preset: rms %.1f dB, peak %.1f dB, dc %.5f\n", db (late.rms), db (all.peak), all.dc);
-    check (all.finite, "finite");
-    check (all.peak < 1.0f, "peak below 0 dBFS");
-    check (late.rms > 0.005f, "audible after the fade-in");
-    check (all.dc < 0.01f, "no DC");
-    check (analyse (b, 0, 256).peak < 0.02f, "starts from silence (fade-in)");
-
-    // every layer alone makes sound
-    for (int l = 0; l < gx::kNumLayers; ++l)
-    {
-        gx::Preset q;
-        for (int k = 0; k < gx::kNumLayers; ++k) q.params[(size_t) gx::P::layer (k, gx::P::lOn)] = k == l ? 1.0f : 0.0f;
-        q.params[(size_t) gx::P::layer (l, gx::P::lPresence)] = 1.0f;
-        q.params[(size_t) gx::P::layer (l, gx::P::lLevel)] = 0.8f;
-        if (l == gx::lyBells) q.params[(size_t) gx::P::layer (l, gx::P::lChar)] = 0.9f;
-        auto r = render (q, 20.0, sr);
-        const auto st = analyse (r, (int) (6 * sr));
-        std::printf ("    %-8s rms %.1f dB, peak %.1f dB\n", gx::layerIds()[l].toRawUTF8(), db (st.rms), db (st.peak));
-        check (st.finite && st.rms > 0.0005f && st.peak < 1.0f, "layer alone: " + gx::layerIds()[l]);
+    {   // silence without notes
+        Song s;
+        const auto b = render (p, s, 1.0);
+        const auto st = analyse (b);
+        check (st.finite && st.peak < 1.0e-6f, "silent without notes");
     }
-
-    // everything off -> silence
-    gx::Preset off;
-    for (int k = 0; k < gx::kNumLayers; ++k) off.params[(size_t) gx::P::layer (k, gx::P::lOn)] = 0.0f;
-    check (analyse (render (off, 5.0, sr)).peak < 1.0e-6f, "all layers off is silent");
+    for (int type = 0; type < gx::numPianoTypes(); ++type)
+    {
+        auto q = p; setParam (q, "piano", (float) type);
+        Song s;
+        s.note (0.1, 1.5, 48, 90); s.note (0.1, 1.5, 60, 90); s.note (0.1, 1.5, 76, 90);
+        const auto b = render (q, s, 5.0);
+        const auto st = analyse (b);
+        const juce::String nm = gx::pianoNames()[type];
+        std::printf ("    %-14s peak %.3f  rms %.1f dB\n", nm.toRawUTF8(), st.peak, rmsDb (b, 0.15, 0.5));
+        check (st.finite, nm + ": finite");
+        check (st.peak < 1.0f && st.peak > 0.02f, nm + ": level sane (peak " + juce::String (st.peak, 3) + ")");
+        check (st.dc < 1.0e-3f, nm + ": no DC");
+        check (rmsDb (b, 0.15, 0.5) > rmsDb (b, 3.0, 3.5) + 6.0f, nm + ": decays");
+    }
+    {   // velocity: louder AND brighter
+        float lastDb = -200, lastC = 0; bool mono = true;
+        for (int v : { 25, 55, 85, 120 })
+        {
+            Song s; s.note (0.05, 1.0, 60, v);
+            const auto b = render (p, s, 1.5);
+            const float d = rmsDb (b, 0.06, 0.4), c = centroidHz (b, 0.07);
+            std::printf ("    C4 vel %3d: %6.1f dB  centroid %6.0f Hz\n", v, d, c);
+            mono &= d > lastDb && c > lastC;
+            lastDb = d; lastC = c;
+        }
+        check (mono, "velocity raises level and brightness");
+    }
+    {   // pedal keeps the notes ringing
+        Song a, b2, hp;
+        a.note (0.1, 0.3, 60, 80);
+        b2.note (0.1, 0.3, 60, 80); b2.pedal (0.0, 127); b2.pedal (2.5, 0);
+        hp.note (0.1, 0.3, 60, 80); hp.pedal (0.0, 52);
+        const auto ra = render (p, a, 3.0), rb = render (p, b2, 3.0), rh = render (p, hp, 3.0);
+        const float da = rmsDb (ra, 1.2, 1.6), db = rmsDb (rb, 1.2, 1.6), dh = rmsDb (rh, 1.2, 1.6);
+        std::printf ("    note released at 0.4 s, level at 1.4 s: no pedal %.1f dB, half pedal %.1f dB, full pedal %.1f dB\n", da, dh, db);
+        check (db > da + 10.0f, "sustain pedal keeps the note ringing");
+        check (dh > da + 2.0f && dh < db + 0.1f, "half pedal sits in between");
+    }
+    {   // loudness across the keyboard stays within a few dB
+        float lo = 1000, hi = -1000;
+        for (int n = 28; n <= 100; n += 6)
+        {
+            Song s; s.note (0.05, 1.0, n, 80);
+            const auto b = render (p, s, 1.0);
+            const float d = rmsDb (b, 0.06, 0.45);
+            std::printf ("      note %3d: %6.1f dB\n", n, d);
+            lo = juce::jmin (lo, d); hi = juce::jmax (hi, d);
+        }
+        std::printf ("    level spread over the keyboard: %.1f dB\n", hi - lo);
+        check (hi - lo < 9.0f, "level is even across the keyboard");
+    }
 }
 
 static void testDeterminism()
 {
     std::puts ("[determinism]");
-    const double sr = 44100;
     gx::Preset p;
-    setParam (p, "seed", 777);
-    setParam (p, "evolution", 0.9f);
-    setParam (p, "chord_rate", 1.0f);
-    setParam (p, "bells_char", 0.9f);
-    const auto a = render (p, 25.0, sr, 512), b = render (p, 25.0, sr, 333), c = render (p, 25.0, sr, 64);
-    float diff = 0, diff2 = 0;
-    for (int ch = 0; ch < 2; ++ch)
-        for (int i = 0; i < a.getNumSamples(); ++i)
-        {
-            diff = juce::jmax (diff, std::abs (a.getSample (ch, i) - b.getSample (ch, i)));
-            diff2 = juce::jmax (diff2, std::abs (a.getSample (ch, i) - c.getSample (ch, i)));
-        }
-    std::printf ("    max diff 512 vs 333: %g, 512 vs 64: %g\n", (double) diff, (double) diff2);
-    check (diff < 1.0e-5f && diff2 < 1.0e-5f, "identical output for any block size");
-
-    setParam (p, "seed", 778);
-    const auto d = render (p, 25.0, sr, 512);
-    float sep = 0;
-    for (int i = 0; i < a.getNumSamples(); ++i) sep = juce::jmax (sep, std::abs (a.getSample (0, i) - d.getSample (0, i)));
-    check (sep > 0.01f, "another seed sounds different");
+    Song s;
+    for (int i = 0; i < 12; ++i) s.note (0.2 + i * 0.37, 0.9, 48 + (i * 5) % 30, 40 + (i * 13) % 80);
+    s.pedal (1.0, 127); s.pedal (3.0, 0);
+    const auto ref = render (p, s, 6.0, 48000.0, 512);
+    for (int bs : { 333, 64, 1024 })
+    {
+        const auto other = render (p, s, 6.0, 48000.0, bs);
+        bool same = true;
+        for (int c = 0; c < 2 && same; ++c)
+            for (int i = 0; i < ref.getNumSamples(); ++i)
+                if (ref.getSample (c, i) != other.getSample (c, i)) { same = false; break; }
+        check (same, "bit-identical at block size " + juce::String (bs));
+    }
 }
 
-static void testTransport()
+static void testClicks()
 {
-    std::puts ("[transport]");
-    const double sr = 48000;
-    gx::Engine e;
-    e.prepare (sr, 512);
+    std::puts ("[clicks]");
     gx::Preset p;
-    p.params[(size_t) gx::P::fadeIn] = 1.0f;
-    p.params[(size_t) gx::P::fadeOut] = 2.0f;
-    juce::AudioBuffer<float> b (2, 512);
-    juce::MidiBuffer none;
-    gx::HostInfo hi;
-    auto run = [&] (double secs) { float pk = 0; for (int k = 0; k < (int) (secs * sr / 512); ++k) { e.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi); pk = juce::jmax (pk, b.getMagnitude (0, 512)); } return pk; };
-    check (run (2.0) < 1.0e-6f, "stopped: silent");
-    hi.internalPlay = true;
-    check (run (6.0) > 0.01f, "internal Play: sound");
-    check (e.tele.running.load(), "telemetry running");
-    hi.internalPlay = false;
-    float tail = 1;
-    for (int s = 0; s < 20 && tail > 1.0e-4f; ++s) tail = run (1.0);
-    if (tail > 1.0e-4f) std::printf ("    tail after 20 s: %.1f dB\n", 20.0 * std::log10 (tail));
-    check (tail < 1.0e-4f, "Stop: fades out to silence (tail < 20 s)");
-
-    // DAW transport: playing from a position resyncs; the same position gives the same audio
-    auto fromHost = [&] (int64_t start, double secs)
-    {
-        gx::Engine eng;
-        eng.prepare (sr, 512);
-        gx::HostInfo h; h.hostPlaying = true; h.hasPosition = true; h.hostSample = start;
-        juce::AudioBuffer<float> out (2, (int) (secs * sr));
-        for (int pos = 0; pos + 512 <= out.getNumSamples(); pos += 512)
-        {
-            eng.process (out.getWritePointer (0, pos), out.getWritePointer (1, pos), 512, none, p.params.data(), h);
-            h.hostSample += 512;
-        }
-        return out;
-    };
-    const auto h1 = fromHost (48000 * 30, 6.0), h2 = fromHost (48000 * 30, 6.0);
-    float diff = 0;
-    for (int i = 0; i < h1.getNumSamples(); ++i) diff = juce::jmax (diff, std::abs (h1.getSample (0, i) - h2.getSample (0, i)));
-    check (diff < 1.0e-6f && analyse (h1).rms > 0.001f, "DAW playback from a position is reproducible");
-
-    // session timer: 1 minute -> stops by itself
-    gx::Engine t;
-    t.prepare (sr, 512);
-    gx::Preset tp;
-    tp.params[(size_t) gx::P::timer] = 1;
-    tp.params[(size_t) gx::P::fadeOut] = 3;
-    gx::HostInfo th; th.internalPlay = true;
-    bool expired = false;
-    for (int k = 0; k < (int) (70 * sr / 512) && ! expired; ++k)
-    {
-        t.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, tp.params.data(), th);
-        expired = t.tele.timerExpired.exchange (false);
-        if (expired) check (t.tele.sessionElapsed.load() > 50.0f && t.tele.sessionElapsed.load() < 60.0f, "timer fires before the end minus fade-out");
-    }
-    check (expired, "session timer expires");
-}
-
-// Changing the sound while it plays (preset browsing, new seed) must take effect at once, without a Stop.
-static void testLiveChanges()
-{
-    std::puts ("[live changes]");
-    const double sr = 48000;
-    juce::AudioBuffer<float> b (2, 512);
-    juce::MidiBuffer none;
-    gx::HostInfo hi; hi.internalPlay = true;
-    auto run = [&] (gx::Engine& e, const gx::Preset& p, double secs) { for (int k = 0; k < (int) (secs * sr / 512); ++k) e.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi); };
-    gx::Preset a, c;
-    setParam (a, "seed", 11); setParam (a, "scale", 0); setParam (a, "octave", 2); setParam (a, "harmony", 0.6f);
-    c = a;
-    setParam (c, "seed", 12345); setParam (c, "scale", 1); setParam (c, "octave", 3);
-    gx::Engine e1, e2;
-    e1.prepare (sr, 512); e2.prepare (sr, 512);
-    run (e1, a, 5.0); run (e2, a, 5.0);
-    run (e1, c, 1.0); run (e2, a, 1.0);
-    // B: C minor-ish chord notes one octave up (pad base = 12 * (octave + 2) + root)
-    const int base = 12 * (3 + 2) + (int) c.get (gx::P::key);
-    bool inRange = true, inScale = true;
-    for (int i = 0; i < gx::kChordVoices; ++i)
-    {
-        const int n = e1.tele.chordNotes[(size_t) i].load();
-        inRange &= n >= base - 3 && n <= base + 26; // voice-leading may dip a few semitones below the register base
-        const auto& st = gx::scaleSteps (1);
-        inScale &= std::find (st.begin(), st.end(), ((n - (int) c.get (gx::P::key)) % 12 + 12) % 12) != st.end();
-    }
-    check (inRange && inScale, "new scale / octave apply while playing");
-    run (e1, c, 20.0); run (e2, a, 20.0);
-    float diff = 0;
-    for (int l = 0; l < gx::kNumLayers; ++l) diff += std::abs (e1.tele.presence[(size_t) l].load() - e2.tele.presence[(size_t) l].load());
-    check (diff > 0.01f || e1.tele.chordDegree.load() != e2.tele.chordDegree.load(), "new seed changes the journey while playing");
-    check (e1.tele.running.load() && e1.tele.runGain.load() > 0.99f, "no stop / fade on a live change");
-}
-
-static void testFeatures()
-{
-    std::puts ("[features]");
-    // every noise type is finite and audible
-    for (int nt = 1; nt < 6; ++nt)
-    {
-        gx::Preset p;
-        for (int l = 0; l < gx::kNumLayers; ++l) p.params[(size_t) gx::P::layer (l, gx::P::lOn)] = 0;
-        p.params[(size_t) gx::P::noiseType] = (float) nt;
-        p.params[(size_t) gx::P::noiseLevel] = 0.8f;
-        const auto st = analyse (render (p, 6.0), 48000 * 2);
-        check (st.finite && st.rms > 0.0003f && st.peak < 1.0f, "noise type " + juce::String (nt));
-    }
-    // sleep mode: with a 1-minute timer the second half is clearly quieter than the start
-    {
-        gx::Preset p;
-        p.params[(size_t) gx::P::timer] = 1; p.params[(size_t) gx::P::sleepMode] = 1;
-        const auto b = render (p, 58.0);
-        const float early = analyse (b, 48000 * 8, 48000 * 8).rms, late = analyse (b, 48000 * 50, 48000 * 6).rms;
-        std::printf ("    sleep mode: %.1f dB -> %.1f dB\n", 20.0 * std::log10 (early + 1e-9), 20.0 * std::log10 (late + 1e-9));
-        check (late < early * 0.5f, "sleep mode fades out over the timer");
-    }
-    // tempo sync: chords change exactly on the bar grid of the host
-    {
-        gx::Engine e;
-        e.prepare (48000, 512);
-        gx::Preset p;
-        p.params[(size_t) gx::P::syncChords] = 1; p.params[(size_t) gx::P::chordBars] = 0; p.params[(size_t) gx::P::harmony] = 0.7f;
-        juce::AudioBuffer<float> b (2, 512);
-        juce::MidiBuffer none;
-        gx::HostInfo hi; hi.hostPlaying = true; hi.hasPosition = true; hi.hasPpq = true; hi.bpm = 120;
-        int changes = 0, last = -1;
-        for (int k = 0; k < (int) (48000 * 16 / 512); ++k)
-        {
-            hi.hostSample = (int64_t) k * 512; hi.ppq = (double) hi.hostSample / 48000.0 * 2.0;
-            e.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi);
-            const int d = e.tele.chordNotes[0].load() * 100 + e.tele.chordDegree.load();
-            if (d != last) { ++changes; last = d; }
-        }
-        std::printf ("    tempo sync: %d chord changes in 8 bars\n", changes);
-        check (changes >= 4 && changes <= 9, "tempo-synced chords change about once per bar");
-    }
-}
-
-static void testMidi()
-{
-    std::puts ("[midi]");
-    const double sr = 48000;
-    gx::Engine e;
-    e.prepare (sr, 512);
-    gx::Preset p;
-    juce::AudioBuffer<float> b (2, 512);
-    gx::HostInfo hi;
-    juce::MidiBuffer m;
-    m.addEvent (juce::MidiMessage::noteOn (1, 62, 0.9f), 100); // D
-    e.process (b.getWritePointer (0), b.getWritePointer (1), 512, m, p.params.data(), hi);
-    juce::MidiBuffer none;
-    float pk = 0;
-    for (int k = 0; k < 100; ++k) { e.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi); pk = juce::jmax (pk, b.getMagnitude (0, 512)); }
-    check (pk > 0.005f, "MIDI notes play even while stopped");
-    hi.internalPlay = true;
-    for (int k = 0; k < 10; ++k) e.process (b.getWritePointer (0), b.getWritePointer (1), 512, none, p.params.data(), hi);
-    check (e.tele.rootPc.load() == 2, "MIDI note sets the key (D)");
-}
-
-static void testExport()
-{
-    std::puts ("[export]");
-    gx::Preset p;
-    juce::AudioFormatManager fm;
-    fm.registerBasicFormats();
-    for (int f = 0; f < 3; ++f)
-    {
-        auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("memoria_export_test" + gx::exportFormatExtension (f));
-        std::atomic<float> prog { 0 };
-        const auto err = gx::exportAudio (p, file, f, 6.0, 48000.0, &prog);
-        check (err.isEmpty(), "export " + gx::exportFormatExtension (f) + " " + err);
-        std::unique_ptr<juce::AudioFormatReader> r (fm.createReaderFor (file));
-        check (r != nullptr && std::abs ((double) r->lengthInSamples - 6.0 * 48000.0) < 4096 && r->numChannels == 2, "reads back " + gx::exportFormatExtension (f));
-        check (prog.load() > 0.99f, "progress reaches 100%");
-        if (r != nullptr)
-        {
-            juce::AudioBuffer<float> b (2, (int) r->lengthInSamples);
-            r->read (&b, 0, b.getNumSamples(), 0, true, true);
-            check (analyse (b).rms > 0.001f && analyse (b, b.getNumSamples() - 64).peak < 0.01f, "audible, silent at the end " + gx::exportFormatExtension (f));
-        }
-        r.reset();
-        file.deleteFile();
-    }
+    Song s;
+    for (int i = 0; i < 20; ++i) s.note (0.1 + i * 0.22, 0.6, 40 + (i * 7) % 40, 50 + (i * 11) % 70);
+    s.pedal (0.5, 127); s.pedal (2.0, 0); s.pedal (2.4, 90); s.pedal (3.3, 0);
+    for (int i = 0; i < 6; ++i) s.note (4.8 + i * 0.05, 0.4, 60, 100);       // re-strikes of a ringing note
+    const auto b = render (p, s, 7.0);
+    const int clicks = countClicks (b, s.onsets);
+    check (clicks == 0, "no clicks (" + juce::String (clicks) + ")");
 }
 
 static void testStress()
 {
     std::puts ("[stress]");
-    const double sr = 44100;
-    juce::Random rnd (99);
-    bool ok = true;
-    for (int k = 0; k < 6; ++k)
-    {
-        gx::Preset p;
-        for (auto& d : gx::paramDefs()) p.params[(size_t) d.index] = d.range.convertFrom0to1 (rnd.nextFloat());
-        p.params[(size_t) gx::P::master] = 6.0f;
-        p.params[(size_t) gx::P::fadeIn] = 0.5f;
-        const auto b = render (p, 8.0, sr, 256);
-        const auto s = analyse (b);
-        ok &= s.finite && s.peak <= 1.0f;
-        if (! s.finite || s.peak > 1.0f) std::printf ("    random patch %d: finite %d peak %.3f\n", k, (int) s.finite, (double) s.peak);
-    }
-    check (ok, "random patches stay finite and below 0 dBFS");
-}
-
-static void testCpu()
-{
-    std::puts ("[cpu]");
     gx::Preset p;
-    for (int l = 0; l < gx::kNumLayers; ++l) { p.params[(size_t) gx::P::layer (l, gx::P::lPresence)] = 1; p.params[(size_t) gx::P::layer (l, gx::P::lLevel)] = 0.7f; }
-    p.params[(size_t) gx::P::density] = 1;
-    const auto t0 = juce::Time::getMillisecondCounterHiRes();
-    render (p, 10.0, 48000.0, 512);
-    const double ms = juce::Time::getMillisecondCounterHiRes() - t0;
-    std::printf ("    all layers at full density: %.1f%% of one core\n", ms / 100.0);
-    check (ms / 100.0 < 40.0, "CPU budget");
+    Song s;
+    for (int i = 0; i < 90; ++i) s.note (0.02 * i, 3.0, 21 + (i * 3) % 88, 127);
+    s.pedal (0.0, 127);
+    const auto t0 = std::chrono::steady_clock::now();
+    const auto b = render (p, s, 10.0);
+    const double secs = std::chrono::duration<double> (std::chrono::steady_clock::now() - t0).count();
+    const auto st = analyse (b);
+    std::printf ("    90 notes with pedal, 10 s of audio rendered in %.2f s (%.1f x realtime)\n", secs, 10.0 / secs);
+    std::printf ("    overload peak %.4f finite %d\n", st.peak, (int) st.finite);
+    check (st.finite && st.peak <= 1.0f, "polyphony overload stays finite and bounded");
+    check (secs < 5.0, "CPU: faster than 2x realtime even at full overload");
 }
 
 int runAll()
 {
     testParams();
-    testRender();
+    testSound();
     testDeterminism();
-    testTransport();
-    testLiveChanges();
-    testFeatures();
-    testMidi();
-    testExport();
+    testClicks();
     testStress();
-    testCpu();
     for (auto& t : extraTests()) t();
-    std::printf ("%d checks, %d failures\n", checks, failures);
+    std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;
 }
-
-std::vector<std::function<void()>>& extraTests() { static std::vector<std::function<void()>> v; return v; }
 }

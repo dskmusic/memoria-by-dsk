@@ -22,13 +22,13 @@ namespace col
     const juce::Colour bevelLo   { 0x66000000 };
     const juce::Colour text      { 0xffe2e6f2 };
     const juce::Colour textDim   { 0xff8790ad };
-    const juce::Colour accent    { 0xff4fe3c1 }; // aurora teal
-    const juce::Colour accent2   { 0xffffcf6e }; // horizon gold
-    const juce::Colour accent3   { 0xffa68cff }; // violet
+    const juce::Colour accent    { 0xffe8b26a }; // honey amber
+    const juce::Colour accent2   { 0xffd9899c }; // dusty rose
+    const juce::Colour accent3   { 0xff7c93d9 }; // dusk blue
     const juce::Colour danger    { 0xffff6b81 };
     const juce::Colour knobBody  { 0xff262d4a };
     const juce::Colour screen    { 0xff070915 };
-    const juce::Colour phosphor  { 0xff8ff5dd };
+    const juce::Colour phosphor  { 0xfff6dcaa };
     const juce::Colour grid      { 0xff141a33 };
     // one colour per layer (landscape, layer strips)
     const juce::Colour layer[8] { juce::Colour (0xff6f8cff), juce::Colour (0xffa68cff), juce::Colour (0xffffcf6e),

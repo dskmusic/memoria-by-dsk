@@ -1,5 +1,4 @@
 #include "PluginEditor.h"
-#include "ui/GeneratorPage.h"
 #if __has_include(<BinaryData.h>)
  #include <BinaryData.h>
  #define GX_HAS_BINARYDATA 1
@@ -21,8 +20,6 @@ MemoriaEditor::MemoriaEditor (MemoriaProcessor& p)
       frames (p)
 {
     gx::uiEnglish() = settings.messageLanguage() == "en"; // before any page builds its labels
-    gx::ui::noteStarIntensity() = settings.noteStars();
-    gx::ui::showFps() = settings.fps();
     setLookAndFeel (&lnf);
     juce::LookAndFeel::setDefaultLookAndFeel (&lnf);
     ctx.toast = [this] (const juce::String& m) { toast (m); };
@@ -75,15 +72,13 @@ MemoriaEditor::MemoriaEditor (MemoriaProcessor& p)
 void MemoriaEditor::buildUi()
 {
     header = std::make_unique<gx::ui::Header> (ctx, [this] (int t) { showPage (t); });
-    landscapePage = std::make_unique<gx::ui::LandscapePage> (ctx);
-    soundPage = std::make_unique<gx::ui::SoundPage> (ctx);
-    generator = std::make_unique<gx::ui::GeneratorPage> (ctx);
+    pianoPage = std::make_unique<gx::ui::PianoPage> (ctx);
     presets = std::make_unique<gx::ui::PresetsPage> (ctx);
     exportPage = std::make_unique<gx::ui::ExportPage> (ctx);
     helpPage = std::make_unique<gx::ui::HelpPage> (ctx);
     settingsPage = std::make_unique<gx::ui::SettingsPage> (ctx, [this] (float s) { setUiScale (s); }, [this] { about->setVisible (true); about->toFront (false); });
     about = std::make_unique<gx::ui::AboutOverlay>();
-    pages = { landscapePage.get(), soundPage.get(), generator.get(), presets.get(), exportPage.get(), settingsPage.get(), helpPage.get() };
+    pages = { pianoPage.get(), presets.get(), exportPage.get(), settingsPage.get(), helpPage.get() };
     root.addAndMakeVisible (*header);
     for (auto* pg : pages) root.addChildComponent (pg);
     root.addChildComponent (*about);
@@ -95,26 +90,18 @@ void MemoriaEditor::buildUi()
     header->onUndo = [this] { undo.performUndo(); refreshAll(); };
     header->onRedo = [this] { undo.performRedo(); refreshAll(); };
     header->abButton.setButtonText (abActive == 0 ? "A" : "B");
-    presets->onLoaded = [this] (const gx::Preset& pr) { header->setPresetName (pr.meta.name); generator->presetLoaded(); };
-    generator->onPresetChanged = [this] { header->setPresetName (proc.currentMeta.name); undo.reset(); };
-    landscapePage->onFullscreen = [this] { openFullscreen(); };
-    generator->openEditor = [this] { showPage (1); };
-    generator->openExport = [this] { showPage (4); };
-    generator->openPresets = [this] { showPage (3); };
+    presets->onLoaded = [this] (const gx::Preset& pr) { header->setPresetName (pr.meta.name); };
 }
 
 // Language switch: recreate every page so all labels, menus and tooltips change at once.
 void MemoriaEditor::rebuildUi()
 {
-    closeFullscreen();
     pendingRebuild = false;
     gx::uiEnglish() = settings.messageLanguage() == "en";
-    const auto genState = generator->uiState();
     const int page = currentPage;
     pages.clear();
-    header.reset(); landscapePage.reset(); soundPage.reset(); generator.reset(); presets.reset(); exportPage.reset(); helpPage.reset(); settingsPage.reset(); about.reset();
+    header.reset(); pianoPage.reset(); presets.reset(); exportPage.reset(); helpPage.reset(); settingsPage.reset(); about.reset();
     buildUi();
-    generator->setUiState (genState);
     resized();
     header->setPresetName (proc.currentMeta.name);
     showPage (page);
@@ -124,7 +111,6 @@ void MemoriaEditor::rebuildUi()
 MemoriaEditor::~MemoriaEditor()
 {
     stopTimer();
-    closeFullscreen();
     proc.keyboardState.allNotesOff (1);
     if (&juce::LookAndFeel::getDefaultLookAndFeel() == &lnf) juce::LookAndFeel::setDefaultLookAndFeel (nullptr);
     setLookAndFeel (nullptr);
@@ -232,35 +218,6 @@ void MemoriaEditor::advanceFrames (double dt)
     frame.reduced = settings.animation() == 1;
     header->tick (frame);
     pages[(size_t) currentPage]->tick (frame);
-    if (fullscreenView) fullscreenView->tick (frame);
-}
-
-// Full-screen landscape: a borderless desktop window in kiosk mode. Esc (or losing it) comes back here.
-void MemoriaEditor::openFullscreen()
-{
-    if (fullscreenView) return;
-    fullscreenView = std::make_unique<gx::ui::FullscreenView> (ctx, [sp = juce::Component::SafePointer<MemoriaEditor> (this)]
-    {
-        juce::MessageManager::callAsync ([sp] { if (sp) sp->closeFullscreen(); }); // never delete the view inside its own key handler
-    });
-    fullscreenView->setLookAndFeel (&lnf);
-    fullscreenView->addToDesktop (juce::ComponentPeer::windowAppearsOnTaskbar);
-    // one pixel taller than the screen: Windows then keeps it a normal composited window instead of switching the
-    // OpenGL surface to exclusive full screen (that switch is what made the screen flicker / minimise on some PCs)
-    fullscreenView->setBounds (juce::Desktop::getInstance().getDisplays().getDisplayForRect (getScreenBounds())->totalArea.withTrimmedBottom (-1));
-    fullscreenView->setVisible (true);
-    fullscreenView->toFront (true);   // a borderless window covering the screen; no kiosk mode (it minimises / restores on focus changes)
-    fullscreenView->grabKeyboardFocus();
-}
-
-void MemoriaEditor::closeFullscreen()
-{
-    if (! fullscreenView) return;
-    fullscreenView->removeFromDesktop();
-    fullscreenView->setLookAndFeel (nullptr);
-    fullscreenView.reset();
-    if (auto* peer = getPeer()) peer->getComponent().repaint();   // the main window comes back fully painted
-    repaint();
 }
 
 void MemoriaEditor::timerCallback()
@@ -284,7 +241,7 @@ void MemoriaEditor::timerCallback()
         if (const int g = proc.presetGeneration.load(); g != lastPresetGen) { lastPresetGen = g; refreshAll(); }
     }
     if (toastLabel.isVisible() && now > toastUntil) toastLabel.setVisible (false);
-    if (pendingRebuild && ! generator->isBusy() && ! exportPage->isBusy()) rebuildUi(); // waits for a running generation / export
+    if (pendingRebuild && ! exportPage->isBusy()) rebuildUi(); // waits for a running generation / export
 }
 
 bool MemoriaEditor::keyPressed (const juce::KeyPress& k)
@@ -292,8 +249,5 @@ bool MemoriaEditor::keyPressed (const juce::KeyPress& k)
     const auto mods = k.getModifiers();
     if (mods.isCommandDown() && k.getKeyCode() == 'Z' && ! mods.isShiftDown()) { undo.performUndo(); refreshAll(); return true; }
     if (mods.isCommandDown() && (k.getKeyCode() == 'Y' || (k.getKeyCode() == 'Z' && mods.isShiftDown()))) { undo.performRedo(); refreshAll(); return true; }
-    // space = Play/Stop in the Standalone only: in a DAW the space bar belongs to the host
-    if (k.getKeyCode() == juce::KeyPress::spaceKey && ! mods.isAnyModifierKeyDown() && proc.wrapperType == juce::AudioProcessor::wrapperType_Standalone) { proc.setPlaying (! proc.isPlayingInternal()); return true; }
-    if (currentPage == 2 && generator->handleKey (k)) return true;
     return false;
 }

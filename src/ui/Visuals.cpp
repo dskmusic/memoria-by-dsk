@@ -2,6 +2,37 @@
 
 namespace gx::ui
 {
+// ---------------------------------------------------------------- FrameSource
+void FrameSource::update (Frame& f, double dt)
+{
+    f.time += dt;
+    float tmp[4096];
+    const int got = proc.readScope (tmp, 4096);
+    for (int i = 0; i < got; ++i) { ring[(size_t) ringPos] = tmp[i]; ringPos = (ringPos + 1) & 8191; }
+    for (int i = 0; i < Frame::kScope; ++i) f.scope[(size_t) i] = ring[(size_t) ((ringPos - Frame::kScope + i) & 8191)];
+    f.peakL = proc.peakL.load(); f.peakR = proc.peakR.load(); f.rms = proc.rms.load();
+    f.energy += (juce::jlimit (0.0f, 1.0f, f.rms * 6.0f) - f.energy) * 0.15f;
+    // spectrum: 2048-point FFT of the most recent samples, 96 log bands (30 Hz .. 16 kHz)
+    for (int i = 0; i < 2048; ++i) fftBuf[(size_t) i] = ring[(size_t) ((ringPos - 2048 + i) & 8191)];
+    std::fill (fftBuf.begin() + 2048, fftBuf.end(), 0.0f);
+    window.multiplyWithWindowingTable (fftBuf.data(), 2048);
+    fft.performFrequencyOnlyForwardTransform (fftBuf.data());
+    const double sr = proc.getSampleRate() > 0 ? proc.getSampleRate() : 48000.0;
+    const float binHz = (float) (sr / 2048.0);
+    for (int b = 0; b < Frame::kBands; ++b)
+    {
+        const float lo = 30.0f * std::pow (16000.0f / 30.0f, (float) b / Frame::kBands), hi = 30.0f * std::pow (16000.0f / 30.0f, (float) (b + 1) / Frame::kBands);
+        const int i0 = juce::jlimit (1, 1023, (int) (lo / binHz)), i1 = juce::jlimit (i0 + 1, 1024, (int) std::ceil (hi / binHz));
+        float m = 0;
+        for (int i = i0; i < i1; ++i) m = juce::jmax (m, fftBuf[(size_t) i]);
+        const float db = juce::Decibels::gainToDecibels (m / 24.0f, -90.0f);
+        f.spectrum[(size_t) b] = juce::jlimit (0.0f, 1.0f, (db + 70.0f) / 60.0f);
+    }
+    auto& t = proc.telemetry();
+    for (int k = 0; k < 128; ++k) { f.keyLevel[(size_t) k] = t.keyLevel[(size_t) k].load(); f.keyHit[(size_t) k] = t.keyHit[(size_t) k].load(); }
+    f.pedal = t.pedal.load(); f.voices = t.voices.load(); f.hitCounter = t.hitCounter.load();
+}
+
 // ---------------------------------------------------------------- Scope
 void Scope::tick (const Frame& f)
 {
@@ -16,7 +47,7 @@ void Scope::tick (const Frame& f)
     for (int i = 0; i < 512; ++i) peak = juce::jmax (peak, std::abs (f.scope[(size_t) (start + i)]));
     if (peak > dispPeak) dispPeak = peak;
     else dispPeak += (peak - dispPeak) * 0.012f;
-    const float g = juce::jlimit (1.0f, 4.0f, 0.85f / juce::jmax (dispPeak, 0.02f));
+    const float g = juce::jlimit (1.0f, 40.0f, 0.85f / juce::jmax (dispPeak, 0.02f));
     levelDb += (juce::Decibels::gainToDecibels (f.rms, -90.0f) - levelDb) * 0.25f;
     for (int i = 0; i < 512; ++i)
     {

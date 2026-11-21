@@ -6,26 +6,22 @@ namespace gx
 {
 const juce::StringArray& categories()
 {
-    static const juce::StringArray c { "Cinematic", "Ambient", "Meditation", "Dark", "Sci-Fi", "Ethereal", "Oceanic", "Nostalgia", "Epic", "Forest", "Desert", "Sleep", "Fairytale", "Film Score" };
+    static const juce::StringArray c { "Lo-Fi", "Felt", "Cinematic", "Rainy", "Vintage", "Church", "Lullaby", "Study", "Concert", "Toy" };
     return c;
 }
 const juce::StringArray& subcategories (const juce::String& cat)
 {
     static const std::map<juce::String, juce::StringArray> m {
-        { "Cinematic", { "Epic", "Wonder", "Tension", "Neo-Noir", "Derelict" } },
-        { "Ambient", { "Drift", "Glow", "Haze" } },
-        { "Meditation", { "Calm", "Breath", "Healing" } },
-        { "Dark", { "Abyss", "Ritual", "Night" } },
-        { "Sci-Fi", { "Deep Space", "Machine", "Alien" } },
-        { "Ethereal", { "Angelic", "Celestial", "Dreamland" } },
-        { "Oceanic", { "Shoreline", "Deep Blue", "Tidal" } },
-        { "Nostalgia", { "Lo-Fi Memory", "Tape Dream", "Golden Hour" } },
-        { "Epic", { "Trailer", "Heroes", "Battlefield" } },
-        { "Forest", { "Ancient Woods", "Morning Dew", "Fireflies" } },
-        { "Desert", { "Dunes", "Mirage", "Caravan" } },
-        { "Sleep", { "Deep Sleep", "Lullaby", "Night Rain" } },
-        { "Fairytale", { "Music Box", "Enchanted", "Once Upon" } },
-        { "Film Score", { "Main Theme", "Heartfelt", "Adventure" } },
+        { "Lo-Fi", { "Tape Dream", "Dusty Vinyl", "Bedroom" } },
+        { "Felt", { "Soft", "Intimate", "Muted" } },
+        { "Cinematic", { "Emotional", "Hopeful", "Tension" } },
+        { "Rainy", { "Window", "Cafe", "Night" } },
+        { "Vintage", { "Old Upright", "Honky-Tonk", "Attic Tape" } },
+        { "Church", { "Nave", "Chapel", "Cathedral" } },
+        { "Lullaby", { "Music Box", "Dreaming", "Goodnight" } },
+        { "Study", { "Focus", "Calm", "Morning" } },
+        { "Concert", { "Hall", "Studio", "Close Mic" } },
+        { "Toy", { "Toy Piano", "Celesta", "Bells" } },
     };
     static const juce::StringArray none;
     auto it = m.find (cat);
@@ -34,23 +30,18 @@ const juce::StringArray& subcategories (const juce::String& cat)
 juce::String categoryLabel (const juce::String& c)
 {
     if (c == "Cinematic") return L ("Cine", "Cinematic");
-    if (c == "Meditation") return L ("Meditación", "Meditation");
-    if (c == "Dark") return L ("Oscuro", "Dark");
-    if (c == "Ethereal") return L ("Etéreo", "Ethereal");
-    if (c == "Oceanic") return L ("Océano", "Oceanic");
-    if (c == "Epic") return L ("Épico", "Epic");
-    if (c == "Forest") return L ("Bosque", "Forest");
-    if (c == "Fairytale") return L ("Cuento", "Fairytale");
-    if (c == "Film Score") return L ("Banda sonora", "Film Score");
-    if (c == "Desert") return L ("Desierto", "Desert");
-    if (c == "Sleep") return L ("Dormir", "Sleep");
+    if (c == "Rainy") return L ("Lluvia", "Rainy");
+    if (c == "Church") return L ("Iglesia", "Church");
+    if (c == "Lullaby") return L ("Nana", "Lullaby");
+    if (c == "Study") return L ("Estudio", "Study");
+    if (c == "Concert") return L ("Concierto", "Concert");
+    if (c == "Toy") return L ("Juguete", "Toy");
     return c;
 }
 const juce::StringArray& characterTags()
 {
-    static const juce::StringArray t { "Dark", "Bright", "Warm", "Cold", "Evolving", "Static", "Airy", "Shimmering", "Granular",
-                                       "Windy", "Sparkling", "Deep", "Calm", "Tense", "Wide", "Lush", "Frozen", "432 Hz",
-                                       "Analog", "Noir", "Haunted", "Ocean", "Vinyl", "Choir", "Nostalgic" };
+    static const juce::StringArray t { "Warm", "Dark", "Bright", "Soft", "Intimate", "Wide", "Dreamy", "Nostalgic", "Sad", "Hopeful",
+                                       "Tape", "Vinyl", "Rain", "Aged", "Clean", "Dusty", "Detuned", "Felt", "Bell", "Lo-Fi" };
     return t;
 }
 

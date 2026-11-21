@@ -7,9 +7,9 @@ static void testPresets()
 {
     std::puts ("[presets]");
     MemoriaProcessor p;
-    setParam (p, "scale", 4);
-    setParam (p, "high_cut", 1234.0f);
-    setParam (p, "texture_char", 0.25f);
+    setParam (p, "piano", 3);
+    setParam (p, "tone", 0.8f);
+    setParam (p, "hammer", 0.25f);
     setParam (p, "seed", 4242);
 
     auto pr = gx::Preset::capture (p);
@@ -30,9 +30,9 @@ static void testPresets()
     juce::var v;
     juce::JSON::parse (json, v);
     v.getProperty ("params", {}).getDynamicObject()->setProperty ("future_param_xyz", 1.0);
-    v.getProperty ("params", {}).getDynamicObject()->removeProperty ("high_cut");
+    v.getProperty ("params", {}).getDynamicObject()->removeProperty ("tone");
     auto mig = gx::Preset::fromVar (v);
-    check (std::abs (mig.params[(size_t) gx::paramIndex ("high_cut")] - defs[(size_t) gx::paramIndex ("high_cut")].def) < 1e-3f, "missing param -> default");
+    check (std::abs (mig.params[(size_t) gx::paramIndex ("tone")] - defs[(size_t) gx::paramIndex ("tone")].def) < 1e-3f, "missing param -> default");
 
     MemoriaProcessor q;
     back.applyTo (q);

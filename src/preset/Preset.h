@@ -11,7 +11,7 @@ constexpr int kPresetFormatVersion = 1;
 
 struct PresetMeta
 {
-    juce::String uuid, name = "Init", category = "Ambient", subcategory, author = "DSK Music", notes;
+    juce::String uuid, name = "Init", category = "Lo-Fi", subcategory, author = "DSK Music", notes;
     juce::StringArray tags;
     bool favorite = false, factory = false;
     int rating = 0, uses = 0;

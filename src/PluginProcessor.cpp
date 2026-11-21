@@ -67,11 +67,19 @@ void MemoriaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     }
     if (switchRequested.exchange (false))
         duck = lastPeak > 1.0e-4f ? Duck::Out : Duck::In;   // silent? switch at once
+    if (previewRequested.load() && duck != Duck::Out)
+    {
+        previewRequested.store (false);
+        for (int n : { 57, 64, 69, 72 }) midi.addEvent (juce::MidiMessage::noteOn (1, n, (juce::uint8) 72), 0);
+        previewOffLeft = (int) (1.4 * engine.getSampleRate());
+    }
+    else if (previewOffLeft > 0 && (previewOffLeft -= buffer.getNumSamples()) <= 0)
+        for (int n : { 57, 64, 69, 72 }) midi.addEvent (juce::MidiMessage::noteOff (1, n), 0);
     if (duck != Duck::Out)                                  // while dipping, keep playing the old sound
         for (size_t i = 0; i < raw.size(); ++i) snapshot[i] = raw[i]->load (std::memory_order_relaxed);
 
     gx::HostInfo hi;
-    hi.internalPlay = playRequested.load();
+    hi.internalPlay = true;
     if (auto* ph = getPlayHead())
         if (auto pos = ph->getPosition())
         {
@@ -84,7 +92,6 @@ void MemoriaProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
     const int n = buffer.getNumSamples();
     engine.process (buffer.getWritePointer (0), buffer.getWritePointer (1), n, midi, snapshot.data(), hi);
-    if (engine.tele.timerExpired.exchange (false)) playRequested.store (false); // session timer: fade out and stop
     if (duck != Duck::None)
     {
         const float sr = (float) engine.getSampleRate(); // the engine always knows it (getSampleRate() can be 0 outside a host)
