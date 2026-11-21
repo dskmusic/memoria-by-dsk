@@ -1,5 +1,6 @@
 #pragma once
 #include "Visuals.h"
+#include "RoomScene.h"
 #include <thread>
 
 namespace gx::ui
@@ -61,17 +62,20 @@ private:
     juce::HyperlinkButton link { "dskmusic.com", juce::URL ("https://dskmusic.com") };
 };
 
-// Main page: the piano (scope, spectrum, meter) and its controls.
+// Main page: the room scene, the Memory slider, scope / spectrum / meter and the piano controls.
 class PianoPage : public Page
 {
 public:
     explicit PianoPage (Context& c);
     void resized() override;
     void paint (juce::Graphics&) override;
+    RoomScene scene;
 private:
     Scope scope;
     Spectrum spectrum;
     VuMeter vu;
+    juce::Slider memory;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> memoryAtt;
     AutoPanel global, piano, space;
 };
 
@@ -140,6 +144,8 @@ private:
     juce::ToggleButton favOnly { L ("Favoritos", "Favourites") };
     juce::TextButton saveBtn { L ("Guardar", "Save") }, saveAsBtn { L ("Guardar como", "Save as") }, importBtn { L ("Importar", "Import") }, exportBtn { L ("Exportar banco", "Export bank") },
                      prevBtn { L ("Anterior", "Previous") }, nextBtn { L ("Siguiente", "Next") }, folderBtn { L ("Nueva carpeta", "New folder") }, rescanBtn { L ("Reescanear", "Rescan") };
+    juce::TextButton surprise { L ("Sorpréndeme", "Surprise me") };
+    std::atomic<bool> generating { false };
     juce::Label info;
     std::vector<int> shown;
     bool syncingSelection = false;

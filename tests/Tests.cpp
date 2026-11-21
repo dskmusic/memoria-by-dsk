@@ -4,6 +4,11 @@
 #include <juce_dsp/juce_dsp.h>
 #include <set>
 #include <chrono>
+#include "gen/Generator.h"
+#if __has_include(<BinaryData.h>)
+ #include <BinaryData.h>
+ #define GXT_BIN 1
+#endif
 
 namespace gxtest
 {
@@ -242,6 +247,44 @@ static void testStress()
     check (secs < 5.0, "CPU: faster than 2x realtime even at full overload");
 }
 
+static void testGenerator()
+{
+    std::puts ("[generator]");
+    for (auto& cat : gx::categories())
+    {
+        gx::GenRequest rq; rq.category = cat; rq.seed = 4242;
+        float rms = 0;
+        auto p = gx::Generator::generate (rq);
+        const bool ok = gx::Generator::validate (p, &rms);
+        std::puts (("    " + cat + " / " + p.meta.name + ": rms " + juce::String (rms, 1) + " dB").toRawUTF8());
+        check (ok && std::abs (rms - gx::Generator::targetRmsDb()) < 2.0f, cat + ": valid and level-matched");
+        check (p.meta.category == cat && p.meta.name.isNotEmpty(), cat + ": metadata");
+    }
+#if GXT_BIN
+    int size = 0;
+    const char* data = BinaryData::getNamedResource ("factory_memoriabank", size);
+    check (data != nullptr, "factory bank embedded");
+    if (data != nullptr)
+    {
+        const juce::var bank = juce::JSON::parse (juce::String::fromUTF8 (data, size));
+        auto* arr = bank.getProperty ("presets", {}).getArray();
+        check (arr != nullptr && arr->size() >= 200, "factory bank has 200+ presets");
+        if (arr != nullptr)
+        {
+            std::set<juce::String> names;
+            for (auto& v : *arr) names.insert (gx::Preset::fromVar (v).meta.name);
+            check ((int) names.size() == arr->size(), "factory names are unique");
+            for (int i = 0; i < arr->size(); i += juce::jmax (1, arr->size() / 5))
+            {
+                auto p = gx::Preset::fromVar ((*arr)[i]);
+                float rms = 0;
+                check (gx::Generator::validate (p, &rms) && std::abs (rms - gx::Generator::targetRmsDb()) < 2.0f, "factory sample " + p.meta.name + " valid and level-matched");
+            }
+        }
+    }
+#endif
+}
+
 static void testLife()
 {
     std::puts ("[life]");
@@ -291,6 +334,7 @@ int runAll()
     testClicks();
     testStress();
     testLife();
+    testGenerator();
     for (auto& t : extraTests()) t();
     std::printf ("\n%d checks, %d failures\n", checks, failures);
     return failures == 0 ? 0 : 1;

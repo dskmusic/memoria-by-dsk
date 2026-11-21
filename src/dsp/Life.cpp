@@ -149,7 +149,7 @@ void Life::tape (float& l, float& r)
     l = tapeHp[0].tick (tapeLp[0].tick (l)) * dropG;
     r = tapeHp[1].tick (tapeLp[1].tick (r)) * dropG;
     // hiss
-    const float h = 0.0035f * a * a;
+    const float h = 0.0022f * a * a;
     hissLp[0] += 0.3f * (rng.bi() - hissLp[0]); hissLp[1] += 0.3f * (rng.bi() - hissLp[1]);
     l += (rng.bi() - hissLp[0] * 0.6f) * h; r += (rng.bi() - hissLp[1] * 0.6f) * h;
 }
@@ -188,7 +188,7 @@ void Life::world (float& l, float& r)
         {
             float s = 0;
             if (rng.uni() < 0.00035f + 0.0012f * v * v) { const float u = rng.uni(); s = (rng.bi() > 0 ? 1.0f : -1.0f) * u * u * u * 0.12f; }
-            s += (rng.bi() * 0.0018f) * v;      // constant dust
+            s += (rng.bi() * 0.0008f) * v;      // constant dust
             s = crackHp[c].tick (s) * v * 1.6f;
             rumbleLp[c] += 0.004f * (rng.bi() - rumbleLp[c]);
             rumbleLp2[c] += 0.05f * (rumbleLp[c] - rumbleLp2[c]);

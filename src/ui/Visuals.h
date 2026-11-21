@@ -17,7 +17,8 @@ struct Frame
     std::array<float, 128> keyLevel {}, keyHit {};
     float pedal = 0;
     int voices = 0, hitCounter = 0;
-    float memory = 0;
+    float memory = 0, timeAge = 0.5f;
+    int worldType = 0;
     bool reduced = false;                    // reduced animation mode
 };
 

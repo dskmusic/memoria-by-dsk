@@ -1,4 +1,5 @@
 #include "Pages.h"
+#include "../gen/Generator.h"
 
 namespace gx::ui
 {
@@ -56,7 +57,33 @@ PresetsPage::PresetsPage (Context& c) : Page (c)
     info.setFont (font (12.5f));
     addAndMakeVisible (info);
 
-    for (auto* b : { &saveBtn, &saveAsBtn, &importBtn, &exportBtn, &prevBtn, &nextBtn, &folderBtn, &rescanBtn }) addAndMakeVisible (b);
+    for (auto* b : { &saveBtn, &saveAsBtn, &importBtn, &exportBtn, &prevBtn, &nextBtn, &folderBtn, &rescanBtn, &surprise }) addAndMakeVisible (b);
+    surprise.setTooltip (L ("Genera un recuerdo nuevo de la categoría elegida (o de una al azar)", "Generates a brand-new memory in the selected category (or a random one)"));
+    surprise.onClick = [this]
+    {
+        if (generating.exchange (true)) return;
+        surprise.setEnabled (false);
+        const int row = catModel.selected;
+        juce::String cat = row > 0 && row - 1 < categories().size() ? categories()[row - 1] : categories()[juce::Random::getSystemRandom().nextInt (categories().size())];
+        const uint32_t seed = (uint32_t) juce::Random::getSystemRandom().nextInt();
+        juce::Component::SafePointer<juce::Component> sp (this);
+        std::thread ([this, sp, cat, seed]
+        {
+            GenRequest rq; rq.category = cat; rq.seed = seed;
+            auto p = Generator::generate (rq);
+            p.meta.factory = false; p.meta.author = "Memoria"; p.meta.name = "Surprise: " + p.meta.name;
+            juce::MessageManager::callAsync ([this, sp, p]
+            {
+                if (sp == nullptr) return;
+                p.applyTo (ctx.proc);
+                ctx.undo.reset();
+                if (onLoaded) onLoaded (p);
+                if (ctx.toast) ctx.toast (L ("Recuerdo nuevo: ", "New memory: ") + p.meta.name);
+                surprise.setEnabled (true);
+                generating = false;
+            });
+        }).detach();
+    };
     prevBtn.onClick = [this] { step (-1); };
     nextBtn.onClick = [this] { step (1); };
     rescanBtn.onClick = [this] { ctx.library.rescanUser(); refresh(); };
@@ -359,6 +386,7 @@ void PresetsPage::resized()
     for (int i = 0; i < tagButtons.size(); ++i) tagButtons[i]->setBounds (juce::Rectangle<int> (tags.getX() + (i % 10) * tw, tags.getY() + (i / 10) * 29, tw, 29).reduced (2));
     list.setBounds (r.reduced (0, 4));
     // right: info + actions
+    surprise.setBounds (right.removeFromBottom (36).reduced (2));
     auto nav = right.removeFromBottom (32);
     prevBtn.setBounds (nav.removeFromLeft (nav.getWidth() / 2).reduced (2));
     nextBtn.setBounds (nav.reduced (2));

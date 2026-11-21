@@ -1,5 +1,7 @@
 #include "Tests.h"
 #include "PluginEditor.h"
+#include "gen/Generator.h"
+#include <set>
 
 // MemoriaTool test | piano <dir> | screenshot <dir> [en|es]
 //   piano: renders listening / analysis material (velocity sweep, scale, chords with pedal, staccato) as 24-bit WAV files.
@@ -45,6 +47,35 @@ int main (int argc, char** argv)
         std::printf ("written to %s\n", dir.getFullPathName().toRawUTF8());
         return 0;
     }
+    if (cmd == "factory")
+    {
+        // MemoriaTool factory <out.memoriabank> [perSubCategory=10] : generates, validates and level-matches the factory bank
+        const auto out = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "resources/factory.memoriabank");
+        const int per = argc > 3 ? juce::String (argv[3]).getIntValue() : 10;
+        juce::Array<juce::var> arr;
+        std::set<juce::String> names;
+        int failed = 0;
+        for (auto& cat : gx::categories())
+            for (int sub = 0; sub < 3; ++sub)
+                for (int k = 0; k < per; ++k)
+                {
+                    gx::GenRequest rq; rq.category = cat; rq.sub = sub; rq.seed = (uint32_t) (1000 + 97 * k + 13 * sub + 7919 * gx::categories().indexOf (cat));
+                    float rms = 0;
+                    auto p = gx::Generator::generate (rq, 8);
+                    if (! gx::Generator::validate (p, &rms)) { ++failed; continue; }
+                    juce::String nm = p.meta.name; int n = 2;
+                    while (names.count (nm)) nm = p.meta.name + " " + juce::String (n++);
+                    names.insert (nm); p.meta.name = nm;
+                    arr.add (p.toVar());
+                    std::puts ((cat + " / " + p.meta.subcategory + " / " + nm + "  rms " + juce::String (rms, 1) + " dB").toRawUTF8());
+                }
+        auto* bank = new juce::DynamicObject();
+        bank->setProperty ("format", "memoriabank"); bank->setProperty ("version", 1); bank->setProperty ("presets", arr);
+        out.getParentDirectory().createDirectory();
+        out.replaceWithText (juce::JSON::toString (juce::var (bank), true));
+        std::puts (("wrote " + juce::String (arr.size()) + " presets (" + juce::String (failed) + " failed) to " + out.getFullPathName()).toRawUTF8());
+        return failed == 0 ? 0 : 1;
+    }
     if (cmd == "screenshot")
     {
         // every page of the real editor, rendered offscreen with a chord ringing (so scope / spectrum / keys are alive)
@@ -77,8 +108,22 @@ int main (int argc, char** argv)
             std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
             if (os != nullptr) png.writeImageToStream (img, *os);
         }
-        base.reset();
-        std::printf ("screenshots in %s\n", dir.getFullPathName().toRawUTF8());
+        // the Memory macro and the World layer change the picture: a few combinations of the piano page
+        struct Combo { const char* name; float memory; int world; } combos[] { { "scene_clean_golden", 0.0f, 0 }, { "scene_rain_half", 0.5f, 1 }, { "scene_cafe", 0.2f, 2 }, { "scene_fire_old", 1.0f, 3 }, { "scene_dawn_old", 0.8f, 4 } };
+        for (auto& c : combos)
+        {
+            gxtest::setParam (proc, "memory", c.memory);
+            gxtest::setParam (proc, "world", (float) c.world);
+            ed->showPage (0);
+            for (int f = 0; f < 60; ++f) { midi.clear(); buf.clear(); proc.processBlock (buf, midi); ed->advanceFrames (1.0 / 24.0); }
+            auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f);
+            juce::PNGImageFormat png;
+            const auto f = dir.getChildFile (juce::String (c.name) + ".png");
+            f.deleteFile();
+            std::unique_ptr<juce::OutputStream> os (f.createOutputStream().release());
+            if (os != nullptr) png.writeImageToStream (img, *os);
+        }
+        base.reset();        std::printf ("screenshots in %s\n", dir.getFullPathName().toRawUTF8());
         return 0;
     }
     std::fprintf (stderr, "usage: MemoriaTool test | piano <dir> | screenshot <dir> [en|es]\n");
