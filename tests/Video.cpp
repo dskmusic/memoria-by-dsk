@@ -177,8 +177,8 @@ int runVideo (const juce::File& dir, bool trailer)
             setP (p, "hands_density", 0.45f); setP (p, "hands_express", 0.55f); setP (p, "resonance", 0.0f);
         }
         setP (p, "memory", 0.45f + 0.35f * ramp (t, 3.0, 18.0));
-        setP (p, "world", 1.0f);             // rain, very low
-        setP (p, "world_level", 0.08f);
+        setP (p, "world", 2.0f);             // a light wind
+        setP (p, "world_level", 0.16f);
     };
     return makeVideo (dir, "Memoria-coming-soon", 22.0, setter, caps);
 }

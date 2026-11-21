@@ -36,8 +36,8 @@ public:
     void setFps (bool b) { props->setValue ("fps", b); props->saveIfNeeded(); }
     float noteStars() const { return (float) props->getDoubleValue ("noteStars", 0.3); }
     void setNoteStars (float v) { props->setValue ("noteStars", v); props->saveIfNeeded(); }
-    bool previewOnSelect() const { return props->getBoolValue ("preview", true); }
-    void setPreviewOnSelect (bool b) { props->setValue ("preview", b); props->saveIfNeeded(); }
+    bool previewOnSelect() const { return props->getBoolValue ("previewChord", false); }
+    void setPreviewOnSelect (bool b) { props->setValue ("previewChord", b); props->saveIfNeeded(); }
     juce::PropertiesFile& file() { return *props; }
 
 private:

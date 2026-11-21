@@ -237,7 +237,7 @@ void Life::world (float& l, float& r)
         if (popLeft > 0) { const float pop = (popLeft % 5 < 2 ? 0.09f : -0.06f) * (float) popLeft / (0.02f * (float) sr) * v; l += pop; r += pop * 0.8f; --popLeft; }
     }
     // ---- world
-    const float w = worldS.step (lv.worldType > 0 ? lv.world * 0.6f : 0.0f);   // ambiences are capped: they are a background
+    const float w = worldS.step (lv.worldType > 0 ? lv.world * 0.3f : 0.0f);   // ambiences are capped (max = half of the first version): they are a background
     if (w <= 0.0005f) return;
     switch (lv.worldType)
     {

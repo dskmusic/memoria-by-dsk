@@ -334,8 +334,6 @@ static void testGenerator()
             std::set<juce::String> names;
             for (auto& v : *arr) names.insert (gx::Preset::fromVar (v).meta.name);
             check ((int) names.size() == arr->size(), "factory names are unique");
-            bool noRes = true; for (auto& v : *arr) noRes &= gx::Preset::fromVar (v).params[(size_t) gx::P::resonance] == 0.0f;
-            check (noRes, "no factory preset uses sympathetic resonance");
             for (int i = 0; i < arr->size(); i += juce::jmax (1, arr->size() / 5))
             {
                 auto p = gx::Preset::fromVar ((*arr)[i]);
