@@ -254,11 +254,6 @@ vec3 skyColour (vec2 w)
     vec2 t = w - vec2 (0.25, 0.34);
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
     bool isTrunkOld = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
-    if (uSeason < 0.5)
-    {
-        if (isTrunkOld || w.y < hill || crown < 0.0) c = dark;
-        return c * 1.25;
-    }
     c *= mix (1.0, 0.60, uSeason);
     vec3 lightC = mix (vec3 (1.0), uBot * 1.25, 0.5) * (0.20 + 0.65 * uOutL);
     vec3 outc = c;
@@ -269,9 +264,9 @@ vec3 skyColour (vec2 w)
         vec2 fq = w - vec2 (fx, hillY (fx) + 0.035);
         float fcov = ss (1.0, 0.65, length (fq / vec2 (0.040, 0.052)) + 0.5 * (fbm (w * 55.0 + fk * 7.0) - 0.5)) * mix (0.30, 1.0, uFoAmt);
         vec3 fcol = mix (uFoliage * lightC * (0.55 + 0.35 * fk * 0.3), c, 0.45);
-)GLSL" R"GLSL(
         outc = mix (outc, fcol, fcov);
     }
+)GLSL" R"GLSL(
     // ground: grass (or snow) with fine streaks, hazier towards the horizon, and the soft shadow of the tree
     if (w.y < hill)
     {

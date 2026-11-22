@@ -66,6 +66,9 @@ static juce::String probeLine (const gx::Engine::Probe& q)
 }
 
 int runVideo (const juce::File& dir, bool trailer);   // Video.cpp
+int runTeaser (const juce::File& dir);
+int runTeaser2 (const juce::File& dir);
+int runTeaser3 (const juce::File& dir);
 
 // MemoriaTool test | piano <dir> | screenshot <dir> [en|es]
 //   piano: renders listening / analysis material (velocity sweep, scale, chords with pedal, staccato) as 24-bit WAV files.
@@ -221,6 +224,9 @@ int main (int argc, char** argv)
         }
         return 0;
     }
+    if (cmd == "teaser3") return runTeaser3 (juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "dist"));
+    if (cmd == "teaser2") return runTeaser2 (juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "dist"));
+    if (cmd == "teaser") return runTeaser (juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "dist"));
     if (cmd == "video" || cmd == "trailer") return runVideo (juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "dist"), cmd == "trailer");
     if (cmd == "icon")
     {

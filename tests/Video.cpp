@@ -60,7 +60,9 @@ void drawCaptions (juce::Image& img, const std::vector<Caption>& caps, double t)
 // timeline: params as a function of time
 using Setter = std::function<void (MemoriaProcessor&, double)>;
 
-int makeVideo (const juce::File& outDir, const juce::String& name, double secs, const Setter& setter, const std::vector<Caption>& caps)
+using Compose = std::function<juce::Image (MemoriaEditor&, double)>;      // builds the whole frame (the teaser shows only parts of the interface)
+
+int makeVideo (const juce::File& outDir, const juce::String& name, double secs, const Setter& setter, const std::vector<Caption>& caps, const Compose& compose = nullptr)
 {
     const auto ff = findFfmpeg();
     if (! ff.existsAsFile()) { std::puts ("ffmpeg not found"); return 1; }
@@ -96,7 +98,7 @@ int makeVideo (const juce::File& outDir, const juce::String& name, double secs, 
         }
         ed->advanceFrames (1.0 / fps);
         { auto& rs = ed->roomScene(); rs.setExternalBackground (gx::ui::OffscreenRoom::get().render (rs.uniforms(), rs.getWidth(), rs.getHeight())); }
-        auto img = ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f).convertedToFormat (juce::Image::ARGB);
+        auto img = compose ? compose (*ed, t) : ed->createComponentSnapshot (ed->getLocalBounds(), true, 1.0f).convertedToFormat (juce::Image::ARGB);
         drawCaptions (img, caps, t);
         const auto file = tmp.getChildFile (juce::String::formatted ("%05d.png", f));
         std::unique_ptr<juce::OutputStream> os (file.createOutputStream().release());
@@ -168,6 +170,219 @@ void setHands (MemoriaProcessor& p, int style, int seed, int key, int scale, flo
     setP (p, "hands", 1.0f); setP (p, "hands_style", (float) style); setP (p, "hands_seed", (float) seed); setP (p, "hands_key", (float) key);
     setP (p, "hands_scale", (float) scale); setP (p, "hands_tempo", tempo); setP (p, "hands_form", (float) form); setP (p, "hands_bars", 1.0f);
 }
+}
+
+// A mysterious teaser: only the window in different seasons, the piano roll, the piano and a fleeting glimpse of the interface
+int runTeaser (const juce::File& dir)
+{
+    std::vector<Caption> caps {
+        { "A piano with a soul", "Un piano con alma", 7.0, 11.0 },
+        { "MEMORIA", "by DSK  ·  coming soon  ·  próximamente", 18.0, 22.0, true } };
+    Setter setter = [] (MemoriaProcessor& p, double t)
+    {
+        if (t < 0.02) applyBank (p, "Hazy Notes");
+        setHands (p, 8, 62, 0, 0, 72.0f);
+        setP (p, "world", 0.0f); setP (p, "world_level", 0.0f);
+        setP (p, "memory", 0.40f + 0.30f * ramp (t, 3.0, 18.0));
+        const float season = t < 3.6 ? 2.0f : t < 6.6 ? 3.0f : 4.0f;          // summer, autumn, then winter
+        const float tod = t < 3.6 ? 3.0f : t < 6.6 ? 4.0f : t < 14.8 ? 3.0f : 5.0f;
+        setP (p, "scene_time", tod); setP (p, "scene_season", season);
+    };
+    Compose compose = [] (MemoriaEditor& ed, double t) -> juce::Image
+    {
+        constexpr int W = 1280, H = 800;
+        juce::Image out (juce::Image::ARGB, W, H, true);
+        juce::Graphics g (out);
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        g.fillAll (juce::Colours::black);
+        auto& rs = ed.roomScene();
+        auto put = [&] (const juce::Image& src, double nx, double ny, double nw, double nh, float darken)
+        {
+            const double sw = src.getWidth(), sh = src.getHeight();
+            g.drawImage (src, 0, 0, W, H, (int) (nx * sw), (int) (ny * sh), (int) (nw * sw), (int) (nh * sh));
+            if (darken > 0.0f) { g.setColour (juce::Colours::black.withAlpha (darken)); g.fillRect (0, 0, W, H); }
+        };
+        auto lerp = [] (double a, double b, double k) { return a + (b - a) * k; };
+        auto vignette = [&] (float a)
+        {
+            juce::ColourGradient vg (juce::Colours::transparentBlack, W * 0.5f, H * 0.5f, juce::Colours::black.withAlpha (a), 0.0f, 0.0f, true);
+            g.setGradientFill (vg); g.fillRect (0, 0, W, H);
+        };
+        float fade = 1.0f;
+        auto seg = [&] (double a, double b) { fade = (float) juce::jmin (1.0, juce::jmin ((t - a) / 0.9, (b - t) / 0.9)); return t >= a && t < b; };
+        if (seg (0.0, 7.5) || seg (15.5, 22.0))
+        {   // the window, slowly pushing in (rendered large so it stays sharp)
+            const bool end = t >= 15.5;
+            if (end) seg (15.5, 22.0); else seg (0.0, 7.5);
+            const double k = end ? (t - 15.5) / 6.5 : t / 7.5;
+            const auto hi = gx::ui::OffscreenRoom::get().render (rs.uniforms(), 2048, 1280);
+            const double w = lerp (0.46, 0.36, k), h = w, cx = 0.215, cy = 0.28;
+            if (! hi.isNull()) put (hi, cx - w * 0.5, cy - h * 0.5 * 1.0, w, h * 1.0 * (1.0), 0.0f);
+            vignette (0.55f);
+            if (end) { g.setColour (juce::Colours::black.withAlpha (juce::jlimit (0.0f, 0.5f, (float) ((t - 18.0) / 2.0 * 0.5)))); g.fillRect (0, 0, W, H); }
+        }
+        else if (seg (7.5, 12.5))
+        {   // the piano roll, close up
+            auto ui = ed.createComponentSnapshot (ed.getLocalBounds(), true, 2.0f);
+            const double k = (t - 7.5) / 5.0;
+            const double sx0 = lerp (0.42, 0.55, k), sw = lerp (0.565, 0.43, k);     // a slow push along the roll, letterboxed
+            const int bh = (int) (W * (0.175 * 800.0) / (sw * 1280.0));
+            g.drawImage (ui, 0, (H - bh) / 2, W, bh, (int) (sx0 * ui.getWidth()), (int) (0.305 * ui.getHeight()), (int) (sw * ui.getWidth()), (int) (0.175 * ui.getHeight()));
+            vignette (0.50f);
+        }
+        else if (seg (12.5, 15.5))
+        {   // the piano and its keys, with the candle
+            const double k = (t - 12.5) / 3.0;
+            const auto hi = gx::ui::OffscreenRoom::get().render (rs.uniforms(), 2048, 1280);
+            const double w = lerp (0.42, 0.34, k);
+            if (! hi.isNull()) put (hi, lerp (0.50, 0.56, k), 0.38, w, w * 0.99, 0.0f);
+            vignette (0.55f);
+        }
+        if (t >= 14.6 && t < 16.3)
+        {   // a fleeting glimpse of the enlarged interface
+            const double k = (t - 14.6) / 1.7;
+            auto ui = ed.createComponentSnapshot (ed.getLocalBounds(), true, 2.0f);
+            const double z = lerp(0.40, 0.62, k);
+            const float a = (float) (0.9 * std::sin (k * 3.14159265));
+            juce::Image layer (juce::Image::ARGB, W, H, true);
+            { juce::Graphics lg (layer); lg.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+              lg.drawImage (ui, 0, 0, W, H, (int) (ui.getWidth() * lerp (0.08, 0.20, k)), (int) (ui.getHeight() * lerp (0.50, 0.36, k)), (int) (ui.getWidth() * z), (int) (ui.getHeight() * z));
+              lg.setColour (juce::Colours::black.withAlpha (0.45f)); lg.fillRect (0, 0, W, H); }
+            g.setOpacity (a); g.drawImageAt (layer, 0, 0); g.setOpacity (1.0f);
+            fade = 1.0f;
+        }
+        g.setColour (juce::Colours::black.withAlpha (1.0f - juce::jlimit (0.0f, 1.0f, fade)));
+        g.fillRect (0, 0, W, H);
+        return out;
+    };
+    return makeVideo (dir, "Memoria-coming-soon-teaser", 22.0, setter, caps, compose);
+}
+
+// Teaser 2: details instead of the window - the clock, the candle, the strings, the keys, the knobs, the photograph
+int runTeaser2 (const juce::File& dir)
+{
+    std::vector<Caption> caps {
+        { "Every string. Every hammer.", "Cada cuerda. Cada martillo.", 7.5, 13.0 },
+        { "MEMORIA", "by DSK  ·  coming soon  ·  próximamente", 18.0, 22.0, true } };
+    Setter setter = [] (MemoriaProcessor& p, double t)
+    {
+        if (t < 0.02) applyBank (p, "Hazy Notes");
+        setHands (p, 8, 62, 0, 0, 72.0f);
+        setP (p, "world", 0.0f); setP (p, "world_level", 0.0f);
+        setP (p, "memory", 0.30f + 0.45f * ramp (t, 2.0, 17.0));
+        setP (p, "scene_season", 2.0f);
+        setP (p, "scene_time", t < 4.0f ? 1.0f : t < 13.0f ? 3.0f : t < 18.0f ? 4.0f : 5.0f);
+    };
+    Compose compose = [] (MemoriaEditor& ed, double t) -> juce::Image
+    {
+        constexpr int W = 1280, H = 800;
+        juce::Image out (juce::Image::ARGB, W, H, true);
+        juce::Graphics g (out);
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        g.fillAll (juce::Colours::black);
+        auto& rs = ed.roomScene();
+        auto lerp = [] (double a, double b, double k) { return a + (b - a) * k; };
+        auto vignette = [&] (float a)
+        {
+            juce::ColourGradient vg (juce::Colours::transparentBlack, W * 0.5f, H * 0.5f, juce::Colours::black.withAlpha (a), 0.0f, 0.0f, true);
+            g.setGradientFill (vg); g.fillRect (0, 0, W, H);
+        };
+        float fade = 1.0f;
+        auto seg = [&] (double a, double b) { const bool in = t >= a && t < b; if (in) fade = (float) juce::jmin (1.0, juce::jmin ((t - a) / 0.8, (b - t) / 0.8)); return in; };
+        auto room = [&] (double cx, double cy, double w0, double w1, double a, double b, float dark)
+        {
+            const double k = (t - a) / (b - a), w = lerp (w0, w1, k);
+            const auto hi = gx::ui::OffscreenRoom::get().render (rs.uniforms(), 2048, 1280);
+            if (hi.isNull()) return;
+            g.drawImage (hi, 0, 0, W, H, (int) ((cx - w * 0.5) * 2048), (int) ((cy - w * 0.5) * 1280), (int) (w * 2048), (int) (w * 1280));
+            if (dark > 0) { g.setColour (juce::Colours::black.withAlpha (dark)); g.fillRect (0, 0, W, H); }
+            vignette (0.55f);
+        };
+        auto ui = [&] (double sx, double sy, double sw, double sh, double outH, double a, double b, double dx)
+        {   // a part of the real interface, centred, keeping its proportions, slowly drifting
+            const auto snap = ed.createComponentSnapshot (ed.getLocalBounds(), true, 2.0f);
+            const double k = (t - a) / (b - a);
+            const double x0 = sx + dx * k;
+            const double ow = outH * (sw * 1280.0) / (sh * 800.0);
+            const int ox = (int) ((W - juce::jmin<double> (W, ow)) * 0.5), oh = (int) outH;
+            g.drawImage (snap, ox, (H - oh) / 2, (int) juce::jmin<double> (W, ow), oh, (int) (x0 * snap.getWidth()), (int) (sy * snap.getHeight()), (int) (sw * snap.getWidth()), (int) (sh * snap.getHeight()));
+            vignette (0.40f);
+        };
+        if (seg (0.0, 4.0)) room (0.51, 0.135, 0.115, 0.085, 0.0, 4.0, 0.0f);                       // the wall clock
+        else if (seg (4.0, 7.5)) room (0.83, 0.40, 0.18, 0.13, 4.0, 7.5, 0.0f);                    // the candle
+        else if (seg (7.5, 11.5)) ui (0.105, 0.595, 0.215, 0.325, 780.0, 7.5, 11.5, 0.0);            // the 88 strings
+        else if (seg (11.5, 14.5)) ui (0.0, 0.925, 0.50, 0.075, 150.0, 11.5, 14.5, 0.45);            // the keyboard, letterboxed
+        else if (seg (14.5, 16.5)) ui (0.43, 0.595, 0.30, 0.325, 780.0, 14.5, 16.5, 0.06);           // the knobs of the memory
+        else if (seg (16.5, 18.5)) room (0.715, 0.25, 0.22, 0.17, 16.5, 18.5, 0.0f);                // a faded photograph
+        else if (seg (18.5, 22.0)) room (0.74, 0.55, 0.62, 0.74, 18.5, 22.0, 0.55f);                // the dark room, the title over it
+        g.setColour (juce::Colours::black.withAlpha (1.0f - juce::jlimit (0.0f, 1.0f, fade)));
+        g.fillRect (0, 0, W, H);
+        return out;
+    };
+    return makeVideo (dir, "Memoria-coming-soon-teaser2", 22.0, setter, caps, compose);
+}
+
+// Teaser 3: the whole window through the seasons, the piano roll, the candle, the strings, the photograph (no generic keyboard)
+int runTeaser3 (const juce::File& dir)
+{
+    std::vector<Caption> caps {
+        { "Every string. Every hammer.", "Cada cuerda. Cada martillo.", 12.5, 15.5 },
+        { "MEMORIA", "by DSK  ·  coming soon  ·  próximamente", 18.0, 22.0, true } };
+    Setter setter = [] (MemoriaProcessor& p, double t)
+    {
+        if (t < 0.02) applyBank (p, "Hazy Notes");
+        setHands (p, 8, 62, 0, 0, 72.0f);
+        setP (p, "world", 0.0f); setP (p, "world_level", 0.0f);
+        setP (p, "memory", 0.30f + 0.45f * ramp (t, 2.0, 17.0));
+        setP (p, "scene_season", t < 2.5 ? 2.0f : t < 5.0 ? 3.0f : 4.0f);      // summer, autumn, winter
+        setP (p, "scene_time", t < 2.5 ? 3.0f : t < 17.5 ? 4.0f : 5.0f);
+    };
+    Compose compose = [] (MemoriaEditor& ed, double t) -> juce::Image
+    {
+        constexpr int W = 1280, H = 800;
+        juce::Image out (juce::Image::ARGB, W, H, true);
+        juce::Graphics g (out);
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
+        g.fillAll (juce::Colours::black);
+        auto& rs = ed.roomScene();
+        auto lerp = [] (double a, double b, double k) { return a + (b - a) * k; };
+        auto vignette = [&] (float a)
+        {
+            juce::ColourGradient vg (juce::Colours::transparentBlack, W * 0.5f, H * 0.5f, juce::Colours::black.withAlpha (a), 0.0f, 0.0f, true);
+            g.setGradientFill (vg); g.fillRect (0, 0, W, H);
+        };
+        float fade = 1.0f;
+        auto seg = [&] (double a, double b) { const bool in = t >= a && t < b; if (in) fade = (float) juce::jmin (1.0, juce::jmin ((t - a) / 0.8, (b - t) / 0.8)); return in; };
+        auto room = [&] (double cx, double cy, double w0, double w1, double a, double b, float dark)
+        {
+            const double k = (t - a) / (b - a), w = lerp (w0, w1, k);
+            const auto hi = gx::ui::OffscreenRoom::get().render (rs.uniforms(), 2048, 1280);
+            if (hi.isNull()) return;
+            g.drawImage (hi, 0, 0, W, H, (int) ((cx - w * 0.5) * 2048), (int) ((cy - w * 0.5) * 1280), (int) (w * 2048), (int) (w * 1280));
+            if (dark > 0) { g.setColour (juce::Colours::black.withAlpha (dark)); g.fillRect (0, 0, W, H); }
+            vignette (0.55f);
+        };
+        auto ui = [&] (double sx, double sy, double sw, double sh, double outH, double a, double b, double dx)
+        {   // a part of the real interface, centred, keeping its proportions, slowly drifting
+            const auto snap = ed.createComponentSnapshot (ed.getLocalBounds(), true, 2.0f);
+            const double k = (t - a) / (b - a);
+            const double x0 = sx + dx * k;
+            const double ow = outH * (sw * 1280.0) / (sh * 800.0);
+            const int ox = (int) ((W - juce::jmin<double> (W, ow)) * 0.5), oh = (int) outH;
+            g.drawImage (snap, ox, (H - oh) / 2, (int) juce::jmin<double> (W, ow), oh, (int) (x0 * snap.getWidth()), (int) (sy * snap.getHeight()), (int) (sw * snap.getWidth()), (int) (sh * snap.getHeight()));
+            vignette (0.40f);
+        };
+        if (seg (0.0, 6.8)) room (0.25, 0.30, 0.50, 0.56, 0.0, 6.8, 0.0f);                          // the whole window, seasons passing
+        else if (seg (6.8, 9.8)) ui (0.42, 0.305, 0.565, 0.175, 237.0, 6.8, 9.8, 0.0);               // the piano roll (letterboxed)
+        else if (seg (9.8, 12.5)) room (0.83, 0.40, 0.18, 0.13, 9.8, 12.5, 0.0f);                    // the candle
+        else if (seg (12.5, 15.5)) ui (0.105, 0.595, 0.215, 0.325, 780.0, 12.5, 15.5, 0.0);          // the 88 strings
+        else if (seg (15.5, 18.0)) room (0.715, 0.25, 0.22, 0.17, 15.5, 18.0, 0.0f);                // a faded photograph
+        else if (seg (18.0, 22.0)) room (0.25, 0.30, 0.58, 0.50, 18.0, 22.0, 0.45f);                // the window again, at night, under the title
+        g.setColour (juce::Colours::black.withAlpha (1.0f - juce::jlimit (0.0f, 1.0f, fade)));
+        g.fillRect (0, 0, W, H);
+        return out;
+    };
+    return makeVideo (dir, "Memoria-coming-soon-teaser3", 22.0, setter, caps, compose);
 }
 
 int runVideo (const juce::File& dir, bool trailer)

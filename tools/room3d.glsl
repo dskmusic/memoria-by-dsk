@@ -239,11 +239,6 @@ vec3 skyColour (vec2 w)
     vec2 t = w - vec2 (0.25, 0.34);
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
     bool isTrunkOld = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
-    if (uSeason < 0.5)
-    {
-        if (isTrunkOld || w.y < hill || crown < 0.0) c = dark;
-        return c * 1.25;
-    }
     c *= mix (1.0, 0.60, uSeason);
     vec3 lightC = mix (vec3 (1.0), uBot * 1.25, 0.5) * (0.20 + 0.65 * uOutL);
     vec3 outc = c;

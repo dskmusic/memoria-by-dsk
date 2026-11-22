@@ -56,7 +56,8 @@ inline SceneLook lookFor (int world, int tod, int season)
         if (tod == 0) { set3 (kTopR, 0.38f, 0.52f, 0.72f); set3 (kBotR, 0.88f, 0.86f, 0.80f); set3 (kSunR, 0.95f * 0.85f, 0.90f * 0.85f, 0.80f * 0.85f); v[kSunI] = 0.55f; v[kSunPx] = 0.35f; v[kSunPy] = 0.30f; v[kAmb] = 1.0f; v[kOutL] = 0.9f; }
         v[kWind] = 1; v[kCloud] = 0.35f;
     }
-    // season (0 = auto: the dark silhouettes of the original scene)
+    // season (0 = auto = summer: the same tree and grass as every other season, never the old flat silhouettes)
+    if (season == 0) season = 2;
     if (season > 0)
     {
         v[kSeason] = 1;

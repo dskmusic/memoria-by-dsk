@@ -37,6 +37,8 @@ private:
     juce::SpinLock ulock;
     RoomUniforms uni;
     juce::Image external;
+    double born = juce::Time::getMillisecondCounterHiRes() * 0.001;
+    double now0() const { return juce::Time::getMillisecondCounterHiRes() * 0.001 - born; }   // seconds since the scene was created
     float hitEnv = 0, sectionEnv = 0;
     SceneLook look; bool lookInit = false;
     void rebuild (int world, int tod, int season);

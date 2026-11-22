@@ -83,14 +83,21 @@ void RoomScene::rebuild (int world, int tod, int season)
                     if (lk.v[kNight] > 0.5f && hash2 (std::floor (wu * 40), std::floor (wv * 40)) > 0.985f && wv < 0.6f) { sr += 0.5f; sg += 0.5f; sb += 0.6f; }
                     const float hill = 0.80f + 0.05f * std::sin (wu * 8.0f) + 0.03f * std::sin (wu * 21.0f + 1.0f);
                     const float tx = wu - 0.25f, ty = wv - 0.66f;
-                    const bool tree = (tx * tx * 6.0f + ty * ty * 2.2f < 0.03f && wv < hill) || (std::abs (tx) < 0.012f && wv > 0.66f && wv < hill + 0.03f);
+                    bool crownHit = false;
+                    {   // a crown of leafy clumps with a ragged edge, and a tapered trunk
+                        static const float cl[6][3] { { -0.095f, -0.04f, 0.060f }, { 0.0f, -0.11f, 0.070f }, { 0.095f, -0.04f, 0.060f }, { 0.0f, -0.02f, 0.065f }, { -0.045f, -0.145f, 0.045f }, { 0.055f, -0.14f, 0.045f } };
+                        const float rag = 0.012f * (hash2 (std::floor (wu * 160.0f), std::floor (wv * 160.0f)) - 0.5f) * 6.0f;
+                        for (auto& c : cl) { const float ddx = tx - c[0], ddy = ty - c[1]; if (std::sqrt (ddx * ddx + ddy * ddy * 1.15f) < c[2] + rag) crownHit = true; }
+                    }
+                    const float trunkW = lerpf (0.020f, 0.008f, juce::jlimit (0.0f, 1.0f, (0.0f - ty) / 0.18f + 0.0f));
+                    const bool tree = (crownHit && wv < hill + 0.04f) || (std::abs (tx) < trunkW && wv > 0.58f && wv < hill + 0.03f);
                     if (wv > hill || tree)
                     {
-                        if (lk.v[kSeason] < 0.5f) { sr *= 0.12f; sg *= 0.12f; sb *= 0.14f; }
+                        if (false) {}
                         else
                         {
                             const float lt = (0.25f + 0.9f * lk.v[kOutL]) * (0.8f + 0.4f * hash2 (std::floor (wu * 90.0f), std::floor (wv * 90.0f)));
-                            const bool crown = tree && wv < hill && std::abs (tx) >= 0.012f;
+                            const bool crown = crownHit && wv < hill + 0.04f;
                             const float* c3 = crown ? &lk.v[kFoR] : &lk.v[kGrR];
                             const float fa = crown ? juce::jmax (lk.v[kFoAmt], 0.25f) : 1.0f;
                             sr = lerpf (sr * 0.5f, c3[0] * lt, fa); sg = lerpf (sg * 0.5f, c3[1] * lt, fa); sb = lerpf (sb * 0.5f, c3[2] * lt, fa);
@@ -349,6 +356,7 @@ void RoomScene::paint (juce::Graphics& g)
     if (! glOk.load()) g.reduceClipRegion (clip);
     g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
     if (glOk.load()) { /* the shader draws underneath */ }
+    else if (external.isNull() && gpuWanted && gpuStatus().load() >= 0 && now0() < 8.0) { g.setColour (col::bgDeep); g.fillRect (r); }      // the shader scene is starting: no flash of the simple CPU picture
     else g.drawImage (external.isNull() ? img : external, r, juce::RectanglePlacement::fillDestination);
     g.restoreState();
     g.setColour (col::accent.withAlpha (0.35f));
