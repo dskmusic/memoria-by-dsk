@@ -7,6 +7,12 @@ film scoring, studying and relaxing.
 
 **[Download](#download)** · [Product page](https://www.dskmusic.com/memoria/) · [Latest release](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
 
+[![build](https://github.com/dskmusic/memoria-by-dsk/actions/workflows/build.yml/badge.svg)](https://github.com/dskmusic/memoria-by-dsk/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/dskmusic/memoria-by-dsk)](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/dskmusic/memoria-by-dsk/total)](https://github.com/dskmusic/memoria-by-dsk/releases)
+![license](https://img.shields.io/badge/license-GPLv3-blue)
+
+
 No samples: every string, hammer and the soundboard are computed in real time, so the piano breathes with how you play.
 On top of it live the things that turn a piano into a *memory*: the room, worn tape, vinyl dust, creaking wood, the rain on the
 window. One slider, **Memory**, takes you from a crisp, present studio piano to a tape found in an attic.

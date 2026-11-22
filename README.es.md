@@ -7,6 +7,12 @@ bandas sonoras, estudiar y relajarse.
 
 **[Descargar](#descarga)** · [Página del producto](https://www.dskmusic.com/memoria/) · [Última versión](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
 
+[![build](https://github.com/dskmusic/memoria-by-dsk/actions/workflows/build.yml/badge.svg)](https://github.com/dskmusic/memoria-by-dsk/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/dskmusic/memoria-by-dsk)](https://github.com/dskmusic/memoria-by-dsk/releases/latest)
+[![descargas](https://img.shields.io/github/downloads/dskmusic/memoria-by-dsk/total?label=descargas)](https://github.com/dskmusic/memoria-by-dsk/releases)
+![licencia](https://img.shields.io/badge/licencia-GPLv3-blue)
+
+
 Sin muestras: cada cuerda, cada martillo y la caja de resonancia se calculan en tiempo real, así que el piano respira con tu forma de tocar.
 Encima viven las cosas que convierten un piano en un *recuerdo*: la habitación, la cinta desgastada, el polvo del vinilo, la madera que cruje,
 la lluvia en la ventana. Un solo deslizador, **Memoria**, te lleva de un piano de estudio nítido y presente a una cinta encontrada en un desván.
