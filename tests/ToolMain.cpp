@@ -6,6 +6,7 @@
 #include "PluginEditor.h"
 #include "gen/Generator.h"
 #include <set>
+#include <map>
 #include <juce_dsp/juce_dsp.h>
 
 // Organ detector: after the keys are released a piano decays; an organ / drone keeps a steady, tonal sound.
@@ -346,6 +347,20 @@ int main (int argc, char** argv)
             if (bad) { ++flagged; std::puts (("ORGAN-LIKE " + p.meta.category + " / " + p.meta.name + " (piano " + juce::String ((int) p.params[(size_t) gx::P::piano]) + "): " + info).toRawUTF8()); }
         }
         std::puts (("flagged " + juce::String (flagged) + " of " + juce::String (arr->size())).toRawUTF8());
+        return 0;
+    }
+    if (cmd == "themes")
+    {
+        // MemoriaTool themes <style> [maxSeed]: which Hands seeds play a hand-written theme (0..19) for a style
+        const int style = argc > 2 ? juce::String (argv[2]).getIntValue() : 0, maxSeed = argc > 3 ? juce::String (argv[3]).getIntValue() : 400;
+        std::map<int, std::vector<int>> by;
+        for (int seed = 1; seed <= maxSeed; ++seed)
+        {
+            gx::ComposeCfg c; c.style = style; c.seed = (uint32_t) seed; c.key = 0; c.scale = 0;
+            gx::Score s; gx::compose (c, s);
+            if (s.theme >= 0 && s.theme < 20) by[s.theme].push_back (seed);
+        }
+        for (auto& kv : by) { juce::String l = "theme " + juce::String (kv.first) + ":"; for (size_t i = 0; i < kv.second.size() && i < 12; ++i) l += " " + juce::String (kv.second[i]); std::puts (l.toRawUTF8()); }
         return 0;
     }
     if (cmd == "gainstage")

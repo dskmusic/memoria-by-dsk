@@ -187,7 +187,8 @@ struct Composer
             if (c.style == ssLullaby ? bk[i].waltz : (! bk[i].waltz && (bk[i].moods & styleMask[juce::jlimit (0, 13, c.style)]) != 0)) pool.push_back ((int) i);
         if (pool.empty()) pool.push_back (0);
         const size_t n = pool.size();
-        loop = &bk[(size_t) pool[(size_t) (c.seed % (uint32_t) n)]];
+        const int li = pool[(size_t) (c.seed % (uint32_t) n)];
+        loop = &bk[(size_t) li]; out.theme = li;
         bridgeLoop = &bk[(size_t) pool[(size_t) ((c.seed * 2654435761u >> 7) % (uint32_t) n)]];
         if (bridgeLoop == loop) bridgeLoop = &bk[(size_t) pool[(size_t) ((c.seed % (uint32_t) n + 1) % n)]];
         if (loop->waltz) bpb = 3; else if (bpb == 3) bpb = 4;

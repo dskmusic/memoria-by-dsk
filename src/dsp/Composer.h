@@ -20,6 +20,7 @@ struct Score
     std::vector<PedEv> pedal;         // sorted by beat
     std::vector<SectionInfo> sections;
     double totalBeats = 0;
+    int theme = -1;                   // songbook theme used (0..19 hand-written), -1 none
     int beatsPerBar = 4, bars = 0;
     std::vector<std::pair<double, unsigned>> chordMasks;   // (start beat, pitch-class mask of the chord sounding): used by the music lint tests
 };

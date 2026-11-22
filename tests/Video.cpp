@@ -4,6 +4,9 @@
 #include "PluginEditor.h"
 #include "gen/Generator.h"
 #include <juce_audio_formats/juce_audio_formats.h>
+#if __has_include(<BinaryData.h>)
+ #include <BinaryData.h>
+#endif
 
 namespace
 {
@@ -135,13 +138,43 @@ void prepareSound (MemoriaProcessor& proc, int category, int hands, float tempo,
     pr.applyTo (proc);
     proc.setPlaying (true);
 }
+// the factory preset with this name (so the videos use real, curated sounds); the hands keep playing
+bool applyBank (MemoriaProcessor& proc, const juce::String& name)
+{
+    static juce::var bank; static bool loaded = false;
+    if (! loaded)
+    {
+        loaded = true;
+#if __has_include(<BinaryData.h>)
+        int size = 0; const char* d = BinaryData::getNamedResource ("factory_memoriabank", size);
+        if (d != nullptr) bank = juce::JSON::parse (juce::String::fromUTF8 (d, size));
+#endif
+    }
+    if (auto* arr = bank.getProperty ("presets", {}).getArray())
+        for (auto& v : *arr)
+        {
+            auto pr = gx::Preset::fromVar (v);
+            if (pr.meta.name != name) continue;
+            pr.params[(size_t) gx::P::hands] = 1.0f;
+            pr.applyTo (proc);
+            proc.setPlaying (true);
+            return true;
+        }
+    return false;
+}
+
+void setHands (MemoriaProcessor& p, int style, int seed, int key, int scale, float tempo, int form = 0)
+{
+    setP (p, "hands", 1.0f); setP (p, "hands_style", (float) style); setP (p, "hands_seed", (float) seed); setP (p, "hands_key", (float) key);
+    setP (p, "hands_scale", (float) scale); setP (p, "hands_tempo", tempo); setP (p, "hands_form", (float) form); setP (p, "hands_bars", 1.0f);
+}
 }
 
 int runVideo (const juce::File& dir, bool trailer)
 {
     if (! trailer)
     {
-        // 110 s: what is new: the hour of the day and the seasons behind the window, the wall clock, new instruments, new song styles
+        // 110 s: the hour of the day and the seasons behind the window, the wall clock, the instruments, the hands
         const double len = 110.0;
         std::vector<Caption> caps {
             { "MEMORIA", "A piano with a soul  ·  Un piano con alma", 1.0, 6.5, true },
@@ -149,36 +182,37 @@ int runVideo (const juce::File& dir, bool trailer)
             { "Hour of the day and season, behind your window", "Hora del día y estación del año, tras tu ventana", 16.0, 25.0 },
             { "A wall clock that follows the light", "Un reloj de pared que sigue la luz", 27.0, 35.0 },
             { "From dawn to a snowy night", "Del amanecer a una noche de nieve", 37.0, 45.0 },
-            { "New instruments: electric piano, vibraphone...", "Instrumentos nuevos: piano eléctrico, vibráfono...", 46.0, 55.0 },
-            { "...music box, marimba and glockenspiel", "...caja de música, marimba y glockenspiel", 56.0, 66.0 },
-            { "Four new song styles: Bossa Nova...", "Cuatro estilos nuevos: Bossa Nova...", 68.0, 76.0 },
-            { "...Singer-Songwriter and Slow Tango...", "...Cantautor y Tango lento...", 77.0, 86.0 },
-            { "...and a cheerful Village theme", "...y un alegre tema de Pueblo", 87.0, 95.0 },
+            { "Eleven instruments: electric piano, vibraphone...", "Once instrumentos: piano eléctrico, vibráfono...", 46.0, 55.0 },
+            { "...music box, marimba, glockenspiel and more", "...caja de música, marimba, glockenspiel y más", 56.0, 66.0 },
+            { "The hands compose and play by themselves", "Las manos componen y tocan solas", 68.0, 76.0 },
+            { "In many styles: romantic, jazz, cinematic, lo-fi...", "En muchos estilos: romántico, jazz, cinematográfico, lo-fi...", 77.0, 95.0 },
             { "Loops, choruses and short pieces: drag the MIDI into your DAW", "Bucles, estribillos y piezas cortas: arrastra el MIDI a tu DAW", 96.0, 104.0 },
             { "MEMORIA by DSK", "Free · VST3 / AU / Standalone · dskmusic.com  ·  Gratis", 104.5, 109.5, true } };
         Setter setter = [] (MemoriaProcessor& p, double t)
         {
-            if (t < 0.02) { prepareSound (p, 0, 1, 76.0f, 31); setP (p, "hands", 1.0f); setP (p, "piano", 0.0f); setP (p, "resonance", 0.3f); }
+            // segments: curated factory presets and hand-written song themes
+            struct Seg { double from; const char* preset; int style, seed, key, scale; float tempo; };
+            static const Seg segs[] {
+                { 0.0, "Open Hall", 1, 3, 0, 0, 72.0f },
+                { 46.0, "Rhodes Late Night", 8, 62, 0, 0, 74.0f },
+                { 51.0, "Vibraphone Moon", 8, 62, 0, 0, 74.0f },
+                { 56.0, "Music Box Cradle", 8, 62, 0, 0, 74.0f },
+                { 61.0, "Marimba Warm Desk", 8, 62, 0, 0, 74.0f },
+                { 68.0, "Hushed Keys", 2, 6, 0, 0, 70.0f },
+                { 77.0, "Blue Window Seat", 7, 7, 0, 0, 84.0f },
+                { 86.0, "Open Hall", 1, 1, 0, 0, 72.0f },
+                { 95.0, "Patient Focus", 0, 4, 0, 0, 78.0f } };
+            static int cur = -1;
+            int want = 0; for (int i = 0; i < 9; ++i) if (t >= segs[i].from) want = i;
+            if (want != cur) { cur = want; applyBank (p, segs[want].preset); }
+            const auto& sg = segs[want];
+            setHands (p, sg.style, sg.seed, sg.key, sg.scale, sg.tempo, t >= 96.0 && t < 104.0 ? 1 : 0);
+            setP (p, "world", 0.0f); setP (p, "world_level", 0.0f);
             setP (p, "memory", 0.12f + 0.10f * ramp (t, 0.0, 100.0));
-            setP (p, "world_level", 0.5f); setP (p, "time", 0.6f);
             // scene: auto at first, then hour and season sweep (the scene eases between looks)
             const float tod = t < 16.0 ? 0.0f : t < 24.0 ? 2.0f : t < 30.0 ? 3.0f : t < 37.0 ? 4.0f : 5.0f;
             const float season = t < 16.0 ? 0.0f : t < 24.0 ? 1.0f : t < 30.0 ? 2.0f : t < 37.0 ? 3.0f : t < 66.0 ? 4.0f : 0.0f;
             setP (p, "scene_time", t < 94.0 ? tod : 3.0f); setP (p, "scene_season", t < 94.0 ? season : 2.0f);
-            // instruments
-            const float inst = t < 46.0 ? 0.0f : t < 51.0 ? 6.0f : t < 56.0 ? 7.0f : t < 61.0 ? 9.0f : t < 66.0 ? 10.0f : 0.0f;
-            setP (p, "piano", inst);
-            if (t >= 46.0 && t < 66.0) { setP (p, "tone", 0.55f); setP (p, "resonance", 0.1f); } else { setP (p, "tone", 0.45f); setP (p, "resonance", 0.3f); }
-            // song styles
-            int style = 0, key = 9, scale = 1; float tempo = 76;
-            if (t >= 46.0 && t < 68.0) { style = 8; key = 0; scale = 0; tempo = 74; }
-            else if (t >= 68.0 && t < 77.0) { style = 10; key = 2; scale = 0; tempo = 96; }
-            else if (t >= 77.0 && t < 87.0) { style = 11; key = 7; scale = 0; tempo = 76; }
-            else if (t >= 87.0 && t < 96.0) { style = 12; key = 9; scale = 7; tempo = 66; }
-            else if (t >= 96.0) { style = 13; key = 0; scale = 0; tempo = 100; }
-            setP (p, "hands_style", (float) style); setP (p, "hands_key", (float) key); setP (p, "hands_scale", (float) scale); setP (p, "hands_tempo", tempo);
-            setP (p, "hands_form", t >= 96.0 && t < 104.0 ? 1.0f : 0.0f);
-            setP (p, "hands_seed", 31.0f);
         };
         return makeVideo (dir, "Memoria-demo", len, setter, caps);
     }
@@ -189,17 +223,11 @@ int runVideo (const juce::File& dir, bool trailer)
         { "MEMORIA", "dskmusic.com", 17.5, 22.0, true } };
     Setter setter = [] (MemoriaProcessor& p, double t)
     {
-        if (t < 0.02)
-        {
-            prepareSound (p, 0, 1, 72.0f, 21, 8, 0, 0);
-            setP (p, "piano", 1.0f); setP (p, "tone", 0.30f); setP (p, "hammer", 0.30f); setP (p, "warmth", 0.7f); setP (p, "detune", 0.6f);
-            setP (p, "tape", 0.45f); setP (p, "vinyl", 0.30f); setP (p, "wood", 0.3f); setP (p, "room", 0.22f); setP (p, "room_type", 0.0f);
-            setP (p, "hands_density", 0.45f); setP (p, "hands_express", 0.55f); setP (p, "resonance", 0.0f);
-        }
-        setP (p, "memory", 0.45f + 0.35f * ramp (t, 3.0, 18.0));
-        setP (p, "world", 2.0f);             // a light wind
+        if (t < 0.02) applyBank (p, "Hazy Notes");
+        setHands (p, 8, 62, 0, 0, 72.0f);       // Lo-Fi Loop, a hand-written theme (ii - V - I - vi)
+        setP (p, "world", 0.0f); setP (p, "world_level", 0.0f);     // no ambience
+        setP (p, "memory", 0.40f + 0.30f * ramp (t, 3.0, 18.0));
         setP (p, "scene_time", 3.0f); setP (p, "scene_season", 2.0f);   // a summer afternoon outside the window
-        setP (p, "world_level", 0.16f);
     };
     return makeVideo (dir, "Memoria-coming-soon", 22.0, setter, caps);
 }

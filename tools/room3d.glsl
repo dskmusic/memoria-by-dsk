@@ -237,7 +237,6 @@ vec3 skyColour (vec2 w)
     float hill = 0.22 + 0.05 * sin (w.x * 8.0) + 0.03 * sin (w.x * 21.0 + 1.0);
     vec3 dark = c * 0.09 + vec3 (0.0, 0.004, 0.01);
     vec2 t = w - vec2 (0.25, 0.34);
-    t.x += 0.012 * sin (uTime * 1.7 + w.y * 6.0) * (0.5 + 0.5 * sin (uTime * 0.4)) * uWind;
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
     bool isTrunkOld = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
     if (uSeason < 0.5)
@@ -268,7 +267,7 @@ vec3 skyColour (vec2 w)
     }
     // the tree: tapered trunk, branches, clumps of leaves (none in winter: bare branches, snow on them)
     vec2 q = (w - vec2 (0.25, 0.20)) / 0.80;
-    float swayT = 0.006 * sin (uTime * 1.5 + w.y * 6.0) * uWind;
+    float swayT = 0.0;      // the tree does not move with the wind (it looked odd)
     float ty = clamp (q.y / 0.19, 0.0, 1.0);
     float tx = q.x - 0.008 * sin (ty * 2.5) - swayT * ty;
     float trunkW = mix (0.017, 0.0065, ty);

@@ -252,7 +252,6 @@ vec3 skyColour (vec2 w)
     float hill = 0.22 + 0.05 * sin (w.x * 8.0) + 0.03 * sin (w.x * 21.0 + 1.0);
     vec3 dark = c * 0.09 + vec3 (0.0, 0.004, 0.01);
     vec2 t = w - vec2 (0.25, 0.34);
-    t.x += 0.012 * sin (uTime * 1.7 + w.y * 6.0) * (0.5 + 0.5 * sin (uTime * 0.4)) * uWind;
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
     bool isTrunkOld = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
     if (uSeason < 0.5)
@@ -269,8 +268,8 @@ vec3 skyColour (vec2 w)
         float fk = float (k), fx = 0.60 + 0.11 * fk + 0.02 * hash12 (vec2 (fk, 1.0));
         vec2 fq = w - vec2 (fx, hillY (fx) + 0.035);
         float fcov = ss (1.0, 0.65, length (fq / vec2 (0.040, 0.052)) + 0.5 * (fbm (w * 55.0 + fk * 7.0) - 0.5)) * mix (0.30, 1.0, uFoAmt);
-)GLSL" R"GLSL(
         vec3 fcol = mix (uFoliage * lightC * (0.55 + 0.35 * fk * 0.3), c, 0.45);
+)GLSL" R"GLSL(
         outc = mix (outc, fcol, fcov);
     }
     // ground: grass (or snow) with fine streaks, hazier towards the horizon, and the soft shadow of the tree
@@ -284,7 +283,7 @@ vec3 skyColour (vec2 w)
     }
     // the tree: tapered trunk, branches, clumps of leaves (none in winter: bare branches, snow on them)
     vec2 q = (w - vec2 (0.25, 0.20)) / 0.80;
-    float swayT = 0.006 * sin (uTime * 1.5 + w.y * 6.0) * uWind;
+    float swayT = 0.0;      // the tree does not move with the wind (it looked odd)
     float ty = clamp (q.y / 0.19, 0.0, 1.0);
     float tx = q.x - 0.008 * sin (ty * 2.5) - swayT * ty;
     float trunkW = mix (0.017, 0.0065, ty);
@@ -488,8 +487,8 @@ void material (vec3 p, vec3 n, float id, out vec3 alb, out float rough, out floa
         alb *= 1.0 - 0.55 * ss (0.03, 0.0, min (wf, 1.0 - wf));          // the gap between keys
         float zf = (p.z - (PIANO.z + 0.41)) ;
         bool hasBlack = m < 1.5 || (m > 2.5 && m < 5.5);
-)GLSL" R"GLSL(
         float bx = abs (wf - 1.0) < 0.02 ? 0.0 : 0.0;
+)GLSL" R"GLSL(
         // black keys sit between white keys: on the right edge of white keys with a sharp (A#, C#, D#, F#, G#)
         float edge = (wf > 0.68 && hasBlack && m < 6.5 && zf < 0.0) ? 1.0 : 0.0;
         float edgeL = (wf < 0.32 && (m > 0.5 && m < 1.5 + 0.0 || (m > 3.5 && m < 6.5) || (m > 2.5 && m < 3.5)) && zf < 0.0) ? 0.0 : 0.0;
