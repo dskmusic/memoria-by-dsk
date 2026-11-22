@@ -82,6 +82,7 @@ int makeVideo (const juce::File& outDir, const juce::String& name, double secs, 
     {
         const double t = f / fps;
         setter (proc, t);
+        if (f == 0) ed->refreshAll();      // the header shows the name of the sound that is playing
         for (int pos = 0; pos < spf; pos += 500)
         {
             const int n = juce::jmin (500, spf - pos);

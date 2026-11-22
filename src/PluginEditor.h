@@ -27,12 +27,12 @@ public:
     void toast (const juce::String& msg);
     gx::ui::RoomScene& roomScene() { return pianoPage->scene; }
     void advanceFrames (double dt);   // used by the screenshot tool
+    void refreshAll();                // header name, UI state from the processor (also used by the video tool)
     void rebuildUi();                 // language switch (also exercised by MemoriaTool screenshot)
     void videoFrame() { stopTimer(); timerCallback(); } // MemoriaTool video: one UI frame on the virtual clock
 
 private:
     void timerCallback() override;
-    void refreshAll();
     void toggleAB();
     void buildUi();
 
