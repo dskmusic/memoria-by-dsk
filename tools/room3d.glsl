@@ -200,6 +200,24 @@ float windowLight (vec3 q)
     return inside * (1.0 - 0.8 * mull);
 }
 
+float hillY (float x) { return 0.22 + 0.05 * sin (x * 8.0) + 0.03 * sin (x * 21.0 + 1.0); }
+float segB (vec2 p, vec2 a, vec2 b)
+{
+    vec2 pa = p - a, ba = b - a;
+    float h = clamp (dot (pa, ba) / dot (ba, ba), 0.0, 1.0);
+    return length (pa - ba * h);
+}
+// one clump of foliage: x = coverage (with a ragged, leafy edge and gaps), y = shading (lit from the upper left)
+vec2 clumpD (vec2 q, float cx, float cy, float r, float sd)
+{
+    vec2 d = (q - vec2 (cx, cy)) / r;
+    float n = fbm (q * 70.0 + sd) - 0.5;
+    float dist = length (d) + n * 0.60;
+    float cover = ss (1.0, 0.62, dist) * ss (0.24, 0.50, fbm (q * 150.0 + sd * 3.0) + 0.42 * uFoAmt);
+    float shade = 0.34 + 0.90 * clamp (dot (d, vec2 (-0.45, 0.85)) * 0.5 + 0.5, 0.0, 1.0);
+    return vec2 (cover, shade);
+}
+
 vec3 skyColour (vec2 w)
 {
     vec2 sunP = vec2 (uSunPx, uSunPy);
@@ -221,41 +239,72 @@ vec3 skyColour (vec2 w)
     vec2 t = w - vec2 (0.25, 0.34);
     t.x += 0.012 * sin (uTime * 1.7 + w.y * 6.0) * (0.5 + 0.5 * sin (uTime * 0.4)) * uWind;
     float crown = length (t * vec2 (2.2, 1.0)) - 0.14;
-    float crownE = crown + 0.07 * (fbm (t * 22.0 + 5.0) - 0.5);
-    bool isTrunk = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
-    bool isGround = w.y < hill;
-    c *= mix (1.0, 0.60, uSeason);
-    vec3 outc = c;
-    float outK = 1.25;
-    if (isGround || crownE < 0.0 || isTrunk)
+    bool isTrunkOld = abs (t.x) < 0.012 && w.y < 0.34 && w.y > 0.12;
+    if (uSeason < 0.5)
     {
-        if (uSeason < 0.5) outc = dark;
-        else
-        {
-            outK = 0.72;
-            vec3 lightC = mix (vec3 (1.0), uBot * 1.25, 0.5) * (0.20 + 0.65 * uOutL);
-            float far = ss (hill - 0.07, hill, w.y);
-            vec3 gcol = uGround * lightC * (0.78 + 0.42 * fbm (w * vec2 (24.0, 70.0)));
-            gcol *= 0.80 + 0.35 * ss (0.0, hill, w.y);
-            gcol = mix (gcol, c * 0.9, 0.22 * far + 0.12);
-            outc = gcol;
-            vec3 bark = vec3 (0.16, 0.11, 0.08) * lightC;
-            if (isTrunk) outc = bark * (0.8 + 0.4 * fbm (vec2 (t.x * 90.0, t.y * 8.0)));
-            if (crownE < 0.0 && ! isGround)
-            {
-                float cover = fbm (t * 17.0 + 3.0);
-                float leaf = ss (uFoAmt * 0.95 + 0.05, uFoAmt * 0.95 - 0.12, cover);
-                float shade = (0.42 + 0.62 * ss (-0.14, 0.12, t.y)) * (0.62 + 0.9 * fbm (t * 40.0 + 2.0));
-                vec3 fol = uFoliage * lightC * shade;
-                fol += uBlossom * step (0.74, fbm (t * 34.0 + 7.0)) * vec3 (0.95, 0.72, 0.78) * lightC * 0.8;
-                float twig = step (0.60, fbm (vec2 (t.x * 24.0, t.y * 11.0))) * (1.0 - 0.9 * uFoAmt);
-                outc = mix (c, bark, twig * 0.85);
-                outc = mix (outc, fol, leaf * uFoAmt * 1.1);
-                outc = mix (outc, vec3 (0.93, 0.95, 1.0) * lightC, uSnow * twig * 0.5);
-            }
-        }
+        if (isTrunkOld || w.y < hill || crown < 0.0) c = dark;
+        return c * 1.25;
     }
-    return outc * outK;
+    c *= mix (1.0, 0.60, uSeason);
+    vec3 lightC = mix (vec3 (1.0), uBot * 1.25, 0.5) * (0.20 + 0.65 * uOutL);
+    vec3 outc = c;
+    // a distant row of small trees on the far hill, hazy
+    for (int k = 0; k < 4; k++)
+    {
+        float fk = float (k), fx = 0.60 + 0.11 * fk + 0.02 * hash12 (vec2 (fk, 1.0));
+        vec2 fq = w - vec2 (fx, hillY (fx) + 0.035);
+        float fcov = ss (1.0, 0.65, length (fq / vec2 (0.040, 0.052)) + 0.5 * (fbm (w * 55.0 + fk * 7.0) - 0.5)) * mix (0.30, 1.0, uFoAmt);
+        vec3 fcol = mix (uFoliage * lightC * (0.55 + 0.35 * fk * 0.3), c, 0.45);
+        outc = mix (outc, fcol, fcov);
+    }
+    // ground: grass (or snow) with fine streaks, hazier towards the horizon, and the soft shadow of the tree
+    if (w.y < hill)
+    {
+        float far = ss (hill - 0.07, hill, w.y);
+        vec3 gcol = uGround * lightC * (0.74 + 0.40 * fbm (w * vec2 (34.0, 150.0)) + 0.18 * (fbm (w * vec2 (160.0, 40.0)) - 0.5));
+        gcol *= 0.80 + 0.35 * ss (0.0, hill, w.y);
+        gcol *= 1.0 - 0.30 * ss (0.17, 0.0, length ((w - vec2 (0.31, hill - 0.02)) * vec2 (1.0, 3.6)));
+        outc = mix (gcol, c * 0.9, 0.20 * far + 0.10);
+    }
+    // the tree: tapered trunk, branches, clumps of leaves (none in winter: bare branches, snow on them)
+    vec2 q = (w - vec2 (0.25, 0.20)) / 0.80;
+    float swayT = 0.006 * sin (uTime * 1.5 + w.y * 6.0) * uWind;
+    float ty = clamp (q.y / 0.19, 0.0, 1.0);
+    float tx = q.x - 0.008 * sin (ty * 2.5) - swayT * ty;
+    float trunkW = mix (0.017, 0.0065, ty);
+    float trunk = ss (trunkW, trunkW * 0.55, abs (tx)) * step (0.0, q.y) * step (q.y, 0.20);
+    vec2 qb = q - vec2 (swayT * 2.0, 0.0);
+    float br = max (max (ss (0.0060, 0.0030, segB (qb, vec2 (0.0, 0.14), vec2 (-0.075, 0.245))), ss (0.0060, 0.0030, segB (qb, vec2 (0.0, 0.15), vec2 (0.080, 0.255)))),
+                    max (ss (0.0052, 0.0026, segB (qb, vec2 (0.0, 0.17), vec2 (0.004, 0.31))), max (ss (0.0032, 0.0016, segB (qb, vec2 (-0.052, 0.215), vec2 (-0.11, 0.30))), ss (0.0032, 0.0016, segB (qb, vec2 (0.057, 0.222), vec2 (0.115, 0.30))))));
+    vec3 bark = vec3 (0.20, 0.14, 0.10) * lightC * (0.75 + 0.5 * fbm (vec2 (q.x * 160.0, q.y * 14.0)));
+    outc = mix (outc, bark, max (trunk, br * 0.9));
+    outc = mix (outc, vec3 (0.93, 0.95, 1.0) * lightC, uSnow * br * ss (0.30, 0.6, fbm (q * 70.0)) * 0.55);
+    // bare twigs in winter: a fine, dark lattice inside the crown, with a little snow on it
+    float canopy = ss (1.0, 0.55, length ((q - vec2 (0.0, 0.27)) / vec2 (0.17, 0.11)));
+    float twig = step (0.60, fbm (q * 52.0 + 3.0)) * canopy * (1.0 - uFoAmt);
+    outc = mix (outc, bark, twig * 0.8);
+    outc = mix (outc, vec3 (0.93, 0.95, 1.0) * lightC, uSnow * twig * ss (0.35, 0.6, fbm (q * 90.0)) * 0.5);
+    if (uFoAmt > 0.02 && abs (q.x) < 0.24 && q.y > 0.1 && q.y < 0.46)
+    {
+        vec2 qc = q - vec2 (swayT * 3.0, 0.0);
+        vec2 best = vec2 (0.0, 0.5);
+        float kk = 0.0;
+        for (int i = 0; i < 16; i++)
+        {
+            float fi = float (i);
+            float cx = i == 0 ? -0.075 : i == 1 ? 0.0 : i == 2 ? 0.078 : i == 3 ? -0.105 : i == 4 ? 0.110 : i == 5 ? 0.004 : i == 6 ? -0.038 : i == 7 ? 0.045 : 0.115 * cos (fi * 2.399) * (0.6 + 0.4 * hash12 (vec2 (fi, 2.0)));
+            float cy = i == 0 ? 0.265 : i == 1 ? 0.305 : i == 2 ? 0.268 : i == 3 ? 0.225 : i == 4 ? 0.230 : i == 5 ? 0.235 : i == 6 ? 0.338 : i == 7 ? 0.345 : 0.275 + 0.085 * sin (fi * 2.399) * (0.6 + 0.4 * hash12 (vec2 (fi, 5.0)));
+            float cr = i == 0 ? 0.056 : i == 1 ? 0.066 : i == 2 ? 0.056 : i == 3 ? 0.040 : i == 4 ? 0.042 : i == 5 ? 0.052 : i == 6 ? 0.045 : i == 7 ? 0.040 : 0.026 + 0.012 * hash12 (vec2 (fi, 7.0));
+            vec2 cd = clumpD (qc, cx, cy, cr, fi * 7.3);
+            if (cd.x > best.x * 0.9) { kk = fi; }
+            if (cd.x > best.x) best = cd;
+        }
+        vec3 tone2 = uFoliage * vec3 (1.28, 1.02, 0.66) + vec3 (0.02, 0.02, 0.0);
+        vec3 fol = mix (uFoliage, tone2, hash12 (vec2 (kk, 3.0)) * 0.7) * lightC * best.y * (0.70 + 0.65 * fbm (q * 190.0));
+        fol += uBlossom * step (0.70, fbm (q * 90.0 + 7.0)) * vec3 (0.96, 0.74, 0.80) * lightC * 0.9 * best.y;
+        outc = mix (outc, fol, clamp (best.x * uFoAmt * 1.15, 0.0, 1.0));
+    }
+    return outc * 0.72;
 }
 
 vec4 fallers (vec2 uv)
