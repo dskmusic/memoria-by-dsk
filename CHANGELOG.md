@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-11-22
 ### Added
 - Modal piano engine, no samples: inharmonic string partials, 2-3 detuned strings per note, double decay, hammer spectrum by velocity,
   strike-position comb, dampers, continuous sustain pedal (half pedal), sympathetic resonance, soundboard modes, 32-voice polyphony with click-free voice stealing.
