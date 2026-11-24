@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-11-24
 ### Added
 - Seven new song styles (20 in all): Christmas (sleigh-bell oom-pah, sometimes a carol in 3/4), Gospel, Impressionist (washes held by the pedal),
   Neoclassical (steady sixteenth-note arpeggios), Ambient (rolled pads and floating bells), modern R&B (sparse, laid-back rolled 7th / 9th chords, for ballads) and Pop (driving eighth-note piano chords).
