@@ -199,13 +199,78 @@ def extra_items():
         res.append((prog, tag, False, (99, 0, V, vaL, Cc, caL, None)))
     return res
 
+
+# ---- styles added in v1.1: Christmas, Gospel, Impressionist, Neoclassical, Ambient, modern R&B, Pop.
+# Appended AFTER everything above so the indices (and so the songs) of the older styles do not move.
+XM, GO, IM, NE, AM, RB, PO = 1024, 2048, 16384, 32768, 131072, 262144, 524288
+NEW = {
+    XM: dict(progs=[(0,3,4,0),(0,5,3,4),(0,4,5,3),(0,3,0,4),(0,5,1,4)],
+             v=[[(0,1),(1,1),(2,2)], [(0,1),(1,1),(2,1),(3,1)], [(0,1.5),(1.5,.5),(2,2)], [(0,.5),(.5,.5),(1,1),(2,2)]],
+             c=[[(0,.5),(.5,.5),(1,1),(2,1),(3,1)], [(0,1),(1,1),(2,1.5),(3.5,.5)], [(0,1),(1,.5),(1.5,.5),(2,2)], [(0,.5),(.5,.5),(1,1),(2,2)]],
+             wprogs=[(0,3,4,0),(0,4,5,3),(0,3,0,4),(5,3,0,4)]),
+    GO: dict(progs=[(0,3,0,4),(0,5,3,4),(3,4,0,5),(0,2,3,4),(1,4,0,3)],
+             v=[[(0,1.5),(1.5,.5),(2,1),(3,1)], [(0,1),(1,.5),(1.5,1),(2.5,1.5)], [(0,.5),(.5,.5),(1,1),(2,2)], [(0,2),(2,1.5),(3.5,.5)]],
+             c=[[(0,.5),(.5,1),(1.5,.5),(2,2)], [(0,1.5),(1.5,.5),(2,1),(3,1)], [(0,1),(1,1),(2,1.5),(3.5,.5)]]),
+    IM: dict(progs=[(0,1,0,3),(3,2,1,0),(0,2,3,1),(5,3,1,0),(0,3,1,4)],
+             v=[[(0,2),(2,2)], [(0,1.5),(1.5,.5),(2,2)], [(0,3),(3,1)], [(0,1),(1,1),(2,2)]],
+             c=[[(0,2),(2,1),(3,1)], [(0,1),(1,1),(2,1.5),(3.5,.5)], [(0,1.5),(1.5,.5),(2,2)]]),
+    NE: dict(progs=[(5,3,0,4),(0,4,5,3),(5,2,3,4),(0,5,3,4),(5,3,0,2)],
+             v=[[(0,4)], [(0,2),(2,2)], [(0,3),(3,1)], [(0,2),(2,1),(3,1)]],
+             c=[[(0,2),(2,1),(3,1)], [(0,1),(1,1),(2,2)], [(0,2),(2,2)], [(0,1.5),(1.5,.5),(2,2)]]),
+    AM: dict(progs=[(0,5,3,4),(0,3,0,5),(5,3,0,4),(0,1,3,0),(3,0,5,3)],
+             v=[[(0,4)], [(0,2),(2,2)], [(0,3),(3,1)]],
+             c=[[(0,2),(2,2)], [(0,4)], [(0,3),(3,1)]]),
+    RB: dict(progs=[(0,5,2,6),(0,3,5,4),(0,6,5,4),(1,4,0,5),(0,2,5,3),(5,4,0,2)],
+             v=[[(0,1.5),(1.5,1),(2.5,1.5)], [(.5,1),(1.5,.5),(2,.75),(2.75,1.25)], [(0,.75),(.75,.75),(1.5,.5),(2,2)], [(0,2),(2.5,1.5)], [(0,1),(1.5,.5),(2,1),(3.5,.5)]],
+             c=[[(0,.5),(.5,1),(1.5,.5),(2,.5),(2.5,1.5)], [(0,1.5),(1.5,.5),(2,.75),(2.75,1.25)], [(0,.75),(.75,.75),(1.5,1),(2.5,1.5)]]),
+    PO: dict(progs=[(0,4,5,3),(5,3,0,4),(0,5,3,4),(3,0,4,5),(0,3,5,4),(0,4,3,5)],
+             v=[[(0,1.5),(1.5,.5),(2,1),(3,1)], [(0,1),(1,.5),(1.5,.5),(2,2)], [(0,.5),(.5,.5),(1,1),(2,2)], [(0,1),(1,1),(2,1),(3,1)]],
+             c=[[(0,.5),(.5,.5),(1,1),(2,.5),(2.5,.5),(3,1)], [(0,1),(1,.5),(1.5,.5),(2,.5),(2.5,.5),(3,1)], [(0,.5),(.5,.5),(1,1),(2,1.5),(3.5,.5)]]),
+}
+HAND2 = [
+    (XM, (0,3,4,0), ["0:1:2 1:1:2 2:2:2", "0:1:3 1:1:3 2:1:3 3:1:5", "0:1.5:4 1.5:.5:3 2:1:1 3:1:3", "0:1:2 1:1:3 2:2:4"], "0:1:4 1:1:3 2:2:0",
+        ["0:.5:7 .5:.5:7 1:1:9 2:2:11", "0:1:12 1:1:11 2:2:10", "0:1:11 1:1:9 2:1:8 3:1:9", "0:2:11 2:2:9"], "0:2:11 2:2:7"),
+    (XM, (0,5,3,4), ["0:1:4 1:1:4 2:1:2 3:1:4", "0:1:5 1:1:4 2:1:2 3:1:0", "0:1:3 1:1:5 2:1:7 3:1:5", "0:1.5:6 1.5:.5:4 2:2:6"], "0:1.5:6 1.5:.5:4 2:2:4",
+        ["0:1:11 1:1:9 2:1:11 3:1:9", "0:1:12 1:1:11 2:1:9 3:1:7", "0:1:10 1:1:12 2:1:14 3:1:12", "0:1:13 1:1:12 2:2:13"], "0:1:13 1:1:12 2:2:11"),
+]
+def new_items():
+    res = []
+    global VCELL, CCELL
+    saveV4, saveC4, saveV3, saveC3 = VCELL[4], CCELL[4], VCELL[3], CCELL[3]
+    for tag, d in NEW.items():
+        VCELL[4], CCELL[4] = d['v'], d['c']
+        for bpb, progs, per in [(4, d['progs'], 4)] + ([(3, d['wprogs'], 4)] if 'wprogs' in d else []):
+            for pi, prog in enumerate(progs):
+                cands = []
+                for k in range(200):
+                    V, vaL, Cc, caL = build(prog, bpb, 700000 + tag * 37 + bpb * 11 + pi * 1000 + k)
+                    if not validate(prog, bpb, V, vaL, Cc, caL): continue
+                    sc = score(V, Cc, vaL, caL)
+                    sig = (tuple(p for _, _, p in V[0]), tuple(p for _, _, p in Cc[0]))
+                    cands.append((sc, k, V, vaL, Cc, caL, sig))
+                cands.sort(key=lambda x: -x[0])
+                picked = []
+                for cd in cands:
+                    if len(picked) >= per: break
+                    if any(cd[6][0][:3] == q[6][0][:3] or cd[6][1][:3] == q[6][1][:3] for q in picked): continue
+                    picked.append(cd)
+                for cd in picked: res.append((prog, tag, bpb == 3, cd))
+    VCELL[4], CCELL[4], VCELL[3], CCELL[3] = saveV4, saveC4, saveV3, saveC3
+    for tag, prog, v, va, c, ca in HAND2:
+        V = [parsebar(x) for x in v]; vaL = parsebar(va); Cc = [parsebar(x) for x in c]; caL = parsebar(ca)
+        ok = validate(prog, 4, V, vaL, Cc, caL)
+        print("hand2", tag, "valid" if ok else "INVALID")
+        if not ok: sys.exit(1)
+        res.append((prog, tag, False, (99, 0, V, vaL, Cc, caL, None)))
+    return res
+
 if __name__ == "__main__":
-    items = run(PROG44, 4, 5, None, 100) + run(PROGW, 3, 5, None, 90000) + extra_items()
+    items = run(PROG44, 4, 5, None, 100) + run(PROGW, 3, 5, None, 90000) + extra_items() + new_items()
     print(len(items), "loops")
     lines = ["// generated by gen_book.py: do not edit by hand\n", "struct GenLoop { int ch[4]; int moods; bool waltz; const char* s[10]; };\n", "static const GenLoop kGen[] {\n"]
     for prog, tag, w, (sc, k, V, vaL, Cc, caL, sig) in items:
         strs = [fmt(b) for b in V] + [fmt(vaL)] + [fmt(b) for b in Cc] + [fmt(caL)]
-        lines.append('  { { %d, %d, %d, %d }, %d, %s, { %s } },\n' % (prog + (tag if not w else 0, "true" if w else "false", ", ".join('"%s"' % x for x in strs))))
+        lines.append('  { { %d, %d, %d, %d }, %d, %s, { %s } },\n' % (prog + (tag, "true" if w else "false", ", ".join('"%s"' % x for x in strs))))
     lines.append("};\n")
     open(OUT, "w", encoding="utf-8").write("".join(lines))
     avg = sum(i[3][0] for i in items) / len(items)

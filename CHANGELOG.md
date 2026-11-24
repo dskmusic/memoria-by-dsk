@@ -1,6 +1,17 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Seven new song styles (20 in all): Christmas (sleigh-bell oom-pah, sometimes a carol in 3/4), Gospel, Impressionist (washes held by the pedal),
+  Neoclassical (steady sixteenth-note arpeggios), Ambient (rolled pads and floating bells), modern R&B (sparse, laid-back rolled 7th / 9th chords, for ballads) and Pop (driving eighth-note piano chords).
+  The Lullaby style (waltz) was already there. New songbook themes; the older themes do not move.
+### Removed
+- The Slow Tango style (songs saved with the Village style move one place in the list).
+### Changed
+- Songs flow from one section to the next: the energy eases across section borders (no more cliffs between verse and chorus), the last bar of every section carries a stepwise
+  fill into the next chord, the chorus lands with a harder low octave, and the key change of the last chorus is prepared with the dominant of the new key.
+- More human: the melody leads the accompaniment by a few milliseconds and every 4-bar phrase swells and releases.
+- Songbook version 5: favourites saved before may sound a little different.
 
 ## [1.0.0] - 2026-11-22
 ### Added

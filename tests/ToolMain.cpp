@@ -204,9 +204,9 @@ int main (int argc, char** argv)
         const auto dir = juce::File::getCurrentWorkingDirectory().getChildFile (argc > 2 ? argv[2] : "hands-demo");
         dir.createDirectory();
         const double secs = argc > 3 ? juce::String (argv[3]).getDoubleValue() : 90.0;
-        const char* cats[] { "Lo-Fi", "Cinematic", "Concert", "Study", "Lullaby", "Felt", "Concert", "Vintage", "Lo-Fi", "Church", "Lo-Fi", "Felt", "Vintage", "Toy" };
-        const double tempos[] { 78, 84, 70, 92, 96, 66, 84, 78, 76, 62, 96, 76, 66, 100 };
-        const int keys[] { 9, 2, 3, 0, 7, 4, 2, 5, 0, 3, 2, 7, 9, 0 }, scales[] { 1, 1, 0, 2, 0, 1, 0, 0, 0, 1, 0, 0, 7, 0 };
+        const char* cats[] { "Lo-Fi", "Cinematic", "Concert", "Study", "Lullaby", "Felt", "Concert", "Vintage", "Lo-Fi", "Church", "Lo-Fi", "Felt", "Toy", "Toy", "Church", "Concert", "Study", "Cinematic", "Study", "Concert" };
+        const double tempos[] { 78, 84, 70, 92, 96, 66, 84, 78, 76, 62, 96, 76, 100, 96, 76, 64, 62, 56, 68, 104 };
+        const int keys[] { 9, 2, 3, 0, 7, 4, 2, 5, 0, 3, 2, 7, 0, 0, 5, 2, 9, 3, 9, 0 }, scales[] { 1, 1, 0, 2, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 3, 1, 3, 1, 0 };
         const int takes = argc > 4 ? juce::String (argv[4]).getIntValue() : 1;     // several different songs per style
         for (int style = 0; style < gx::numSongStyles; ++style)
           for (int take = 0; take < takes; ++take)

@@ -180,11 +180,13 @@ struct Composer
         msBeat = c.bpm / 60000.0;
         // the loops that suit each style (indices into the songbook); the seed picks one, the next one is the bridge
         // the loops that suit each style are chosen by mood; the seed picks the theme and (differently) the bridge theme
-        static const int styleMask[14] { 4 | 16 | 8, 32 | 2, 2 | 4 | 1, 32 | 4, 0, 1 | 2, 63, 8, 16 | 8, 2 | 32, 64, 128, 256, 512 };
+        static const int styleMask[numSongStyles] { 4 | 16 | 8, 32 | 2, 2 | 4 | 1, 32 | 4, 0, 1 | 2, 63, 8, 16 | 8, 2 | 32, 64, 128, 512,
+                                                    1024, 2048, 16384, 32768, 131072, 262144, 524288 };
+        const bool wantWaltz = c.style == ssLullaby || (c.style == ssChristmas && c.seed % 4u == 0u);      // a carol in 3 sometimes
         const auto& bk = book();
         std::vector<int> pool;
         for (size_t i = 0; i < bk.size(); ++i)
-            if (c.style == ssLullaby ? bk[i].waltz : (! bk[i].waltz && (bk[i].moods & styleMask[juce::jlimit (0, 13, c.style)]) != 0)) pool.push_back ((int) i);
+            if (c.style == ssLullaby ? (bk[i].waltz && bk[i].moods < 1024) : (bk[i].waltz == wantWaltz && (bk[i].moods & styleMask[juce::jlimit (0, (int) numSongStyles - 1, c.style)]) != 0)) pool.push_back ((int) i);
         if (pool.empty()) pool.push_back (0);
         const size_t n = pool.size();
         const int li = pool[(size_t) (c.seed % (uint32_t) n)];
@@ -206,6 +208,7 @@ struct Composer
     // Repeats are never copies: the second verse gets anticipations and passing notes, choruses get a counter-melody and a
     // low bass octave, and the last chorus (after the key change) is doubled an octave down.
     int verseCount = 0, chorusCount = 0;
+    bool fillBar = false;                // the bar that leads into the next section carries a fill instead of the usual bass approach
     BookBar vary (BookBar bar, int rep) const
     {
         if (rep <= 0) return bar;
@@ -223,16 +226,16 @@ struct Composer
         }
         return o;
     }
-    void bookMelody (const Sec& sec, float energy)
+    void bookMelody (const Sec& sec, const std::vector<float>& eb)
     {
         if (sec.type == 'I') return;
         if (sec.start == 0) { verseCount = 0; chorusCount = 0; }
         const Loop* L = sec.type == 'C' ? bridgeLoop : loop;
-        const double sw = (c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 0.17 : 0.0;
+        const double sw = (c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop) ? 0.17 : c.style == ssRnB ? 0.1 : c.style == ssGospel ? 0.06 : 0.0;
         const int rep = sec.type == 'B' ? chorusCount : sec.type == 'A' ? verseCount : 0;
         const bool lastChorus = sec.type == 'B' && modShift != 0;
         const int dbl = (sec.type == 'B' && (lastChorus || c.style == ssBallad || c.style == ssCinematic || c.style == ssRomantic)) ? -7 : 0;
-        const bool counter = (sec.type == 'B' || (sec.type == 'A' && rep >= 1)) && bpb == 4 && c.style != ssMinimal;
+        const bool counter = (sec.type == 'B' || (sec.type == 'A' && rep >= 1)) && bpb == 4 && c.style != ssMinimal && c.style != ssAmbient && c.style != ssNeoclassic && c.style != ssImpress;
         for (int b = 0; b < sec.bars; ++b)
         {
             const int g = b / 4, bi = b % 4;
@@ -246,8 +249,9 @@ struct Composer
             const int gb = sec.start + b;
             const bool secEnd = b == sec.bars - 1;
             const int chDeg = bookChord (sec, b);
-            if (sec.type == 'B')       // the bass drops an octave on the downbeat in the chorus
-                add ((double) gb * bpb, bpb - 0.3, bassOf (chDeg) - 12, velOf (energy, -14), 3.0f, rubato (gb, 0.0, false, false));
+            const float energy = eb[(size_t) b];
+            if (sec.type == 'B')       // the bass drops an octave on the downbeat in the chorus (and lands harder on the first bar)
+                add ((double) gb * bpb, bpb - 0.3, bassOf (chDeg) - 12, velOf (energy, b == 0 ? -4 : -14), 3.0f, rubato (gb, 0.0, false, false));
             for (size_t k = 0; k < bar.size(); ++k)
             {
                 const auto& n = bar[k];
@@ -262,7 +266,7 @@ struct Composer
                 const double rb = rubato (gb, n.b, secEnd, sec.type == 'O');
                 add (start, dur * 0.97, note, vel, 8.0f, rb, true);
                 if (dbl != 0) add (start, dur * 0.97, midi (n.deg + 7 + dbl), vel - 12, 8.0f, rb, true);
-                if (expr > 0.45f && n.d >= 2.0f && chance (0.3f) && (c.style == ssRomantic || c.style == ssNocturne || c.style == ssCinematic || c.style == ssTango))
+                if (expr > 0.45f && n.d >= 2.0f && chance (0.3f) && (c.style == ssRomantic || c.style == ssNocturne || c.style == ssCinematic || c.style == ssImpress || c.style == ssGospel || c.style == ssRnB))
                     add (start - 0.14, 0.12, midi (n.deg + 8), vel - 14, 2.0f, 0.0, true);          // grace note before a long note
                 if (counter && n.d >= 2.0f && n.b + 2.0f <= (float) bpb + 0.01f)
                 {   // counter-melody: a chord tone a third or more below, entering one beat after the melody note
@@ -313,7 +317,7 @@ struct Composer
     {
         if (note < 21 || note > 108) return;
         NoteEv n;
-        n.start = std::max (0.0, start + extra + humanBeats (jitterMs));
+        n.start = std::max (0.0, start + extra + humanBeats (jitterMs) - (mel ? 9.0 * (double) expr * msBeat : 0.0));      // the melody leads a few ms
         n.len = std::max (0.06, len);
         n.note = note; n.voice = mel ? 1 : 0;
         n.vel = juce::jlimit (1, 127, vel + (int) ((uni() - 0.5f) * 8.0f * expr));
@@ -362,9 +366,11 @@ struct Composer
             if (c.style == ssLofiLoop) { static const int L[4][4] { { 0, 5, 1, 4 }, { 1, 4, 0, 5 }, { 0, 2, 5, 4 }, { 3, 2, 1, 4 } }; ch.deg = L[c.seed % 4u][b % 4]; }
             else if (c.style == ssJazz) { static const int J[4][4] { { 1, 4, 0, 5 }, { 2, 5, 1, 4 }, { 0, 5, 1, 4 }, { 3, 4, 2, 5 } }; ch.deg = J[(c.seed + (sec.type == 'B' ? 1u : 0u)) % 4u][b % 4]; }
             if (useBook) ch.deg = bookChord (sec, b);
-            const float colour = c.style == ssBossa ? 0.9f : c.style == ssFolk ? 0.15f : c.style == ssTango ? 0.2f : c.style == ssVillage ? 0.05f : c.style == ssLofi ? 0.8f : c.style == ssRomantic ? 0.45f : c.style == ssMinimal ? 0.5f : c.style == ssCinematic ? 0.3f : c.style == ssBallad ? 0.3f : c.style == ssJazz ? 0.95f : c.style == ssLofiLoop ? 0.9f : c.style == ssNocturne ? 0.12f : 0.05f;
+            static const float colourOf[numSongStyles] { 0.8f, 0.3f, 0.45f, 0.5f, 0.05f, 0.3f, 0.05f, 0.95f, 0.9f, 0.12f, 0.9f, 0.15f, 0.05f,
+                                                         0.1f, 0.7f, 0.7f, 0.35f, 0.5f, 0.9f, 0.2f };
+            const float colour = colourOf[juce::jlimit (0, (int) numSongStyles - 1, c.style)];
             if (chance (colour * (0.4f + 0.6f * dens)))
-                ch.ext = c.style == ssMinimal || c.style == ssCinematic ? (chance (0.5f) ? 3 : 2) : ((c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop || c.style == ssBossa) ? 1 + pick (2) : 1);
+                ch.ext = c.style == ssMinimal || c.style == ssCinematic || c.style == ssAmbient ? (chance (0.5f) ? 3 : 2) : ((c.style == ssLofi || c.style == ssJazz || c.style == ssLofiLoop || c.style == ssBossa || c.style == ssGospel || c.style == ssImpress || c.style == ssRnB) ? 1 + pick (2) : 1);
             else if (c.style == ssCinematic && chance (0.15f)) ch.ext = 4;
             if (useBook && ch.ext >= 3) ch.ext = 2;
             h[(size_t) b][0] = ch; h[(size_t) b][1] = ch;
@@ -431,7 +437,8 @@ struct Composer
         };
         const bool sparse = sec.type == 'I' || sec.type == 'O';
         const float e = energy;
-        const int v = velOf (e, -4);
+        // the phrase breathes: a gentle swell towards the middle of every 4-bar phrase and a release at its end
+        const int v = velOf (e, -4) + (int) (5.0f * expr * std::sin (3.14159f * ((float) (barInSec % 4) + 0.5f) / 4.0f)) - 2;
         switch (c.style)
         {
             case ssMinimal:
@@ -536,19 +543,85 @@ struct Composer
                 for (int i = 0; i < 8; ++i) note (i * 0.5, (i == 0 || i == 4) ? 1.8 : 0.9, a.n[pat[i]], v + (i == 0 ? 6 : i == 4 ? 2 : -4 - (i % 2) * 2), 7.0f);
                 break;
             }
-            case ssTango:   // habanera: marked bass and chords, with the syncopated "dotted" push
-            {
-                note (0.0, 0.7, a.n[0], v + 8, 3.0f); note (0.75, 0.25, a.n[1], v - 2, 3.0f);
-                for (int i : { 3, 4, 6 }) note (1.0, 0.45, a.n[i], v - 4, 5.0f);
-                note (2.0, 0.7, a.n[1], v + 5, 3.0f); note (2.75, 0.25, a.n[0], v - 2, 3.0f);
-                for (int i : { 3, 4, 6 }) note (3.0, 0.45, a.n[i], v - 4, 5.0f);
-                break;
-            }
             case ssVillage: // oom-pah: light, bouncy, a little sparkle
             {
                 note (0.0, 0.9, a.n[0], v + 4, 3.0f); for (int i : { 3, 4 }) note (1.0, 0.5, a.n[i], v - 6, 5.0f);
                 note (2.0, 0.9, a.n[1], v, 3.0f); for (int i : { 3, 5 }) note (3.0, 0.5, a.n[i], v - 6, 5.0f);
                 if (chance (0.4f)) note (3.5, 0.4, a.n[2], v - 9, 5.0f);
+                break;
+            }
+            case ssChristmas:   // sleigh-bell oom-pah, with a little glitter on the last beat of the phrase
+            {
+                if (bpb == 3)
+                {
+                    note (0.0, 0.95, a.n[0], v + 4, 3.0f);
+                    for (double b : { 1.0, 2.0 }) for (int i : { 3, 4, 6 }) note (b, 0.6, a.n[i], v - 7, 5.0f);
+                }
+                else
+                {
+                    note (0.0, 0.95, a.n[0], v + 4, 3.0f);
+                    for (int i : { 3, 4, 6 }) note (1.0, 0.55, a.n[i], v - 7, 5.0f);
+                    note (2.0, 0.95, a.n[1], v, 3.0f);
+                    for (int i : { 3, 4, 6 }) note (3.0, 0.55, a.n[i], v - 7, 5.0f);
+                    if (sparse || barInSec % 4 == 3) { note (3.5, 0.4, a.n[5], v - 13, 4.0f); note (3.75, 0.4, a.n[7], v - 15, 4.0f); }
+                    if (e > 0.78f) note (1.5, 0.3, a.n[7], v - 17, 4.0f);               // the bells in the chorus
+                }
+                break;
+            }
+            case ssGospel:   // church piano: bass and chord, then pushed and anticipated chords that answer the melody
+            {
+                note (0.0, 1.5, a.n[0], v + 5, 3.0f); note (0.0, 1.5, a.n[2], v - 2, 3.0f);
+                for (int i : { 3, 4, 6 }) note (0.0, 1.3, a.n[i], v - 6, 10.0f);
+                for (int i : { 3, 4, 6, 7 }) note (1.5 + 0.06, 0.4, a.n[i], v - 12, 6.0f);
+                note (2.0, 0.9, a.n[1], v, 3.0f);
+                for (int i : { 3, 4, 6 }) note (2.5 + 0.06, 0.5, a.n[i], v - 8, 6.0f);
+                note (3.0, 0.5, bassOf (ch.deg + 4), v - 6, 3.0f);
+                if (chance (0.7f)) for (int i : { 4, 6, 7 }) note (3.5 + 0.06, 0.45, a.n[i], v - 10, 6.0f);
+                break;
+            }
+            case ssImpress:   // washes of notes held by the pedal: the harmony blurs, never steps
+            {
+                static const int w1[8] { 0, 3, 4, 6, 7, 6, 4, 3 }, w2[8] { 0, 2, 4, 5, 7, 5, 4, 2 };
+                const int* w = (barInSec % 2 == 0) ? w1 : w2;
+                for (int i = 0; i < 8; ++i) note (i * 0.5, 1.4, a.n[w[i]], v - 8 + (i == 0 ? 8 : 0) + (i == 4 ? 3 : 0), 9.0f);
+                note (0.0, bpb - 0.1, a.n[0], v + 2, 3.0f);
+                break;
+            }
+            case ssNeoclassic:   // steady sixteenth-note arpeggios that never stop: the pulse of a piano piece for film
+            {
+                static const int fA[4] { 2, 3, 4, 3 }, fB[4] { 3, 4, 6, 4 };
+                for (int i = 0; i < 16; ++i)
+                {
+                    const int* f = ((i / 4) % 2 == 0) ? fA : fB;
+                    note (i * 0.25, 0.7, a.n[f[i % 4]], v - 8 + (i % 4 == 0 ? 5 : 0) + (i == 0 ? 3 : 0), 4.0f);
+                }
+                note (0.0, bpb - 0.1, a.n[0], v + 3, 3.0f);
+                break;
+            }
+            case ssAmbient:   // a pad: long rolled chords that overlap, and a few bell notes floating above
+            {
+                note (0.0, bpb + 0.3, a.n[0], v + 2, 3.0f);
+                int k = 0; for (int i : { 2, 3, 4, 6 }) note (0.12 * (double) (++k), bpb + 0.1, a.n[i], v - 9, 3.0f);
+                if (barInSec % 2 == 0) { note (bpb * 0.5, 1.5, a.n[5], v - 14, 6.0f); if (chance (0.5f)) note (bpb - 0.5, 1.2, a.n[7], v - 17, 6.0f); }
+                break;
+            }
+            case ssRnB:   // modern R&B / neo-soul ballad: sparse, laid back, rolled extended chords, a bass that answers the vocal line
+            {
+                note (0.0, 1.3, a.n[0], v + 5, 3.0f);
+                { int k = 0; for (int i : { 3, 4, 6, 7 }) note (0.045 * (double) k++, 1.7, a.n[i], v - 8, 6.0f); }
+                for (int i : { 4, 6, 7 }) note (1.5 + 0.08, 0.45, a.n[i], v - 12, 8.0f);
+                note (2.5 + 0.08, 0.75, a.n[1], v - 2, 4.0f);
+                if (chance (0.6f)) for (int i : { 3, 6, 7 }) note (3.5 + 0.08, 0.4, a.n[i], v - 13, 8.0f);
+                if (chance (0.35f * dens)) note (3.0, 0.4, a.n[2], v - 12, 5.0f);          // a ghost note
+                break;
+            }
+            case ssPop:   // piano pop: driving eighth-note chords over an octave bass
+            {
+                note (0.0, 0.95, a.n[0], v + 6, 3.0f); note (0.0, 0.95, a.n[2], v - 1, 3.0f);
+                note (2.0, 0.9, a.n[1], v + 1, 3.0f);
+                for (int i = 0; i < 8; ++i)
+                    for (int t : { 3, 4, 6 }) note (i * 0.5, 0.42, a.n[t], v - 9 + (i % 2 == 0 ? 2 : -3) + (i == 0 ? 2 : 0), 6.0f);
+                if (sparse) note (3.5, 0.4, a.n[2], v - 8, 4.0f);
                 break;
             }
             default: // ballad: block chords with an octave bass
@@ -561,7 +634,7 @@ struct Composer
             }
         }
         // bass movement: an approach note into the next chord, and a pushed (anticipated) chord in the choruses
-        if (nextDeg >= 0 && nextDeg != ch.deg && t1 >= bpb - 1.0e-6 && bpb == 4 && ! sparse && c.style != ssMinimal && c.style != ssLullaby && c.style != ssJazz && c.style != ssNocturne && chance (0.30f + 0.45f * dens))
+        if (nextDeg >= 0 && nextDeg != ch.deg && t1 >= bpb - 1.0e-6 && bpb == 4 && ! sparse && c.style != ssMinimal && c.style != ssLullaby && c.style != ssJazz && c.style != ssNocturne && c.style != ssAmbient && c.style != ssNeoclassic && c.style != ssImpress && ! fillBar && chance (0.30f + 0.45f * dens))
         {
             note (bpb - 0.5, 0.45, bassOf (nextDeg + (chance (0.5f) ? -1 : 1)), v - 8, 4.0f);
             if ((sec.type == 'B' || sec.type == 'P') && (c.style == ssBallad || c.style == ssLofi || c.style == ssCinematic) && chance (0.55f))
@@ -707,6 +780,51 @@ struct Composer
         if (split) change (b0 + bpb / 2.0);
     }
 
+    // how loud a section is at its start (prog 0) and at its end (prog 1): the arc of the song
+    static float baseE (char t, float prog)
+    {
+        return t == 'I' ? 0.28f + 0.1f * prog : t == 'A' ? 0.50f + 0.05f * prog : t == 'P' ? 0.55f + 0.30f * prog : t == 'B' ? 0.82f + 0.08f * prog
+             : t == 'C' ? 0.52f + 0.35f * prog : 0.36f - 0.2f * prog;
+    }
+    float styleScale() const
+    {
+        return (c.style == ssLofi || c.style == ssLofiLoop) ? 0.85f : c.style == ssLullaby ? 0.8f : (c.style == ssAmbient || c.style == ssImpress || c.style == ssNeoclassic) ? 0.82f : 1.0f;
+    }
+
+    // a stepwise run that leads the left hand into the first chord of the next section (up into a louder one, down into a quieter one),
+    // landing softly on the third of the new chord: this is what makes a verse hand over to a chorus instead of jumping
+    void fillInto (int gb, const Sec& nxt, float e)
+    {
+        const int nextDeg = bookChord (nxt, 0);
+        const bool up = baseE (nxt.type, 0.0f) >= e - 0.02f;
+        const int top = std::min (67, midi (6) - 3);
+        const int hiN = up ? 0 : 3, loN = up ? 3 : 0;
+        int D = nextDeg + 2;
+        while (midi (D + hiN) > top) D -= 7;
+        while (midi (D - loN) < 50) D += 7;
+        if (midi (D + hiN) > top) return;
+        const int n = bpb == 3 ? 2 : 3;
+        const double first = bpb - 0.5 * n;
+        for (int k = 0; k < n; ++k)
+        {
+            const int steps = n - k;                       // 3, 2, 1 degrees from the target
+            const int deg = up ? D - steps : D + steps;
+            const double bt = first + 0.5 * k;
+            add ((double) gb * bpb + bt, 0.46, midi (deg), velOf (e, -7 + (up ? 2 * k : -k)), 4.0f, rubato (gb, bt, true, false));
+        }
+        add ((double) (gb + 1) * bpb, 1.2, midi (D), velOf (e, -12), 4.0f);
+    }
+
+    // the dominant of the new key (root, fifth and flat seventh: no third, so it never bites the held melody note) under the last beat
+    void pivotToNewKey (int gb)
+    {
+        const double at = (double) gb * bpb + (bpb - 1.0);
+        const int base = 60 + (key > 6 ? key - 12 : key) + 2;                       // the tonic of the new key
+        const int v = velOf (0.7f, -6);
+        add (at, 1.0, base - 17, v + 4, 3.0f); add (at + 0.03, 1.0, base - 5, v, 3.0f);
+        add (at + 0.06, 0.95, base + 2, v - 6, 3.0f); add (at + 0.09, 0.95, base + 5, v - 8, 3.0f);
+    }
+
     void run()
     {
         out.notes.clear(); out.pedal.clear(); out.sections.clear(); out.chordMasks.clear();
@@ -714,6 +832,9 @@ struct Composer
         const auto secs = plan();
         int totalBars = 0; for (auto& s : secs) totalBars += s.bars;
         out.bars = totalBars;
+        const bool canModulate = totalBars >= 32 && c.style != ssLullaby && c.style != ssAmbient && c.style != ssImpress && c.style != ssNeoclassic;
+        auto modulates = [&] (size_t i) { return i < secs.size() && secs[i].type == 'B' && i + 2 >= secs.size() && canModulate; };
+        const bool loopForm = c.form == 1 || c.form == 2;
         int motifKind = (int) (c.seed % 6u); if (bpb == 3) motifKind %= 3;
         std::vector<Mot> motA = genMotif (motifKind, 2), hook = genMotif ((motifKind + 3) % (bpb == 3 ? 3 : 6), 2);
         for (size_t si = 0; si < secs.size(); ++si)
@@ -721,16 +842,25 @@ struct Composer
             const auto& sec = secs[si];
             out.sections.push_back ({ sec.type, sec.start, sec.bars });
             bool fin = si + 2 >= secs.size();
-            modShift = (sec.type == 'B' && si + 2 >= secs.size() && totalBars >= 32 && c.style != ssLullaby) ? 2 : 0;   // the last chorus lifts a tone
+            modShift = modulates (si) ? 2 : 0;   // the last chorus lifts a tone
             std::vector<bool> split;
             const auto h = harmony (sec, fin, split);
+            const bool hasNext = si + 1 < secs.size() && ! loopForm;
+            const float scale = styleScale();
+            std::vector<float> eb ((size_t) sec.bars);
+            for (int b = 0; b < sec.bars; ++b)
+            {
+                const float prog = (float) b / (float) std::max (1, sec.bars - 1);
+                float e = baseE (sec.type, prog);
+                // ease over the section borders: the first bars still carry some of the previous section, the last bar leans into the next one
+                if (si > 0 && ! loopForm) { const float w = b == 0 ? 0.4f : b == 1 ? 0.15f : 0.0f; if (w > 0.0f) e = e * (1.0f - w) + baseE (secs[si - 1].type, 1.0f) * w; }
+                if (hasNext && b == sec.bars - 1) { const float nx = baseE (secs[si + 1].type, 0.0f); e += juce::jlimit (-0.07f, 0.1f, (nx - e) * 0.3f); }
+                eb[(size_t) b] = e * scale;
+            }
             for (int b = 0; b < sec.bars; ++b)
             {
                 const int gb = sec.start + b;
-                const float prog = (float) b / (float) std::max (1, sec.bars - 1);
-                float e = sec.type == 'I' ? 0.28f + 0.1f * prog : sec.type == 'A' ? 0.50f + 0.05f * prog : sec.type == 'P' ? 0.55f + 0.30f * prog : sec.type == 'B' ? 0.82f + 0.08f * prog
-                        : sec.type == 'C' ? 0.52f + 0.35f * prog : 0.36f - 0.2f * prog;
-                if (c.style == ssLofi || c.style == ssLofiLoop) e *= 0.85f; if (c.style == ssLullaby) e *= 0.8f;
+                const float e = eb[(size_t) b];
                 const bool secEnd = b == sec.bars - 1;
                 {
                     unsigned mask = 0;
@@ -741,8 +871,14 @@ struct Composer
                 if (c.mode != 3)
                 {
                     const int nd = b + 1 < sec.bars ? h[(size_t) b + 1][0].deg : -1;
-                    if (split[(size_t) b]) { accompany (gb, sec, b, h[(size_t) b][0], 0, bpb / 2.0, e, secEnd); accompany (gb, sec, b, h[(size_t) b][1], bpb / 2.0, bpb, e, secEnd, nd); }
-                    else accompany (gb, sec, b, h[(size_t) b][0], 0, bpb, e, secEnd, nd);
+                    const bool pivot = secEnd && hasNext && modulates (si + 1);
+                    fillBar = secEnd && hasNext && sec.type != 'O';
+                    const double tEnd = pivot ? bpb - 1.0 : (double) bpb;                // the pivot chord takes the last beat
+                    if (split[(size_t) b]) { accompany (gb, sec, b, h[(size_t) b][0], 0, bpb / 2.0, e, secEnd); accompany (gb, sec, b, h[(size_t) b][1], bpb / 2.0, tEnd, e, secEnd, nd); }
+                    else accompany (gb, sec, b, h[(size_t) b][0], 0, tEnd, e, secEnd, nd);
+                    if (pivot) pivotToNewKey (gb);
+                    else if (fillBar && ! (pivot)) fillInto (gb, secs[si + 1], e);
+                    fillBar = false;
                     // final chord: a rolled chord held under the pedal
                     if (sec.type == 'O' && secEnd)
                     {
@@ -754,13 +890,11 @@ struct Composer
             }
             if (c.mode != 2)
             {
-                float en = sec.type == 'I' ? 0.3f : sec.type == 'A' ? 0.52f : sec.type == 'P' ? 0.66f : sec.type == 'B' ? 0.86f : sec.type == 'C' ? 0.68f : 0.34f;
-                if (c.style == ssLofi || c.style == ssLofiLoop) en *= 0.9f;
-                if (useBook) bookMelody (sec, en); else melody (sec, sec.start, h, en, motifKind, motA, hook);
+                if (useBook) bookMelody (sec, eb);
+                else { float en = sec.type == 'I' ? 0.3f : sec.type == 'A' ? 0.52f : sec.type == 'P' ? 0.66f : sec.type == 'B' ? 0.86f : sec.type == 'C' ? 0.68f : 0.34f; melody (sec, sec.start, h, en * scale, motifKind, motA, hook); }
             }
         }
         // the very end: let everything ring
-        const bool loopForm = c.form == 1 || c.form == 2;
         out.totalBeats = (double) totalBars * bpb + (loopForm ? 0.0 : 2.0);
         if (loopForm)
         {   // a loop must end clean: nothing sounds past the last beat, the pedal is up

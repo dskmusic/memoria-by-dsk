@@ -28,10 +28,10 @@ const Item items[] {
       "WIDTH opens or closes the stereo image (low notes left, high notes right, as the pianist hears it). ROOM and ROOM SIZE add the room." },
     { "La habitación y las manos", "The room & the hands",
       "Bajo la escena eliges la HORA del día y la ESTACIÓN del año tras la ventana; el reloj de la pared sigue la luz. La vela y las cortinas reaccionan a la música. "
-      "En MANOS eliges estilo (14), tono, escala y FORMA: canción completa, bucle de 8 compases, solo estribillo o pieza corta. "
+      "En MANOS eliges estilo (20), tono, escala y FORMA: canción completa, bucle de 8 compases, solo estribillo o pieza corta. "
       "«Guardar favorita» recuerda la canción que te gusta y «Favoritas» la recupera.",
       "Under the scene you pick the HOUR of the day and the SEASON behind the window; the wall clock follows the light. The candle and the curtains react to the music. "
-      "In HANDS you pick the style (14), key, scale and FORM: full song, 8-bar loop, chorus only or a short piece. "
+      "In HANDS you pick the style (20), key, scale and FORM: full song, 8-bar loop, chorus only or a short piece. "
       "\"Save favourite\" remembers a song you like and \"Favourites\" recalls it." },
     { "Presets y ajustes", "Presets & settings",
       "En PRESETS guardas y recuperas tus sonidos. A/B compara dos versiones y Deshacer / Rehacer siempre están a mano. "
